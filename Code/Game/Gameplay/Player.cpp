@@ -73,29 +73,25 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
         }
     }
 
-    Vec3 forward;
-    Vec3 left;
-    Vec3 up;
+    Vec3 forward, left, up = Vec3::ZERO;
     m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, left, up);
 
-    m_velocity                = Vec3::ZERO;
-    float constexpr moveSpeed = 2.f;
+    m_velocity = Vec3::ZERO;
 
-
-    if (g_input->IsKeyDown(KEYCODE_W)) m_velocity += forward * moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_S)) m_velocity -= forward * moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_A)) m_velocity += left * moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_D)) m_velocity -= left * moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_Z)) m_velocity -= Vec3(0.f, 0.f, 1.f) * moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_C)) m_velocity += Vec3(0.f, 0.f, 1.f) * moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_W)) m_velocity += forward * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_S)) m_velocity -= forward * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_A)) m_velocity += left * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_D)) m_velocity -= left * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_Z)) m_velocity -= Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_C)) m_velocity += Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
 
     if (g_input->IsKeyDown(KEYCODE_SHIFT)) deltaSeconds *= 20.f;
 
     m_position += m_velocity * deltaSeconds;
 
 
-    m_orientation.m_yawDegrees -= g_input->GetCursorClientDelta().x * 0.125f;
-    m_orientation.m_pitchDegrees += g_input->GetCursorClientDelta().y * 0.125f;
+    m_orientation.m_yawDegrees -= g_input->GetCursorClientDelta().x * 0.075f;
+    m_orientation.m_pitchDegrees += g_input->GetCursorClientDelta().y * 0.075f;
     m_orientation.m_pitchDegrees = GetClamped(m_orientation.m_pitchDegrees, -85.f, 85.f);
 
     m_angularVelocity.m_rollDegrees = 0.f;

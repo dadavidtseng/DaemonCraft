@@ -6,6 +6,8 @@
 #pragma once
 #include <cstdint>
 
+#include "World.hpp"
+
 //----------------------------------------------------------------------------------------------------
 class Camera;
 class Clock;
@@ -31,21 +33,26 @@ public:
     bool IsAttractMode() const;
 
 private:
+    void UpdateFromInput();
     void UpdateFromKeyBoard();
     void UpdateFromController();
     void UpdateEntities(float gameDeltaSeconds, float systemDeltaSeconds) const;
+
     void RenderAttractMode() const;
     void RenderEntities() const;
+    void RenderPlayerBasis() const;
 
     void SpawnPlayer();
     void SpawnProp();
 
-    Camera*    m_screenCamera = nullptr;
-    Player*    m_player       = nullptr;
-    Prop*      m_firstCube    = nullptr;
-    Prop*      m_secondCube   = nullptr;
-    Prop*      m_sphere       = nullptr;
-    Prop*      m_grid         = nullptr;
-    Clock*     m_gameClock    = nullptr;
-    eGameState m_gameState    = eGameState::ATTRACT;
+    Camera* m_screenCamera = nullptr;
+    Player* m_player       = nullptr;
+    World*  m_world        = nullptr;
+
+    Prop*      m_firstCube  = nullptr;
+    Prop*      m_secondCube = nullptr;
+    Prop*      m_sphere     = nullptr;
+    Prop*      m_grid       = nullptr;
+    Clock*     m_gameClock  = nullptr;
+    eGameState m_gameState  = eGameState::ATTRACT;
 };

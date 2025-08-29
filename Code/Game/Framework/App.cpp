@@ -142,13 +142,8 @@ void App::Startup()
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(Z/C)   Elevate");
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(Shift) Sprint");
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(H)     Set Camera to Origin");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(1)     Spawn Line");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(2)     Spawn Point");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(3)     Spawn Wireframe Sphere");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(4)     Spawn Basis");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(5)     Spawn Billboard Text");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(6)     Spawn Wireframe Cylinder");
-    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(7)     Add Message");
+    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(F2)    Toggle debug draw");
+    g_devConsole->AddLine(DevConsole::INFO_MINOR, "(F8)    Reload");
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(~)     Toggle Dev Console");
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(ESC)   Exit Game");
     g_devConsole->AddLine(DevConsole::INFO_MINOR, "(SPACE) Start Game");

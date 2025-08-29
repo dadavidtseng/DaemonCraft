@@ -26,4 +26,5 @@ public:
 
 private:
     Camera* m_worldCamera = nullptr;
+    float   m_moveSpeed   = 4.f;
 };

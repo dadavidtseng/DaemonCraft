@@ -42,6 +42,7 @@ Game::Game()
     m_sphere->m_position     = Vec3(10, -5, 1);
     m_grid->m_position       = Vec3::ZERO;
 
+#if defined GAME_DEBUG_MODE
     DebugAddWorldBasis(Mat44(), -1.f);
 
     Mat44 transform;
@@ -54,14 +55,12 @@ Game::Game()
 
     transform.SetIJKT3D(-Vec3::X_BASIS, Vec3::Z_BASIS, Vec3::Y_BASIS, Vec3(0.f, -0.25f, 0.25f));
     DebugAddWorldText("Z-Up", transform, 0.25f, Vec2(1.f, 0.f), -1.f, Rgba8::BLUE);
+#endif
 }
 
 //----------------------------------------------------------------------------------------------------
 Game::~Game()
 {
-    delete m_gameClock;
-    m_gameClock = nullptr;
-
     delete m_grid;
     m_grid = nullptr;
 
@@ -74,11 +73,9 @@ Game::~Game()
     delete m_firstCube;
     m_firstCube = nullptr;
 
-    delete m_player;
-    m_player = nullptr;
-
-    delete m_screenCamera;
-    m_screenCamera = nullptr;
+    GAME_SAFE_RELEASE(m_gameClock);
+    GAME_SAFE_RELEASE(m_screenCamera);
+    GAME_SAFE_RELEASE(m_player);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -89,9 +86,7 @@ void Game::Update()
 
     // #TODO: Select keyboard or controller
     UpdateEntities(gameDeltaSeconds, systemDeltaSeconds);
-
-    UpdateFromKeyBoard();
-    UpdateFromController();
+    UpdateFromInput();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -104,6 +99,7 @@ void Game::Render() const
     if (m_gameState == eGameState::GAME)
     {
         RenderEntities();
+        RenderPlayerBasis();
         Vec2 screenDimensions = Window::s_mainWindow->GetScreenDimensions();
         Vec2 windowDimensions = Window::s_mainWindow->GetWindowDimensions();
         Vec2 clientDimensions = Window::s_mainWindow->GetClientDimensions();
@@ -149,6 +145,12 @@ bool Game::IsAttractMode() const
     return m_gameState == eGameState::ATTRACT;
 }
 
+void Game::UpdateFromInput()
+{
+    UpdateFromKeyBoard();
+    UpdateFromController();
+}
+
 //----------------------------------------------------------------------------------------------------
 void Game::UpdateFromKeyBoard()
 {
@@ -191,6 +193,15 @@ void Game::UpdateFromKeyBoard()
         {
             m_gameClock->SetTimeScale(1.f);
         }
+
+        if (g_input->WasKeyJustPressed(KEYCODE_F8))
+        {
+            g_app->DeleteAndCreateNewGame();
+            return;
+        }
+
+#if defined GAME_DEBUG_MODE
+        DebugAddMessage(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), 0.f);
 
         if (g_input->WasKeyJustPressed(NUMCODE_1))
         {
@@ -254,8 +265,7 @@ void Game::UpdateFromKeyBoard()
 
             DebugAddMessage(Stringf("Camera Orientation: (%.2f, %.2f, %.2f)", orientationX, orientationY, orientationZ), 5.f);
         }
-
-        DebugAddMessage(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), 0.f);
+#endif
     }
 }
 
@@ -357,6 +367,27 @@ void Game::RenderEntities() const
 
     g_renderer->SetModelConstants(m_player->GetModelToWorldTransform());
     m_player->Render();
+}
+
+void Game::RenderPlayerBasis() const
+{
+    VertexList_PCU verts;
+
+    Vec3 const worldCameraPosition = m_player->GetCamera()->GetPosition();
+    Vec3 const forwardNormal       = m_player->GetCamera()->GetOrientation().GetAsMatrix_IFwd_JLeft_KUp().GetIBasis3D().GetNormalized();
+
+    // Add vertices in world space.
+    AddVertsForArrow3D(verts, worldCameraPosition + forwardNormal, worldCameraPosition + forwardNormal + Vec3::X_BASIS * 0.1f, 0.8f, 0.001f, 0.003f, Rgba8::RED);
+    AddVertsForArrow3D(verts, worldCameraPosition + forwardNormal, worldCameraPosition + forwardNormal + Vec3::Y_BASIS * 0.1f, 0.8f, 0.001f, 0.003f, Rgba8::GREEN);
+    AddVertsForArrow3D(verts, worldCameraPosition + forwardNormal, worldCameraPosition + forwardNormal + Vec3::Z_BASIS * 0.1f, 0.8f, 0.001f, 0.003f, Rgba8::BLUE);
+
+    g_renderer->SetModelConstants();
+    g_renderer->SetBlendMode(eBlendMode::OPAQUE);
+    g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);
+    g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
+    g_renderer->SetDepthMode(eDepthMode::DISABLED);
+    g_renderer->BindTexture(nullptr);
+    g_renderer->DrawVertexArray(static_cast<int>(verts.size()), verts.data());
 }
 
 //----------------------------------------------------------------------------------------------------
