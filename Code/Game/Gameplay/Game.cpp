@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------
-#include "Game/Game.hpp"
+#include "Game/Gameplay/Game.hpp"
 
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/EngineCommon.hpp"
@@ -18,8 +18,8 @@
 #include "Engine/Resource/ResourceLoader/ObjModelLoader.hpp"
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/GameCommon.hpp"
-#include "Game/Player.hpp"
-#include "Game/Prop.hpp"
+#include "Game/Gameplay/Player.hpp"
+#include "Game/Gameplay/Prop.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Game::Game()
@@ -37,7 +37,6 @@ Game::Game()
     m_screenCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
     m_gameClock = new Clock(Clock::GetSystemClock());
 
-    m_player->m_position     = Vec3(-2.f, 0.f, 1.f);
     m_firstCube->m_position  = Vec3(2.f, 2.f, 0.f);
     m_secondCube->m_position = Vec3(-2.f, -2.f, 0.f);
     m_sphere->m_position     = Vec3(10, -5, 1);

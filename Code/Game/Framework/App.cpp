@@ -16,7 +16,7 @@
 #include "Engine/Renderer/DebugRenderSystem.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
-#include "Game/Game.hpp"
+#include "Game/Gameplay/Game.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Subsystem/Light/LightSubsystem.hpp"
 

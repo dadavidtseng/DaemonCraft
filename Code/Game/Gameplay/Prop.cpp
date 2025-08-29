@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------
-#include "Game/Prop.hpp"
+#include "Game/Gameplay/Prop.hpp"
 
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/ErrorWarningAssert.hpp"

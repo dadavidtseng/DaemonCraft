@@ -4,10 +4,8 @@
 
 //----------------------------------------------------------------------------------------------------
 #pragma once
-#include "Engine/Resource/ResourceHandle.hpp"
+#include <cstdint>
 
-struct Vertex_PCUTBN;
-class ModelResource;
 //----------------------------------------------------------------------------------------------------
 class Camera;
 class Clock;
