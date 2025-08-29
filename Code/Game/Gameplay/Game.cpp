@@ -16,6 +16,7 @@
 #include "Engine/Resource/ResourceSubsystem.hpp"
 #include "Engine/Resource/Resource/ModelResource.hpp"
 #include "Engine/Resource/ResourceLoader/ObjModelLoader.hpp"
+#include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Player.hpp"
@@ -56,6 +57,8 @@ Game::Game()
     transform.SetIJKT3D(-Vec3::X_BASIS, Vec3::Z_BASIS, Vec3::Y_BASIS, Vec3(0.f, -0.25f, 0.25f));
     DebugAddWorldText("Z-Up", transform, 0.25f, Vec2(1.f, 0.f), -1.f, Rgba8::BLUE);
 #endif
+
+    sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
 }
 
 //----------------------------------------------------------------------------------------------------

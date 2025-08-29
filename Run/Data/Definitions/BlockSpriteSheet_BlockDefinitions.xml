@@ -1,0 +1,27 @@
+<Definitions>
+  <BlockDefinition name="Air" isVisible="false" isSolid="false" isOpaque="false"/>
+  <BlockDefinition name="Grass" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="0, 0" bottomSpriteCoords="2, 0" sideSpriteCoords="1, 0"/>
+  <BlockDefinition name="Dirt" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="2, 0" bottomSpriteCoords="2, 0" sideSpriteCoords="2, 0"/>
+  <BlockDefinition name="Stone" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="3, 0" bottomSpriteCoords="3, 0" sideSpriteCoords="3, 0"/>
+  <BlockDefinition name="Coal" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 0" bottomSpriteCoords="4, 0" sideSpriteCoords="4, 0"/>
+  <BlockDefinition name="Iron" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="5, 0" bottomSpriteCoords="5, 0" sideSpriteCoords="5, 0"/>
+  <BlockDefinition name="Gold" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="6, 0" bottomSpriteCoords="6, 0" sideSpriteCoords="6, 0"/>
+  <BlockDefinition name="Diamond" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="7, 0" bottomSpriteCoords="7, 0" sideSpriteCoords="7, 0"/>
+  <BlockDefinition name="Water" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="0, 1" bottomSpriteCoords="0, 1" sideSpriteCoords="0, 1"/>
+  <BlockDefinition name="Glowstone" isVisible="true" isSolid="true" isOpaque="true" indoorLighting="15" topSpriteCoords="1, 1" bottomSpriteCoords="1, 1" sideSpriteCoords="1, 1"/>
+  <BlockDefinition name="Cobblestone" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="2, 1" bottomSpriteCoords="2, 1" sideSpriteCoords="2, 1"/>
+  <BlockDefinition name="ChiseledBrick" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="3, 1" bottomSpriteCoords="3, 1" sideSpriteCoords="3, 1"/>
+  <BlockDefinition name="Sand" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 1" bottomSpriteCoords="4, 1" sideSpriteCoords="4, 1"/>
+  <BlockDefinition name="Snow" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="5, 1" bottomSpriteCoords="5, 1" sideSpriteCoords="5, 1"/>
+  <BlockDefinition name="Ice" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="6, 1" bottomSpriteCoords="6, 1" sideSpriteCoords="6, 1"/>
+  <BlockDefinition name="AcaciaLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="1, 2" bottomSpriteCoords="1, 2" sideSpriteCoords="0, 2"/>
+  <BlockDefinition name="AcaciaLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="2, 2" bottomSpriteCoords="2, 2" sideSpriteCoords="2, 2"/>
+  <BlockDefinition name="BirchLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 2" bottomSpriteCoords="4, 2" sideSpriteCoords="3, 2"/>
+  <BlockDefinition name="BirchLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="5, 2" bottomSpriteCoords="5, 2" sideSpriteCoords="5, 2"/>
+  <BlockDefinition name="JungleLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="1, 3" bottomSpriteCoords="1, 3" sideSpriteCoords="0, 3"/>
+  <BlockDefinition name="JungleLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="2, 3" bottomSpriteCoords="2, 3" sideSpriteCoords="2, 3"/>
+  <BlockDefinition name="OakLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 3" bottomSpriteCoords="4, 3" sideSpriteCoords="3, 3"/>
+  <BlockDefinition name="OakLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="5, 3" bottomSpriteCoords="5, 3" sideSpriteCoords="5, 3"/>
+  <BlockDefinition name="SpruceLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="1, 4" bottomSpriteCoords="1, 4" sideSpriteCoords="0, 4"/>
+  <BlockDefinition name="SpruceLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="2, 4" bottomSpriteCoords="2, 4" sideSpriteCoords="2, 4"/>
+</Definitions>
