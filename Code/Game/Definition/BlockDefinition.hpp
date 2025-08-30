@@ -9,6 +9,7 @@
 #include "Engine/Core/StringUtils.hpp"
 #include "Engine/Core/XmlUtils.hpp"
 #include "Engine/Math/IntVec2.hpp"
+#include "Engine/Math/Vec2.hpp"
 
 //----------------------------------------------------------------------------------------------------
 struct sBlockDefinition
@@ -22,6 +23,13 @@ struct sBlockDefinition
     static void                          InitializeDefinitionFromFile(char const* path);
     static sBlockDefinition*             GetDefinitionByIndex(uint8_t typeIndex);
     static std::vector<sBlockDefinition*> s_definitions;
+
+    Vec2 GetTopUVs() const { return Vec2(m_topSpriteCoords); }
+    Vec2 GetBottomUVs() const { return Vec2(m_bottomSpriteCoords); }
+    Vec2 GetSideUVs() const { return Vec2(m_sideSpriteCoords); }
+    bool IsVisible() const { return m_isVisible; }
+    bool IsSolid() const { return m_isSolid; }
+    bool IsOpaque() const { return m_isOpaque; }
 
 private:
     String m_name               = "DEFAULT";

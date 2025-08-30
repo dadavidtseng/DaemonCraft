@@ -73,5 +73,10 @@ void sBlockDefinition::InitializeDefinitionFromFile(char const* path)
 //----------------------------------------------------------------------------------------------------
 sBlockDefinition* sBlockDefinition::GetDefinitionByIndex(uint8_t typeIndex)
 {
-    return nullptr;
+    if (typeIndex >= s_definitions.size())
+    {
+        return nullptr;
+    }
+    
+    return s_definitions[typeIndex];
 }

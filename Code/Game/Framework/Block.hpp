@@ -14,6 +14,7 @@
 //   all other information (e.g., per-type) is stored on its block definition or elsewhere.
 class Block
 {
+public:
     uint8_t m_typeIndex = 0; // Ultra-flyweight - 1 byte only
 
     // All other data lives in BlockDefinition

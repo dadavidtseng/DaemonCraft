@@ -8,7 +8,7 @@
 #include "Engine/Core/ErrorWarningAssert.hpp"
 
 //----------------------------------------------------------------------------------------------------
-#define GAME_DEBUG_MODE
+// #define GAME_DEBUG_MODE
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 struct Rgba8;

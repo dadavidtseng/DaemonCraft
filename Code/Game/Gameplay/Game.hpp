@@ -48,6 +48,7 @@ private:
     Camera* m_screenCamera = nullptr;
     Player* m_player       = nullptr;
     World*  m_world        = nullptr;
+    Chunk* m_chunk = nullptr;
 
     Prop*      m_firstCube  = nullptr;
     Prop*      m_secondCube = nullptr;

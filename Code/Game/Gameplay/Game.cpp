@@ -18,6 +18,7 @@
 #include "Engine/Resource/ResourceLoader/ObjModelLoader.hpp"
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/App.hpp"
+#include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Player.hpp"
 #include "Game/Gameplay/Prop.hpp"
@@ -59,6 +60,8 @@ Game::Game()
 #endif
 
     sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
+
+    m_chunk = new Chunk(IntVec2::ZERO);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -90,6 +93,7 @@ void Game::Update()
     // #TODO: Select keyboard or controller
     UpdateEntities(gameDeltaSeconds, systemDeltaSeconds);
     UpdateFromInput();
+    m_chunk->Update(gameDeltaSeconds);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -101,7 +105,7 @@ void Game::Render() const
 
     if (m_gameState == eGameState::GAME)
     {
-        RenderEntities();
+        // RenderEntities();
         RenderPlayerBasis();
         Vec2 screenDimensions = Window::s_mainWindow->GetScreenDimensions();
         Vec2 windowDimensions = Window::s_mainWindow->GetWindowDimensions();
@@ -113,6 +117,7 @@ void Game::Render() const
         DebugAddScreenText(Stringf("ClientDimensions=(%.1f,%.1f)", clientDimensions.x, clientDimensions.y), Vec2(0, 40), 20.f, Vec2::ZERO, 0.f);
         DebugAddScreenText(Stringf("WindowPosition=(%.1f,%.1f)", windowPosition.x, windowPosition.y), Vec2(0, 60), 20.f, Vec2::ZERO, 0.f);
         DebugAddScreenText(Stringf("ClientPosition=(%.1f,%.1f)", clientPosition.x, clientPosition.y), Vec2(0, 80), 20.f, Vec2::ZERO, 0.f);
+        m_chunk->Render();
     }
 
     g_renderer->EndCamera(*m_player->GetCamera());
