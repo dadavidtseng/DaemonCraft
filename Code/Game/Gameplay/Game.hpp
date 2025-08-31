@@ -49,6 +49,7 @@ private:
     Player* m_player       = nullptr;
     World*  m_world        = nullptr;
     Chunk* m_chunk = nullptr;
+    Chunk* m_chunk2 = nullptr;
 
     Prop*      m_firstCube  = nullptr;
     Prop*      m_secondCube = nullptr;

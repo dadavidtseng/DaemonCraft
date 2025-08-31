@@ -77,6 +77,7 @@ void Chunk::Render() const
         // g_renderer->SetModelConstants(GetModelToWorldTransform(), m_color);
         g_renderer->SetBlendMode(eBlendMode::OPAQUE); //AL
         g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);  //SOLID_CULL_NONE
+        // g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_NONE);  //SOLID_CULL_NONE
         g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);  //DISABLE
         g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_32px.png"));
@@ -116,7 +117,7 @@ void Chunk::GenerateTerrain()
                 uint8_t blockType = BLOCK_AIR; // Air by default
 
                 // Water rule first
-                if (z <= CHUNK_SIZE_Z/2) blockType = BLOCK_WATER;
+                // if (z <= CHUNK_SIZE_Z/2) blockType = BLOCK_WATER;
 
                 // Then terrain rules (can override water)
                 if (z < terrainHeight - dirtLayerThickness) blockType = BLOCK_STONE;
@@ -124,7 +125,7 @@ void Chunk::GenerateTerrain()
                 if (z == terrainHeight) blockType = BLOCK_GRASS;
 
                 // Ore generation (only in stone blocks)
-                if (blockType == BLOCK_STONE) 
+                if (blockType == BLOCK_STONE)
                 {
                     float roll = g_rng->RollRandomFloatInRange(0.f, 100.f);
                     if (roll < 5.f) blockType = BLOCK_COAL;         // 5% coal
@@ -157,7 +158,7 @@ void Chunk::RebuildMesh()
         Vec3 blockCenter = Vec3((float)localCoords.x + 0.5f, (float)localCoords.y + 0.5f, (float)localCoords.z + 0.5f);
 
         // Add cube faces
-        AddBlockFacesIfVisible(blockCenter, def, localCoords);
+        AddBlockFacesIfVisible(blockCenter+Vec3::ONE, def, localCoords);
     }
 
     // Update GPU buffers
@@ -208,48 +209,59 @@ void Chunk::AddBlockFacesIfVisible(Vec3 const& blockCenter, sBlockDefinition* de
 //----------------------------------------------------------------------------------------------------
 void Chunk::AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 const& uvs, Rgba8 const& tint)
 {
-    UNUSED(uvs);
     Vec3 right, up;
-    if (faceNormal == Vec3::Z_BASIS || faceNormal == -Vec3::Z_BASIS)
+    if (faceNormal == Vec3::Z_BASIS)
     {
         right = Vec3::X_BASIS;
         up = Vec3::Y_BASIS;
     }
-    else if (faceNormal == Vec3::X_BASIS || faceNormal == -Vec3::X_BASIS)
+    else if (faceNormal == -Vec3::Z_BASIS)
+    {
+        right = -Vec3::X_BASIS;
+        up = Vec3::Y_BASIS;
+    }
+    else if (faceNormal == Vec3::X_BASIS)
+    {
+        right = -Vec3::Y_BASIS;
+        up = -Vec3::Z_BASIS;
+    }
+    else if (faceNormal == -Vec3::X_BASIS)
     {
         right = Vec3::Y_BASIS;
-        up = Vec3::Z_BASIS;
+        up = -Vec3::Z_BASIS;
     }
-    else
+    else if (faceNormal == Vec3::Y_BASIS)
     {
         right = Vec3::X_BASIS;
-        up = Vec3::Z_BASIS;
+        up = -Vec3::Z_BASIS;
+    }
+    else if (faceNormal == -Vec3::Y_BASIS)
+    {
+        right = -Vec3::X_BASIS;
+        up = -Vec3::Z_BASIS;
     }
 
     Vec3 faceCenter = blockCenter + faceNormal * 0.5f;
-    Vec3 tangent = right;
-    Vec3 bitangent = up;
-    Vec3 normal = faceNormal;
 
-    // Add 4 vertices for quad with proper Vertex_PCUTBN constructor
+    // Convert sprite coordinates to UV coordinates
+    // Assuming 8x8 sprite atlas (64 total sprites in an 8x8 grid)
+    constexpr float ATLAS_SIZE = 8.0f;  // 8x8 grid of sprites
+    constexpr float SPRITE_SIZE = 1.0f / ATLAS_SIZE;  // Each sprite is 1/8 of the texture
 
+    // Calculate UV mins and maxs based on sprite coordinates
+    Vec2 uvMins = Vec2(1-uvs.x * SPRITE_SIZE, uvs.y * SPRITE_SIZE);
+    Vec2 uvMaxs = uvMins + Vec2(SPRITE_SIZE, SPRITE_SIZE);
 
-    int startVertIndex = (int)m_vertices.size();
+    // Create AABB2 for UV coordinates
+    AABB2 spriteUVs = AABB2(Vec2::ONE-uvMins, Vec2::ONE-uvMaxs);
 
-    // Create vertices with proper constructor (position, color, UVs, tangent, bitangent, normal)
-    m_vertices.emplace_back(faceCenter - right*0.5f - up*0.5f, tint, Vec2(0,1), tangent, bitangent, normal); // BL
-    m_vertices.emplace_back(faceCenter + right*0.5f - up*0.5f, tint, Vec2(1,1), tangent, bitangent, normal); // BR
-    m_vertices.emplace_back(faceCenter + right*0.5f + up*0.5f, tint, Vec2(1,0), tangent, bitangent, normal); // TR
-    m_vertices.emplace_back(faceCenter - right*0.5f + up*0.5f, tint, Vec2(0,0), tangent, bitangent, normal); // TL
-
-    // Add 6 indices for 2 triangles
-    m_indices.push_back(startVertIndex + 0);
-    m_indices.push_back(startVertIndex + 1);
-    m_indices.push_back(startVertIndex + 2);
-
-    m_indices.push_back(startVertIndex + 0);
-    m_indices.push_back(startVertIndex + 2);
-    m_indices.push_back(startVertIndex + 3);
+    // Add vertices using the corrected UV coordinates
+    AddVertsForQuad3D(m_vertices, m_indices,
+                      faceCenter - right*0.5f - up*0.5f,    // Bottom Left
+                      faceCenter + right*0.5f - up*0.5f,    // Bottom Right
+                      faceCenter - right*0.5f + up*0.5f,    // Top Left
+                      faceCenter + right*0.5f + up*0.5f,    // Top Right
+                      tint, spriteUVs);
 }
 
 //----------------------------------------------------------------------------------------------------
