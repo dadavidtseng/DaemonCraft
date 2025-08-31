@@ -62,7 +62,7 @@ Game::Game()
     sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
 
     m_chunk = new Chunk(IntVec2::ZERO);
-    m_chunk2 = new Chunk(IntVec2::ONE);
+    m_chunk2 = new Chunk(IntVec2(16,16));
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ void Game::Render() const
         DebugAddScreenText(Stringf("WindowPosition=(%.1f,%.1f)", windowPosition.x, windowPosition.y), Vec2(0, 60), 20.f, Vec2::ZERO, 0.f);
         DebugAddScreenText(Stringf("ClientPosition=(%.1f,%.1f)", clientPosition.x, clientPosition.y), Vec2(0, 80), 20.f, Vec2::ZERO, 0.f);
         m_chunk->Render();
-        // m_chunk2->Render();
+        m_chunk2->Render();
     }
 
     g_renderer->EndCamera(*m_player->GetCamera());
