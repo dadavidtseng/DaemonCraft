@@ -56,10 +56,10 @@ App::App()
     //-Start-of-Window--------------------------------------------------------------------------------
 
     sWindowConfig windowConfig;
-    windowConfig.m_windowType  = eWindowType::WINDOWED;
+    windowConfig.m_windowType  = eWindowType::FULLSCREEN_CROP;
     windowConfig.m_aspectRatio = 2.f;
     windowConfig.m_inputSystem = g_input;
-    windowConfig.m_windowTitle = "Protogame3D";
+    windowConfig.m_windowTitle = "DaemonCraft";
     g_window                   = new Window(windowConfig);
 
     //-End-of-Window----------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ App::App()
 //----------------------------------------------------------------------------------------------------
 App::~App()
 {
-    GAME_SAFE_RELEASE(g_game);
+    // GAME_SAFE_RELEASE(g_game);
     GAME_SAFE_RELEASE(g_rng);
     GAME_SAFE_RELEASE(g_bitmapFont);
     GAME_SAFE_RELEASE(g_resourceSubsystem);
@@ -168,6 +168,7 @@ void App::Startup()
 //
 void App::Shutdown()
 {
+    GAME_SAFE_RELEASE(g_game);
     g_resourceSubsystem->Shutdown();
     g_lightSubsystem->Shutdown();
     g_audio->Shutdown();

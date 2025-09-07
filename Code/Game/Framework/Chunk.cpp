@@ -7,6 +7,7 @@
 
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Core/Rgba8.hpp"
+#include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/RandomNumberGenerator.hpp"
 #include "Engine/Math/Vec2.hpp"
 #include "Engine/Math/Vec3.hpp"
@@ -14,7 +15,6 @@
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Renderer/VertexBuffer.hpp"
 #include "Engine/Renderer/VertexUtils.hpp"
-#include "Engine/Renderer/Vertex_PCUTBN.hpp"
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/GameCommon.hpp"
 
@@ -33,12 +33,9 @@ const uint8_t BLOCK_WATER   = 8;
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
     : m_chunkCoords(chunkCoords)
-      , m_vertexBuffer(nullptr)
-      , m_indexBuffer(nullptr)
-      , m_debugVBO(nullptr)
 {
     // Calculate world bounds
-    Vec3 worldMins((float)(chunkCoords.x), (float)(chunkCoords.y), 0.f);
+    Vec3 worldMins((float)(chunkCoords.x) * CHUNK_SIZE_X, (float)(chunkCoords.y) * CHUNK_SIZE_Y, 0.f);
     Vec3 worldMaxs = worldMins + Vec3((float)CHUNK_SIZE_X, (float)CHUNK_SIZE_Y, (float)CHUNK_SIZE_Z);
     m_worldBounds  = AABB3(worldMins, worldMaxs);
 
@@ -48,98 +45,95 @@ Chunk::Chunk(IntVec2 const& chunkCoords)
 //----------------------------------------------------------------------------------------------------
 Chunk::~Chunk()
 {
-    delete m_vertexBuffer;
-    delete m_indexBuffer;
-    delete m_debugVBO;
+    GAME_SAFE_RELEASE(m_vertexBuffer);
+    GAME_SAFE_RELEASE(m_indexBuffer);
+    GAME_SAFE_RELEASE(m_debugVertexBuffer);
+    // GAME_SAFE_RELEASE(m_debugBuffer);
 }
 
 //----------------------------------------------------------------------------------------------------
-void Chunk::Update(float deltaSeconds)
+void Chunk::Update(float const deltaSeconds)
 {
-    // UNUSED(deltaSeconds);
+    UNUSED(deltaSeconds)
+
+    // 1.	Chunk meshes (CPU and GPU) are only rebuilt when dirty (i.e., not every frame).
     if (m_needsRebuild)
     {
         RebuildMesh();
         m_needsRebuild = false;
     }
+
+    if (g_input->WasKeyJustPressed(KEYCODE_F2))
+    {
+        m_drawDebug = !m_drawDebug;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
-void Chunk::Render() const
+void Chunk::Render()
 {
     if (m_vertexBuffer && m_indexBuffer && !m_vertices.empty())
     {
-        // g_renderer->BindTexture(nullptr);
-        // g_renderer->SetModelConstants(GetModelToWorldTransform(), m_color);
-        g_renderer->SetBlendMode(eBlendMode::OPAQUE); //AL
-        g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);  //SOLID_CULL_NONE
-        // g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_NONE);  //SOLID_CULL_NONE
+        g_renderer->SetBlendMode(eBlendMode::OPAQUE);
+        g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);
         g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
-        g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);  //DISABLE
-        g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_128px.png"));
-        g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, (unsigned int)m_indices.size());
+        g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
+        g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_32px.png"));
 
-        VertexList_PCU verts;
-
-        AddVertsForWireframeAABB3D(verts, m_worldBounds, 0.1f);
-        // TransformVertexArray3D(verts, Mat44(Vec2::ZERO, Vec2::ZERO, Vec2(m_chunkCoords)));
-        g_renderer->BindTexture(nullptr);
-        g_renderer->DrawVertexArray(verts);
+        // Use m_indices.size() instead of m_indexBuffer->GetSize()
+        g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, m_indices.size());
     }
-}
 
-//----------------------------------------------------------------------------------------------------
-void Chunk::RenderDebug() const
-{
-    if (m_debugVBO && !m_debugVertices.empty())
-    {
-        g_renderer->BindTexture(nullptr);
-        g_renderer->DrawVertexBuffer(m_debugVBO, (unsigned int)m_debugVertices.size());
-    }
+    if (!m_drawDebug || !m_debugVertexBuffer) return;
+
+    g_renderer->BindTexture(nullptr);
+    // Use m_debugVertices.size() instead of m_debugVertexBuffer->GetSize()
+    g_renderer->DrawVertexBuffer(m_debugVertexBuffer, m_debugVertices.size());
 }
 
 //----------------------------------------------------------------------------------------------------
 void Chunk::GenerateTerrain()
 {
-    for (int x = 0; x < CHUNK_SIZE_X; x++)
+    // Use three for-loops for every local block index in a chunk
+    for (int localBlockIndexX = 0; localBlockIndexX < CHUNK_SIZE_X; localBlockIndexX++)
     {
-        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        for (int localBlockIndexY = 0; localBlockIndexY < CHUNK_SIZE_Y; localBlockIndexY++)
         {
             // Convert to global coordinates
-            int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
-            int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
+            int const globalX = m_chunkCoords.x * CHUNK_SIZE_X + localBlockIndexX;
+            int const globalY = m_chunkCoords.y * CHUNK_SIZE_Y + localBlockIndexY;
 
-            // Terrain height formula from assignment
-            // int terrainHeight = 50 + (globalX / 3) + (globalY / 5) + g_rng->RollRandomIntInRange(0, 1);
-            int terrainHeight = 50 + ((globalX % 64) / 3) + ((globalY % 64) / 5) + g_rng->RollRandomIntInRange(0, 1);
-
+            // 4.   Chunk block types are initialized on chunk creation/activation based on a simple random generation scheme;
+            //      the terrain height of each block column is based on the global block coordinates of that block’s column with a slight random variation as follows (all numbers are integers)
+            //      terrainHeightZ ( globalX, globalY ) = 50 + ( globalX / 3 ) + ( globally / 5) + random( 0 or 1 )
+            int const terrainHeight = 50 + globalX / 3 + globalY / 5 + g_rng->RollRandomIntInRange(0, 1);
 
             // Dirt layer thickness is random per column (3-4 blocks)
-            int dirtLayerThickness = g_rng->RollRandomIntInRange(3, 4);
+            int const dirtLayerThickness = g_rng->RollRandomIntInRange(3, 4);
 
-            for (int z = 0; z < CHUNK_SIZE_Z; z++)
+            for (int localBlockIndexZ = 0; localBlockIndexZ < CHUNK_SIZE_Z; localBlockIndexZ++)
             {
                 uint8_t blockType = BLOCK_AIR; // Air by default
 
                 // Water rule first
-                if (z <= CHUNK_SIZE_Z / 2) blockType = BLOCK_WATER;
+                if (localBlockIndexZ <= CHUNK_SIZE_Z / 2) blockType = BLOCK_WATER;
 
                 // Then terrain rules (can override water)
-                if (z < terrainHeight - dirtLayerThickness) blockType = BLOCK_STONE;
-                if (z >= terrainHeight - dirtLayerThickness && z < terrainHeight) blockType = BLOCK_DIRT;
-                if (z == terrainHeight) blockType = BLOCK_GRASS;
+                if (localBlockIndexZ < terrainHeight - dirtLayerThickness) blockType = BLOCK_STONE;
+                if (localBlockIndexZ >= terrainHeight - dirtLayerThickness && localBlockIndexZ < terrainHeight) blockType = BLOCK_DIRT;
+                if (localBlockIndexZ == terrainHeight) blockType = BLOCK_GRASS;
 
                 // Ore generation (only in stone blocks)
                 if (blockType == BLOCK_STONE)
                 {
-                    float roll = g_rng->RollRandomFloatInRange(0.f, 100.f);
-                    if (roll < 5.f) blockType = BLOCK_COAL;         // 5% coal
-                    else if (roll < 7.f) blockType = BLOCK_IRON;    // 2% iron
-                    else if (roll < 7.5f) blockType = BLOCK_GOLD;   // 0.5% gold
-                    else if (roll < 7.6f) blockType = BLOCK_DIAMOND; // 0.1% diamond
+                    float const percentage = g_rng->RollRandomFloatInRange(0.f, 100.f);
+                    if (percentage < 5.f) blockType = BLOCK_COAL;         // 5% coal
+                    else if (percentage < 7.f) blockType = BLOCK_IRON;    // 2% iron
+                    else if (percentage < 7.5f) blockType = BLOCK_GOLD;   // 0.5% gold
+                    else if (percentage < 7.6f) blockType = BLOCK_DIAMOND; // 0.1% diamond
                 }
 
-                GetBlock(x, y, z)->m_typeIndex = blockType;
+                GetBlock(localBlockIndexX, localBlockIndexY, localBlockIndexZ)->m_typeIndex = blockType;
             }
         }
     }
@@ -160,39 +154,48 @@ void Chunk::RebuildMesh()
         if (!def || !def->IsVisible()) continue;
 
         IntVec3 localCoords = GetLocalCoordsFromIndex(blockIndex);
-        Vec3    blockCenter = Vec3((float)localCoords.x + 0.5f, (float)localCoords.y + 0.5f, (float)localCoords.z + 0.5f) + Vec3(m_chunkCoords.x, m_chunkCoords.y, 0);
+        Vec3    blockCenter = Vec3((float)localCoords.x + 0.5f, (float)localCoords.y + 0.5f, (float)localCoords.z + 0.5f) + Vec3(m_chunkCoords.x * CHUNK_SIZE_X, m_chunkCoords.y * CHUNK_SIZE_Y, 0);
 
         // Add cube faces
         AddBlockFacesIfVisible(blockCenter, def, localCoords);
     }
+    AddVertsForWireframeAABB3D(m_debugVertices, m_worldBounds, 0.1f);
 
     // Update GPU buffers
     UpdateVertexBuffer();
 }
 
 //----------------------------------------------------------------------------------------------------
-int Chunk::GetBlockIndex(int localX, int localY, int localZ) const
+int Chunk::GetBlockIndexFromLocalCoords(int const localX,
+                                        int const localY,
+                                        int const localZ) const
 {
-    return ::GetBlockIndex(localX, localY, localZ); // Use the global inline function
+    return localX + (localY << CHUNK_SIZE_X_BITS) + (localZ << (CHUNK_SIZE_X_BITS + CHUNK_SIZE_Y_BITS));
 }
 
 //----------------------------------------------------------------------------------------------------
 IntVec3 Chunk::GetLocalCoordsFromIndex(int blockIndex) const
 {
-    return ::GetCoordsFromIndex(blockIndex); // Use the global inline function
+    int x = blockIndex & (1 << CHUNK_SIZE_X_BITS) - 1;
+    int y = blockIndex >> CHUNK_SIZE_X_BITS & (1 << CHUNK_SIZE_Y_BITS) - 1;
+    int z = blockIndex >> (CHUNK_SIZE_X_BITS + CHUNK_SIZE_Y_BITS);
+    return IntVec3(x, y, z);
 }
 
 //----------------------------------------------------------------------------------------------------
-Block* Chunk::GetBlock(int localX, int localY, int localZ)
+Block* Chunk::GetBlock(int const localBlockIndexX,
+                       int const localBlockIndexY,
+                       int const localBlockIndexZ)
 {
-    if (localX < 0 || localX >= CHUNK_SIZE_X ||
-        localY < 0 || localY >= CHUNK_SIZE_Y ||
-        localZ < 0 || localZ >= CHUNK_SIZE_Z)
+    if (localBlockIndexX < 0 || localBlockIndexX >= CHUNK_SIZE_X ||
+        localBlockIndexY < 0 || localBlockIndexY >= CHUNK_SIZE_Y ||
+        localBlockIndexZ < 0 || localBlockIndexZ >= CHUNK_SIZE_Z)
     {
         return nullptr;
     }
 
-    int index = GetBlockIndex(localX, localY, localZ);
+    int const index = GetBlockIndexFromLocalCoords(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
+
     return &m_blocks[index];
 }
 
@@ -212,7 +215,10 @@ void Chunk::AddBlockFacesIfVisible(Vec3 const& blockCenter, sBlockDefinition* de
 }
 
 //----------------------------------------------------------------------------------------------------
-void Chunk::AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 const& uvs, Rgba8 const& tint)
+void Chunk::AddBlockFace(Vec3 const&  blockCenter,
+                         Vec3 const&  faceNormal,
+                         Vec2 const&  uvs,
+                         Rgba8 const& tint)
 {
     Vec3 right, up;
     faceNormal.GetOrthonormalBasis(faceNormal, &right, &up);
@@ -221,18 +227,14 @@ void Chunk::AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 c
 
     // Convert sprite coordinates to UV coordinates
     // Assuming 8x8 sprite atlas (64 total sprites in an 8x8 grid)
-    // constexpr float ATLAS_SIZE  = 8.0f;  // 8x8 grid of sprites
-    // constexpr float SPRITE_SIZE = 1.0f / ATLAS_SIZE;  // Each sprite is 1/8 of the texture
-    //
-    // Vec2 uvMins = Vec2(uvs.x * SPRITE_SIZE, uvs.y * SPRITE_SIZE);
-    // Vec2 uvMaxs = uvMins + Vec2(SPRITE_SIZE, SPRITE_SIZE);
-    // AABB2 spriteUVs = AABB2(Vec2::ONE-Vec2(uvMins.x, uvMaxs.y), Vec2::ONE-Vec2(uvMaxs.x, uvMins.y));
+    constexpr float ATLAS_SIZE  = 8.f;  // 8x8 grid of sprites
+    constexpr float SPRITE_SIZE = 1.f / ATLAS_SIZE;  // Each sprite is 1/8 of the texture
 
-    Vec2  uvMins    = uvs;
-    Vec2  uvMaxs    = uvs + Vec2::ONE;
-    Vec2  realMins  = Vec2(uvMins.x, uvMaxs.y) / 8.f;
-    Vec2  realMaxs  = Vec2(uvMaxs.x, uvMins.y) / 8.f;
-    AABB2 spriteUVs = AABB2(Vec2(realMins.x, 1.f - realMins.y), Vec2(realMaxs.x, 1.f - realMaxs.y));
+    Vec2 const  uvMins    = uvs;
+    Vec2 const  uvMaxs    = uvs + Vec2::ONE;
+    Vec2 const  realMins  = Vec2(uvMins.x, uvMaxs.y) * SPRITE_SIZE;
+    Vec2 const  realMaxs  = Vec2(uvMaxs.x, uvMins.y) * SPRITE_SIZE;
+    AABB2 const spriteUVs = AABB2(Vec2(realMins.x, 1.f - realMins.y), Vec2(realMaxs.x, 1.f - realMaxs.y));
 
     // Add vertices using the corrected UV coordinates
     AddVertsForQuad3D(m_vertices, m_indices,
@@ -249,15 +251,36 @@ void Chunk::UpdateVertexBuffer()
     if (m_vertices.empty()) return;
 
     // Delete old buffers
-    delete m_vertexBuffer;
-    delete m_indexBuffer;
-    m_vertexBuffer = nullptr;
-    m_indexBuffer  = nullptr;
+    GAME_SAFE_RELEASE(m_vertexBuffer);
+    GAME_SAFE_RELEASE(m_indexBuffer);
+    GAME_SAFE_RELEASE(m_debugVertexBuffer);
 
-    // Create new buffers with correct API
-    m_vertexBuffer = g_renderer->CreateVertexBuffer((unsigned int)(m_vertices.size() * sizeof(Vertex_PCUTBN)), sizeof(Vertex_PCUTBN));
-    g_renderer->CopyCPUToGPU(m_vertices.data(), (unsigned int)(m_vertices.size() * sizeof(Vertex_PCUTBN)), m_vertexBuffer);
+    // Create main vertex buffer with correct total size
+    m_vertexBuffer = g_renderer->CreateVertexBuffer(
+        m_vertices.size() * sizeof(Vertex_PCU),  // Total buffer size in bytes
+        sizeof(Vertex_PCU)                       // Size of each vertex
+    );
+    g_renderer->CopyCPUToGPU(m_vertices.data(),
+        (unsigned int)(m_vertices.size() * sizeof(Vertex_PCU)),
+        m_vertexBuffer);
 
-    m_indexBuffer = g_renderer->CreateIndexBuffer((unsigned int)(m_indices.size() * sizeof(unsigned int)), sizeof(unsigned int));
-    g_renderer->CopyCPUToGPU(m_indices.data(), (unsigned int)(m_indices.size() * sizeof(unsigned int)), m_indexBuffer);
+    // Create index buffer with correct total size
+    m_indexBuffer = g_renderer->CreateIndexBuffer(
+        m_indices.size() * sizeof(unsigned int),  // Total buffer size in bytes
+        sizeof(unsigned int)                      // Size of each index
+    );
+    g_renderer->CopyCPUToGPU(m_indices.data(),
+        (unsigned int)(m_indices.size() * sizeof(unsigned int)),
+        m_indexBuffer);
+
+    // Only create debug buffer if we have debug vertices
+    if (!m_debugVertices.empty()) {
+        m_debugVertexBuffer = g_renderer->CreateVertexBuffer(
+            m_debugVertices.size() * sizeof(Vertex_PCU),  // Total buffer size
+            sizeof(Vertex_PCU)                            // Size of each vertex
+        );
+        g_renderer->CopyCPUToGPU(m_debugVertices.data(),
+            (unsigned int)(m_debugVertices.size() * sizeof(Vertex_PCU)),
+            m_debugVertexBuffer);
+    }
 }

@@ -19,7 +19,7 @@ Player::Player(Game* owner)
     : Entity(owner)
 {
     m_worldCamera = new Camera();
-    m_worldCamera->SetPerspectiveGraphicView(2.f, 60.f, 0.1f, 100.f);
+    m_worldCamera->SetPerspectiveGraphicView(2.f, 60.f, 0.1f, 1000.f);
     m_worldCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
 
     Mat44 c2r;
@@ -108,6 +108,50 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
 //----------------------------------------------------------------------------------------------------
 void Player::UpdateFromController(float deltaSeconds)
 {
+    XboxController const& controller = g_input->GetController(0);
+
+    if (controller.WasButtonJustPressed(XBOX_BUTTON_START))
+    {
+        if (m_game->IsAttractMode() == false)
+        {
+            m_position    = Vec3::ZERO;
+            m_orientation = EulerAngles::ZERO;
+        }
+    }
+
+    Vec2 const leftStickInput = controller.GetLeftStick().GetPosition();
+    m_velocity += Vec3(leftStickInput.y, -leftStickInput.x, 0.f) * m_moveSpeed;
+
+    if (controller.IsButtonDown(XBOX_BUTTON_LSHOULDER)) m_velocity -= Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
+    if (controller.IsButtonDown(XBOX_BUTTON_RSHOULDER)) m_velocity += Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
+
+    if (controller.IsButtonDown(XBOX_BUTTON_A)) deltaSeconds *= 20.f;
+
+    m_position += m_velocity * deltaSeconds;
+
+    Vec2 const rightStickInput = controller.GetRightStick().GetPosition();
+    m_orientation.m_yawDegrees -= rightStickInput.x * 0.125f;
+    m_orientation.m_pitchDegrees -= rightStickInput.y * 0.125f;
+
+    m_angularVelocity.m_rollDegrees = 0.f;
+
+    float const leftTriggerInput  = controller.GetLeftTrigger();
+    float const rightTriggerInput = controller.GetRightTrigger();
+
+    if (leftTriggerInput != 0.f)
+    {
+        m_angularVelocity.m_rollDegrees -= 90.f;
+    }
+
+    if (rightTriggerInput != 0.f)
+    {
+        m_angularVelocity.m_rollDegrees += 90.f;
+    }
+
+    m_orientation.m_rollDegrees += m_angularVelocity.m_rollDegrees * deltaSeconds;
+    m_orientation.m_rollDegrees = GetClamped(m_orientation.m_rollDegrees, -45.f, 45.f);
+
+    m_worldCamera->SetPositionAndOrientation(m_position, m_orientation);
 }
 
 //----------------------------------------------------------------------------------------------------

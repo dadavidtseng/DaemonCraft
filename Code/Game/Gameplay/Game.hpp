@@ -37,6 +37,7 @@ private:
     void UpdateFromKeyBoard();
     void UpdateFromController();
     void UpdateEntities(float gameDeltaSeconds, float systemDeltaSeconds) const;
+    void UpdateWorld(float gameDeltaSeconds);
 
     void RenderAttractMode() const;
     void RenderEntities() const;
@@ -48,13 +49,8 @@ private:
     Camera* m_screenCamera = nullptr;
     Player* m_player       = nullptr;
     World*  m_world        = nullptr;
-    Chunk* m_chunk = nullptr;
-    Chunk* m_chunk2 = nullptr;
 
-    Prop*      m_firstCube  = nullptr;
-    Prop*      m_secondCube = nullptr;
-    Prop*      m_sphere     = nullptr;
     Prop*      m_grid       = nullptr;
     Clock*     m_gameClock  = nullptr;
-    eGameState m_gameState  = eGameState::ATTRACT;
+    eGameState m_gameState  = eGameState::GAME;
 };

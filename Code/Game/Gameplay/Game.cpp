@@ -39,9 +39,6 @@ Game::Game()
     m_screenCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
     m_gameClock = new Clock(Clock::GetSystemClock());
 
-    m_firstCube->m_position  = Vec3(2.f, 2.f, 0.f);
-    m_secondCube->m_position = Vec3(-2.f, -2.f, 0.f);
-    m_sphere->m_position     = Vec3(10, -5, 1);
     m_grid->m_position       = Vec3::ZERO;
 
 #if defined GAME_DEBUG_MODE
@@ -61,8 +58,7 @@ Game::Game()
 
     sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
 
-    m_chunk = new Chunk(IntVec2::ZERO);
-    m_chunk2 = new Chunk(IntVec2(16,16));
+    m_world = new World();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -71,18 +67,10 @@ Game::~Game()
     delete m_grid;
     m_grid = nullptr;
 
-    delete m_sphere;
-    m_sphere = nullptr;
-
-    delete m_secondCube;
-    m_secondCube = nullptr;
-
-    delete m_firstCube;
-    m_firstCube = nullptr;
-
     GAME_SAFE_RELEASE(m_gameClock);
     GAME_SAFE_RELEASE(m_screenCamera);
     GAME_SAFE_RELEASE(m_player);
+    GAME_SAFE_RELEASE(m_world);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -91,11 +79,10 @@ void Game::Update()
     float const gameDeltaSeconds   = static_cast<float>(m_gameClock->GetDeltaSeconds());
     float const systemDeltaSeconds = static_cast<float>(Clock::GetSystemClock().GetDeltaSeconds());
 
-    // #TODO: Select keyboard or controller
     UpdateEntities(gameDeltaSeconds, systemDeltaSeconds);
+    DebugAddScreenText(Stringf("Time: %.2f\nFPS: %.2f\nScale: %.1f", m_gameClock->GetTotalSeconds(), 1.f / m_gameClock->GetDeltaSeconds(), m_gameClock->GetTimeScale()), m_screenCamera->GetOrthographicTopRight() - Vec2(250.f, 60.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+    UpdateWorld(gameDeltaSeconds);
     UpdateFromInput();
-    m_chunk->Update(gameDeltaSeconds);
-    m_chunk2->Update(gameDeltaSeconds);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -107,8 +94,8 @@ void Game::Render() const
 
     if (m_gameState == eGameState::GAME)
     {
-        // RenderEntities();
-        RenderPlayerBasis();
+        RenderEntities();
+m_world->Render();
         Vec2 screenDimensions = Window::s_mainWindow->GetScreenDimensions();
         Vec2 windowDimensions = Window::s_mainWindow->GetWindowDimensions();
         Vec2 clientDimensions = Window::s_mainWindow->GetClientDimensions();
@@ -119,8 +106,8 @@ void Game::Render() const
         DebugAddScreenText(Stringf("ClientDimensions=(%.1f,%.1f)", clientDimensions.x, clientDimensions.y), Vec2(0, 40), 20.f, Vec2::ZERO, 0.f);
         DebugAddScreenText(Stringf("WindowPosition=(%.1f,%.1f)", windowPosition.x, windowPosition.y), Vec2(0, 60), 20.f, Vec2::ZERO, 0.f);
         DebugAddScreenText(Stringf("ClientPosition=(%.1f,%.1f)", clientPosition.x, clientPosition.y), Vec2(0, 80), 20.f, Vec2::ZERO, 0.f);
-        m_chunk->Render();
-        m_chunk2->Render();
+
+        RenderPlayerBasis();
     }
 
     g_renderer->EndCamera(*m_player->GetCamera());
@@ -324,6 +311,11 @@ void Game::UpdateFromController()
         {
             m_gameClock->SetTimeScale(1.f);
         }
+
+        if (controller.WasButtonJustReleased(XBOX_BUTTON_START))
+        {
+            g_app->DeleteAndCreateNewGame();
+        }
     }
 }
 
@@ -331,24 +323,13 @@ void Game::UpdateFromController()
 void Game::UpdateEntities(float const gameDeltaSeconds, float const systemDeltaSeconds) const
 {
     m_player->Update(systemDeltaSeconds);
-    m_firstCube->Update(gameDeltaSeconds);
-    m_secondCube->Update(gameDeltaSeconds);
-    m_sphere->Update(gameDeltaSeconds);
     m_grid->Update(gameDeltaSeconds);
+}
 
-    m_firstCube->m_orientation.m_pitchDegrees += 30.f * gameDeltaSeconds;
-    m_firstCube->m_orientation.m_rollDegrees += 30.f * gameDeltaSeconds;
-
-    float const time       = static_cast<float>(m_gameClock->GetTotalSeconds());
-    float const colorValue = (sinf(time) + 1.0f) * 0.5f * 255.0f;
-
-    m_secondCube->m_color.r = static_cast<unsigned char>(colorValue);
-    m_secondCube->m_color.g = static_cast<unsigned char>(colorValue);
-    m_secondCube->m_color.b = static_cast<unsigned char>(colorValue);
-
-    m_sphere->m_orientation.m_yawDegrees += 45.f * gameDeltaSeconds;
-
-    DebugAddScreenText(Stringf("Time: %.2f\nFPS: %.2f\nScale: %.1f", m_gameClock->GetTotalSeconds(), 1.f / m_gameClock->GetDeltaSeconds(), m_gameClock->GetTimeScale()), m_screenCamera->GetOrthographicTopRight() - Vec2(250.f, 60.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+void Game::UpdateWorld(float const gameDeltaSeconds)
+{
+    if (m_world == nullptr) return;
+    m_world->Update(gameDeltaSeconds);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -371,12 +352,9 @@ void Game::RenderAttractMode() const
 //----------------------------------------------------------------------------------------------------
 void Game::RenderEntities() const
 {
-    m_firstCube->Render();
-    m_secondCube->Render();
-    m_sphere->Render();
     m_grid->Render();
 
-    g_renderer->SetModelConstants(m_player->GetModelToWorldTransform());
+    // g_renderer->SetModelConstants(m_player->GetModelToWorldTransform());
     m_player->Render();
 }
 
@@ -410,15 +388,7 @@ void Game::SpawnPlayer()
 //----------------------------------------------------------------------------------------------------
 void Game::SpawnProp()
 {
-    Texture const* texture = g_renderer->CreateOrGetTextureFromFile("Data/Images/TestUV.png");
+    m_grid = new Prop(this);
 
-    m_firstCube  = new Prop(this);
-    m_secondCube = new Prop(this);
-    m_sphere     = new Prop(this, texture);
-    m_grid       = new Prop(this);
-
-    m_firstCube->InitializeLocalVertsForCube();
-    m_secondCube->InitializeLocalVertsForCube();
-    m_sphere->InitializeLocalVertsForSphere();
     m_grid->InitializeLocalVertsForGrid();
 }

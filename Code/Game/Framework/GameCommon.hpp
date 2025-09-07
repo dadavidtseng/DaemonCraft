@@ -42,7 +42,7 @@ void DebugDrawLine(Vec2 const& start, Vec2 const& end, float thickness, Rgba8 co
 template <typename T>
 void GAME_SAFE_RELEASE(T*& pointer)
 {
-    if (pointer == nullptr) ERROR_AND_DIE("test")
+    if (pointer == nullptr) return;
     delete pointer;
     pointer = nullptr;
 }
