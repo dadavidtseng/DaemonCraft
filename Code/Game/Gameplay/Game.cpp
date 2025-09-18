@@ -192,6 +192,14 @@ void Game::UpdateFromKeyBoard()
             m_gameClock->SetTimeScale(1.f);
         }
 
+        if (g_input->WasKeyJustPressed(KEYCODE_F2))
+        {
+            if (m_world != nullptr)
+            {
+                m_world->ToggleGlobalChunkDebugDraw();
+            }
+        }
+
         if (g_input->WasKeyJustPressed(KEYCODE_F8))
         {
             g_app->DeleteAndCreateNewGame();
@@ -391,4 +399,14 @@ void Game::SpawnProp()
     m_grid = new Prop(this);
 
     m_grid->InitializeLocalVertsForGrid();
+}
+
+//----------------------------------------------------------------------------------------------------
+Vec3 Game::GetPlayerCameraPosition() const
+{
+    if (m_player && m_player->GetCamera())
+    {
+        return m_player->GetCamera()->GetPosition();
+    }
+    return Vec3::ZERO;
 }

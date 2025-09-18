@@ -16,8 +16,8 @@
 #include "Engine/Renderer/DebugRenderSystem.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
-#include "Game/Gameplay/Game.hpp"
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Gameplay/Game.hpp"
 #include "Game/Subsystem/Light/LightSubsystem.hpp"
 
 //----------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ App::App()
     windowConfig.m_windowType  = eWindowType::FULLSCREEN_CROP;
     windowConfig.m_aspectRatio = 2.f;
     windowConfig.m_inputSystem = g_input;
-    windowConfig.m_windowTitle = "DaemonCraft";
+    windowConfig.m_windowTitle = "SimpleMiner";
     g_window                   = new Window(windowConfig);
 
     //-End-of-Window----------------------------------------------------------------------------------

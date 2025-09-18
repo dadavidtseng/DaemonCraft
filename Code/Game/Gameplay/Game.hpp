@@ -13,6 +13,7 @@ class Camera;
 class Clock;
 class Player;
 class Prop;
+struct Vec3;
 
 //----------------------------------------------------------------------------------------------------
 enum class eGameState : uint8_t
@@ -31,6 +32,7 @@ public:
     void Update();
     void Render() const;
     bool IsAttractMode() const;
+    Vec3 GetPlayerCameraPosition() const;
 
 private:
     void UpdateFromInput();

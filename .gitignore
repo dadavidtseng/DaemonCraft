@@ -2,6 +2,7 @@
 /.vs/
 /.qodo/
 /.claude/
+/.spec-workflow/
 /[Tt]emporary/
 
 # Prerequisites
