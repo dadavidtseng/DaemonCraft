@@ -5,10 +5,33 @@
 //----------------------------------------------------------------------------------------------------
 #pragma once
 #include <vector>
+#include <unordered_map>
 
 struct IntVec2;
+struct Vec3;
 class Camera;
 class Chunk;
+
+//----------------------------------------------------------------------------------------------------
+// Hash function for IntVec2 to enable std::unordered_map usage
+//----------------------------------------------------------------------------------------------------
+namespace std
+{
+    template <>
+    struct hash<IntVec2>
+    {
+        size_t operator()(const IntVec2& vec) const;
+    };
+}
+
+//----------------------------------------------------------------------------------------------------
+// Chunk Management Constants - Reduced for Intel graphics compatibility
+//----------------------------------------------------------------------------------------------------
+constexpr int CHUNK_ACTIVATION_RANGE    = 320;   // Reduced from 320 to 80
+constexpr int CHUNK_DEACTIVATION_RANGE  = CHUNK_ACTIVATION_RANGE + 16 + 16; // CHUNK_SIZE_X + CHUNK_SIZE_Y
+constexpr int CHUNK_ACTIVATION_RADIUS_X = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_X
+constexpr int CHUNK_ACTIVATION_RADIUS_Y = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_Y  
+constexpr int MAX_ACTIVE_CHUNKS         = (2 * CHUNK_ACTIVATION_RADIUS_X) * (2 * CHUNK_ACTIVATION_RADIUS_Y);
 
 //----------------------------------------------------------------------------------------------------
 // 4. World units: Each world unit is 1 meter.  Each block is 1.0 x 1.0 x 1.0 world units (meters) in size.
@@ -21,12 +44,32 @@ public:
     World();
     ~World();
 
-    /// @brief World class own all active chunks
-    std::vector<Chunk*> m_activeChunks;
-    Camera*             m_worldCamera = nullptr;
-
     void   Update(float deltaSeconds);
     void   Render() const;
     void   ActivateChunk(IntVec2 const& chunkCoords);
+    void   DeactivateChunk(IntVec2 const& chunkCoords);
+    void   DeactivateAllChunks(); // For debug F8 and shutdown
+    void   ToggleGlobalChunkDebugDraw(); // For debug F2 key
     Chunk* GetChunk(IntVec2 const& chunkCoords) const;
+
+    // Chunk management helper methods
+    Vec3    GetCameraPosition() const;
+    float   GetDistanceToChunkCenter(IntVec2 const& chunkCoords, Vec3 const& cameraPos) const;
+    IntVec2 FindNearestMissingChunkInRange(Vec3 const& cameraPos) const;
+    IntVec2 FindFarthestActiveChunkOutsideDeactivationRange(Vec3 const& cameraPos) const;
+    Chunk*  FindNearestDirtyChunk(Vec3 const& cameraPos) const;
+
+private:
+    /// @brief Active chunks stored in hash map for O(1) lookup
+    std::unordered_map<IntVec2, Chunk*> m_activeChunks;
+
+    // Global debug state for all chunks
+    bool m_globalChunkDebugDraw = false;
+
+    // Chunk management helper methods
+    bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;
+    bool LoadChunkFromDisk(Chunk* chunk) const;
+    bool SaveChunkToDisk(Chunk* chunk) const;
+    void UpdateNeighborPointers(IntVec2 const& chunkCoords);
+    void ClearNeighborReferences(IntVec2 const& chunkCoords);
 };
