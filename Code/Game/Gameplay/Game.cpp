@@ -200,6 +200,61 @@ void Game::UpdateFromKeyBoard()
             }
         }
 
+        // ========================================
+        // DIGGING AND PLACING SYSTEM
+        // ========================================
+        
+        // LMB - Dig highest non-air block at or below camera position
+        if (g_input->WasKeyJustPressed(KEYCODE_LEFT_MOUSE))
+        {
+            if (m_world != nullptr && m_player != nullptr)
+            {
+                Vec3 cameraPos = m_player->GetCamera()->GetPosition();
+                bool success = m_world->DigBlockAtCameraPosition(cameraPos);
+                if (!success)
+                {
+                    DebuggerPrintf("No block to dig at camera position\n");
+                }
+            }
+        }
+
+        // RMB - Place current block type above highest non-air block at or below camera position
+        if (g_input->WasKeyJustPressed(KEYCODE_RIGHT_MOUSE))
+        {
+            if (m_world != nullptr && m_player != nullptr)
+            {
+                Vec3 cameraPos = m_player->GetCamera()->GetPosition();
+                bool success = m_world->PlaceBlockAtCameraPosition(cameraPos, m_currentBlockType);
+                if (!success)
+                {
+                    DebuggerPrintf("Cannot place block at camera position\n");
+                }
+            }
+        }
+
+        // Block type cycling - Use number keys to cycle through the three block types
+        if (g_input->WasKeyJustPressed(NUMCODE_1) || g_input->WasKeyJustPressed(KEYCODE_UPARROW))
+        {
+            // Cycle to next block type: Glowstone(13) -> Cobblestone(14) -> ChiseledBrick(15) -> Glowstone(13)
+            m_currentBlockType++;
+            if (m_currentBlockType > 15) // BLOCK_CHISELED_BRICK
+            {
+                m_currentBlockType = 13; // Back to BLOCK_GLOWSTONE
+            }
+            DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
+        }
+
+        if (g_input->WasKeyJustPressed(NUMCODE_2) || g_input->WasKeyJustPressed(KEYCODE_DOWNARROW))
+        {
+            // Cycle to previous block type: ChiseledBrick(15) -> Cobblestone(14) -> Glowstone(13) -> ChiseledBrick(15)
+            m_currentBlockType--;
+            if (m_currentBlockType < 13) // BLOCK_GLOWSTONE
+            {
+                m_currentBlockType = 15; // Back to BLOCK_CHISELED_BRICK
+            }
+            DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
+        }
+
         if (g_input->WasKeyJustPressed(KEYCODE_F8))
         {
             g_app->DeleteAndCreateNewGame();

@@ -55,4 +55,7 @@ private:
     Prop*      m_grid       = nullptr;
     Clock*     m_gameClock  = nullptr;
     eGameState m_gameState  = eGameState::GAME;
+
+    // Block placing system
+    uint8_t m_currentBlockType = 13; // Start with BLOCK_GLOWSTONE (first of the three new types)
 };
