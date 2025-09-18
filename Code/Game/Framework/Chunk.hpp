@@ -19,16 +19,22 @@ struct Vec3;
 struct sBlockDefinition;
 class IndexBuffer;
 class VertexBuffer;
-struct Vertex_PCUTBN;
+class BlockIterator;
 
 //----------------------------------------------------------------------------------------------------
-int constexpr CHUNK_SIZE_X_BITS  = 4;        // X coordinates need 4 bits (can represent 0-15)
-int constexpr CHUNK_SIZE_Y_BITS  = 4;        // Y coordinates need 4 bits (can represent 0-15)
-int constexpr CHUNK_SIZE_Z_BITS  = 7;        // Z coordinates need 7 bits (can represent 0-127)
-int constexpr CHUNK_SIZE_X       = 1 << CHUNK_SIZE_X_BITS;      // 1 shifted left 4 positions = 2^4 = (16 blocks wide)
-int constexpr CHUNK_SIZE_Y       = 1 << CHUNK_SIZE_Y_BITS;      // 1 shifted left 4 positions = 2^4 = (16 blocks deep)
-int constexpr CHUNK_SIZE_Z       = 1 << CHUNK_SIZE_Z_BITS;      // 1 shifted left 7 positions = 2^7 = (128 blocks tall)
-int constexpr CHUNK_TOTAL_BLOCKS = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
+int constexpr CHUNK_BITS_X     = 4;                                                 // X coordinates need 4 bits (can represent 0-15)
+int constexpr CHUNK_BITS_Y     = 4;                                                 // Y coordinates need 4 bits (can represent 0-15)
+int constexpr CHUNK_BITS_Z     = 7;                                                 // Z coordinates need 7 bits (can represent 0-127)
+int constexpr CHUNK_SIZE_X     = 1 << CHUNK_BITS_X;                                 // 1 shifted left 4 positions = 2^4 = 16 blocks wide (east-west)
+int constexpr CHUNK_SIZE_Y     = 1 << CHUNK_BITS_Y;                                 // 1 shifted left 4 positions = 2^4 = 16 blocks deep (north-south)
+int constexpr CHUNK_SIZE_Z     = 1 << CHUNK_BITS_Z;                                 // 1 shifted left 7 positions = 2^7 = 128 blocks tall (vertical)
+int constexpr CHUNK_MAX_X      = CHUNK_SIZE_X - 1;                                  // Maximum valid X index (15) for bounds checking
+int constexpr CHUNK_MAX_Y      = CHUNK_SIZE_Y - 1;                                  // Maximum valid Y index (15) for bounds checking
+int constexpr CHUNK_MAX_Z      = CHUNK_SIZE_Z - 1;                                  // Maximum valid Z index (127) for bounds checking
+int constexpr CHUNK_MASK_X     = CHUNK_MAX_X;                                       // Bit mask (0x000F) to extract X bits from block index
+int constexpr CHUNK_MASK_Y     = CHUNK_MAX_Y << CHUNK_BITS_X;                       // Bit mask (0x00F0) to extract Y bits from block index
+int constexpr CHUNK_MASK_Z     = CHUNK_MAX_Z << (CHUNK_BITS_X + CHUNK_BITS_Y);      // Bit mask (0x7F00) to extract Z bits from block index
+int constexpr BLOCKS_PER_CHUNK = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;        // Total blocks per chunk (16×16×128 = 32,768)
 
 //----------------------------------------------------------------------------------------------------
 class Chunk
@@ -51,14 +57,48 @@ public:
     IntVec3 GetLocalCoordsFromIndex(int blockIndex) const;
     Block*  GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
 
+    // Static utility functions for chunk coordinate management
+    static int     LocalCoordsToIndex(const IntVec3& localCoords);
+    static int     LocalCoordsToIndex(int x, int y, int z);
+    static int     IndexToLocalX(int index);
+    static int     IndexToLocalY(int index);
+    static int     IndexToLocalZ(int index);
+    static IntVec3 IndexToLocalCoords(int index);
+    static int     GlobalCoordsToIndex(const IntVec3& globalCoords);
+    static int     GlobalCoordsToIndex(int x, int y, int z);
+    static IntVec2 GetChunkCoords(const IntVec3& globalCoords);
+    static IntVec2 GetChunkCenter(const IntVec2& chunkCoords);
+    static IntVec3 GlobalCoordsToLocalCoords(const IntVec3& globalCoords);
+    static IntVec3 GetGlobalCoords(const IntVec2& chunkCoords, int blockIndex);
+    static IntVec3 GetGlobalCoords(const IntVec2& chunkCoords, const IntVec3& localCoords);
+    static IntVec3 GetGlobalCoords(const Vec3& position);
+    
+    // Chunk management methods for persistent world
+    bool GetNeedsSaving() const { return m_needsSaving; }
+    void SetNeedsSaving(bool needsSaving) { m_needsSaving = needsSaving; }
+    bool GetIsMeshDirty() const { return m_isMeshDirty; }
+    void SetIsMeshDirty(bool isDirty) { m_isMeshDirty = isDirty; }
+    
+    // Debug rendering control
+    bool GetDebugDraw() const { return m_drawDebug; }
+    void SetDebugDraw(bool drawDebug) { m_drawDebug = drawDebug; }
+    
+    // Neighbor chunk management
+    void SetNeighborChunks(Chunk* north, Chunk* south, Chunk* east, Chunk* west);
+    void ClearNeighborPointers();
+    Chunk* GetNorthNeighbor() const { return m_northNeighbor; }
+    Chunk* GetSouthNeighbor() const { return m_southNeighbor; }
+    Chunk* GetEastNeighbor() const { return m_eastNeighbor; }
+    Chunk* GetWestNeighbor() const { return m_westNeighbor; }
+
 private:
     /// @brief 6. Chunk coordinates: 2D, IntVec2 (int x,y), with x and y axes aligned with world axes (above).
-    ///           Adjacent chunks have adjacent chunk coordinates; for example, chunk (4,7) is the immediate eastern neighbor of chunk (3,7), and chunk (3,7)’s easternmost edge lines up exactly with chunk (4,7)’s westernmost edge.
+    ///           Adjacent chunks have adjacent chunk coordinates; for example, chunk (4,7) is the immediate eastern neighbor of chunk (3,7), and chunk (3,7)'s easternmost edge lines up exactly with chunk (4,7)'s westernmost edge.
     ///           There is no chunk Z coordinate since each chunk extends fully from the bottom of the world to the top of the world (i.e. Chunks do not stack vertically).
     IntVec2 m_chunkCoords = IntVec2::ZERO;
     /// @brief
     AABB3 m_worldBounds = AABB3::ZERO;
-    Block m_blocks[CHUNK_TOTAL_BLOCKS]; // 1D array for cache efficiency
+    Block m_blocks[BLOCKS_PER_CHUNK]; // 1D array for cache efficiency
 
     // Rendering
     VertexList_PCU m_vertices;
@@ -72,8 +112,22 @@ private:
     bool           m_needsRebuild      = true;
     bool           m_drawDebug         = false;
 
+    // Chunk management flags for persistent world
+    bool m_needsSaving = false;        // true if chunk has been modified and needs to be saved to disk
+    bool m_isMeshDirty = true;         // true if mesh needs regeneration
+    
+    // Neighbor chunk pointers for efficient access
+    Chunk* m_northNeighbor = nullptr;  // +Y direction
+    Chunk* m_southNeighbor = nullptr;  // -Y direction  
+    Chunk* m_eastNeighbor = nullptr;   // +X direction
+    Chunk* m_westNeighbor = nullptr;   // -X direction
+
     // Helper methods
     void AddBlockFacesIfVisible(Vec3 const& blockCenter, sBlockDefinition* def, IntVec3 const& coords);
     void AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 const& uvs, Rgba8 const& tint);
     void UpdateVertexBuffer();
+    
+    // Advanced mesh generation with hidden surface removal
+    void AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter, sBlockDefinition* def);
+    bool IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDirection) const;
 };
