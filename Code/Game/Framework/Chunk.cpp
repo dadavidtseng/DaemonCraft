@@ -37,6 +37,9 @@ const uint8_t BLOCK_ICE     = 9;
 const uint8_t BLOCK_SAND    = 10;
 const uint8_t BLOCK_OBSIDIAN = 11;
 const uint8_t BLOCK_LAVA    = 12;
+const uint8_t BLOCK_GLOWSTONE = 13;
+const uint8_t BLOCK_COBBLESTONE = 14;
+const uint8_t BLOCK_CHISELED_BRICK = 15;
 
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
@@ -375,6 +378,38 @@ Block* Chunk::GetBlock(int const localBlockIndexX,
     int const index = LocalCoordsToIndex(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
 
     return &m_blocks[index];
+}
+
+//----------------------------------------------------------------------------------------------------
+void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex)
+{
+    // Validate coordinates
+    if (localBlockIndexX < 0 || localBlockIndexX > CHUNK_MAX_X ||
+        localBlockIndexY < 0 || localBlockIndexY > CHUNK_MAX_Y ||
+        localBlockIndexZ < 0 || localBlockIndexZ > CHUNK_MAX_Z)
+    {
+        return; // Invalid coordinates
+    }
+
+    // Calculate block index
+    int index = GetBlockIndexFromLocalCoords(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
+    
+    // Check if block type is actually changing
+    if (m_blocks[index].m_typeIndex != blockTypeIndex)
+    {
+        // Debug output to help diagnose modification
+        DebuggerPrintf("Block modified at (%d,%d,%d) in chunk (%d,%d): %d -> %d\n", 
+                      localBlockIndexX, localBlockIndexY, localBlockIndexZ,
+                      m_chunkCoords.x, m_chunkCoords.y,
+                      m_blocks[index].m_typeIndex, blockTypeIndex);
+        
+        // Set the new block type
+        m_blocks[index].m_typeIndex = blockTypeIndex;
+        
+        // Mark chunk as modified - needs saving and mesh regeneration
+        SetNeedsSaving(true);
+        SetIsMeshDirty(true);
+    }
 }
 
 //----------------------------------------------------------------------------------------------------

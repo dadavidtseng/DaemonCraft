@@ -76,6 +76,27 @@ constexpr float DIAMOND_CHANCE = 0.0001f;
 constexpr int OBSIDIAN_Z = 1;
 constexpr int LAVA_Z = 0;
 
+//----------------------------------------------------------------------------------------------------
+// Chunk File Format Structures
+//----------------------------------------------------------------------------------------------------
+
+// Chunk file header structure (8 bytes total)
+struct ChunkFileHeader
+{
+    char    fourCC[4];      // "GCHK" - Guildhall Chunk identifier
+    uint8_t version;        // File format version (1)
+    uint8_t chunkBitsX;     // Will be set to CHUNK_BITS_X (4)
+    uint8_t chunkBitsY;     // Will be set to CHUNK_BITS_Y (4) 
+    uint8_t chunkBitsZ;     // Will be set to CHUNK_BITS_Z (7)
+};
+
+// RLE compression entry for chunk data (2 bytes per run)
+struct RLEEntry
+{
+    uint8_t blockType;      // Block type index [0-255]
+    uint8_t runLength;      // Number of consecutive blocks [1-255]
+};
+
 //-Forward-Declaration--------------------------------------------------------------------------------
 struct Rgba8;
 struct Vec2;

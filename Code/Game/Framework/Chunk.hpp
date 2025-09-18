@@ -56,6 +56,7 @@ public:
     int     GetBlockIndexFromLocalCoords(int localX, int localY, int localZ) const;
     IntVec3 GetLocalCoordsFromIndex(int blockIndex) const;
     Block*  GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
+    void    SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex);
 
     // Static utility functions for chunk coordinate management
     static int     LocalCoordsToIndex(const IntVec3& localCoords);

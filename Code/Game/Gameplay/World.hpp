@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 struct IntVec2;
+struct IntVec3;
 struct Vec3;
 class Camera;
 class Chunk;
@@ -50,7 +51,14 @@ public:
     void   DeactivateChunk(IntVec2 const& chunkCoords);
     void   DeactivateAllChunks(); // For debug F8 and shutdown
     void   ToggleGlobalChunkDebugDraw(); // For debug F2 key
+    bool   SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
+    uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
     Chunk* GetChunk(IntVec2 const& chunkCoords) const;
+
+    // Digging and placing methods
+    bool   DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera
+    bool   PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType); // RMB - place block above highest non-air block
+    IntVec3 FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const; // Helper to find highest solid block
 
     // Chunk management helper methods
     Vec3    GetCameraPosition() const;
