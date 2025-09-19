@@ -23,23 +23,24 @@
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
 //----------------------------------------------------------------------------------------------------
-// Block Type Constants (add these to GameCommon.hpp if not already there)
-const uint8_t BLOCK_AIR     = 0;
-const uint8_t BLOCK_GRASS   = 1;
-const uint8_t BLOCK_DIRT    = 2;
-const uint8_t BLOCK_STONE   = 3;
-const uint8_t BLOCK_COAL    = 4;
-const uint8_t BLOCK_IRON    = 5;
-const uint8_t BLOCK_GOLD    = 6;
-const uint8_t BLOCK_DIAMOND = 7;
-const uint8_t BLOCK_WATER   = 8;
-const uint8_t BLOCK_ICE     = 9;
-const uint8_t BLOCK_SAND    = 10;
-const uint8_t BLOCK_OBSIDIAN = 11;
-const uint8_t BLOCK_LAVA    = 12;
-const uint8_t BLOCK_GLOWSTONE = 13;
-const uint8_t BLOCK_COBBLESTONE = 14;
-const uint8_t BLOCK_CHISELED_BRICK = 15;
+// Block Type Constants - Must match BlockSpriteSheet_BlockDefinitions.xml exactly (0-indexed)
+const uint8_t BLOCK_AIR              = 0;   // Air
+const uint8_t BLOCK_GRASS            = 1;   // Grass
+const uint8_t BLOCK_DIRT             = 2;   // Dirt
+const uint8_t BLOCK_STONE            = 3;   // Stone
+const uint8_t BLOCK_COAL             = 4;   // Coal
+const uint8_t BLOCK_IRON             = 5;   // Iron
+const uint8_t BLOCK_GOLD             = 6;   // Gold
+const uint8_t BLOCK_DIAMOND          = 7;   // Diamond
+const uint8_t BLOCK_WATER            = 8;   // Water
+const uint8_t BLOCK_GLOWSTONE        = 9;   // Glowstone (index 9 in XML)
+const uint8_t BLOCK_COBBLESTONE      = 10;  // Cobblestone (index 10 in XML)
+const uint8_t BLOCK_CHISELED_BRICK   = 11;  // ChiseledBrick (index 11 in XML)
+const uint8_t BLOCK_SAND             = 12;  // Sand (index 12 in XML)
+const uint8_t BLOCK_SNOW             = 13;  // Snow (index 13 in XML)
+const uint8_t BLOCK_ICE              = 14;  // Ice (index 14 in XML)
+const uint8_t BLOCK_OBSIDIAN         = 15;  // Obsidian (index 15 in XML)
+const uint8_t BLOCK_LAVA             = 26;  // Lava (index 26 in XML)
 
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
@@ -84,7 +85,7 @@ void Chunk::Render()
         g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);
         g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
-        g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_32px.png"));
+        g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
 
         // Use m_indices.size() instead of m_indexBuffer->GetSize()
         g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, (int)m_indices.size());

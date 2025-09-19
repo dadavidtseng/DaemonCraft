@@ -235,22 +235,22 @@ void Game::UpdateFromKeyBoard()
         // Block type cycling - Use number keys to cycle through the three block types
         if (g_input->WasKeyJustPressed(NUMCODE_1) || g_input->WasKeyJustPressed(KEYCODE_UPARROW))
         {
-            // Cycle to next block type: Glowstone(13) -> Cobblestone(14) -> ChiseledBrick(15) -> Glowstone(13)
+            // Cycle to next block type: Glowstone(9) -> Cobblestone(10) -> ChiseledBrick(11) -> Glowstone(9)
             m_currentBlockType++;
-            if (m_currentBlockType > 15) // BLOCK_CHISELED_BRICK
+            if (m_currentBlockType > 11) // BLOCK_CHISELED_BRICK
             {
-                m_currentBlockType = 13; // Back to BLOCK_GLOWSTONE
+                m_currentBlockType = 9; // Back to BLOCK_GLOWSTONE
             }
             DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
         }
 
         if (g_input->WasKeyJustPressed(NUMCODE_2) || g_input->WasKeyJustPressed(KEYCODE_DOWNARROW))
         {
-            // Cycle to previous block type: ChiseledBrick(15) -> Cobblestone(14) -> Glowstone(13) -> ChiseledBrick(15)
+            // Cycle to previous block type: ChiseledBrick(11) -> Cobblestone(10) -> Glowstone(9) -> ChiseledBrick(11)
             m_currentBlockType--;
-            if (m_currentBlockType < 13) // BLOCK_GLOWSTONE
+            if (m_currentBlockType < 9) // BLOCK_GLOWSTONE
             {
-                m_currentBlockType = 15; // Back to BLOCK_CHISELED_BRICK
+                m_currentBlockType = 11; // Back to BLOCK_CHISELED_BRICK
             }
             DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
         }
@@ -262,7 +262,38 @@ void Game::UpdateFromKeyBoard()
         }
 
 #if defined GAME_DEBUG_MODE
-        DebugAddMessage(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), 0.f);
+        DebugAddScreenText(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), Vec2(10.f, 120.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+        
+        // Add debug info for current block type and coordinates
+        DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[9] Cobblestone[10] ChiseledBrick[11]", m_currentBlockType), Vec2(10.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+        
+        // Calculate chunk and local coordinates for player position
+        IntVec3 playerGlobalCoords = IntVec3((int)m_player->m_position.x, (int)m_player->m_position.y, (int)m_player->m_position.z);
+        IntVec2 chunkCoords = Chunk::GetChunkCoords(playerGlobalCoords);
+        IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(playerGlobalCoords);
+        
+        DebugAddScreenText(Stringf("ChunkCoords: (%d, %d) LocalCoords: (%d, %d, %d) GlobalCoords: (%d, %d, %d)", 
+                                  chunkCoords.x, chunkCoords.y, 
+                                  localCoords.x, localCoords.y, localCoords.z,
+                                  playerGlobalCoords.x, playerGlobalCoords.y, playerGlobalCoords.z), Vec2(10.f, 160.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+        
+        // Display current chunk ID and world statistics
+        if (m_world)
+        {
+            Chunk* currentChunk = m_world->GetChunk(chunkCoords);
+            if (currentChunk)
+            {
+                DebugAddScreenText(Stringf("Current Chunk: (%d, %d)", 
+                                          currentChunk->GetChunkCoords().x, 
+                                          currentChunk->GetChunkCoords().y), Vec2(10.f, 180.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+            }
+            
+            // Add world statistics like in the screenshot
+            DebugAddScreenText(Stringf("Chunks: %d Vertices: %d Indices: %d", 
+                                      m_world->GetActiveChunkCount(),
+                                      m_world->GetTotalVertexCount(),
+                                      m_world->GetTotalIndexCount()), Vec2(10.f, 200.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+        }
 
         if (g_input->WasKeyJustPressed(NUMCODE_1))
         {
@@ -324,7 +355,7 @@ void Game::UpdateFromKeyBoard()
             float const orientationY = m_player->GetCamera()->GetOrientation().m_pitchDegrees;
             float const orientationZ = m_player->GetCamera()->GetOrientation().m_rollDegrees;
 
-            DebugAddMessage(Stringf("Camera Orientation: (%.2f, %.2f, %.2f)", orientationX, orientationY, orientationZ), 5.f);
+            DebugAddScreenText(Stringf("Camera Orientation: (%.2f, %.2f, %.2f)", orientationX, orientationY, orientationZ), Vec2(10.f, 220.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
         }
 #endif
     }
