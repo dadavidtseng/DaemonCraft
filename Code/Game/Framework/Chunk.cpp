@@ -555,13 +555,9 @@ int Chunk::GlobalCoordsToIndex(int x, int y, int z)
 //----------------------------------------------------------------------------------------------------
 IntVec2 Chunk::GetChunkCoords(const IntVec3& globalCoords)
 {
-    // Integer division for chunk coordinates
-    int chunkX = globalCoords.x >> CHUNK_BITS_X;  // Equivalent to globalCoords.x / CHUNK_SIZE_X
-    int chunkY = globalCoords.y >> CHUNK_BITS_Y;  // Equivalent to globalCoords.y / CHUNK_SIZE_Y
-
-    // Handle negative coordinates properly
-    if (globalCoords.x < 0 && (globalCoords.x & CHUNK_MASK_X) != 0) chunkX--;
-    if (globalCoords.y < 0 && (globalCoords.y & CHUNK_MASK_Y) != 0) chunkY--;
+    // Use proper integer division with floor behavior for negative coordinates
+    int chunkX = static_cast<int>(floorf(static_cast<float>(globalCoords.x) / CHUNK_SIZE_X));
+    int chunkY = static_cast<int>(floorf(static_cast<float>(globalCoords.y) / CHUNK_SIZE_Y));
 
     return IntVec2(chunkX, chunkY);
 }
@@ -578,13 +574,14 @@ IntVec2 Chunk::GetChunkCenter(const IntVec2& chunkCoords)
 //----------------------------------------------------------------------------------------------------
 IntVec3 Chunk::GlobalCoordsToLocalCoords(const IntVec3& globalCoords)
 {
-    int localX = globalCoords.x & CHUNK_MASK_X;
-    int localY = globalCoords.y & CHUNK_MASK_X;  // Use CHUNK_MASK_X since it's 0x000F for both X and Y
+    // Use modulo operation for local coordinates with proper handling of negative numbers
+    int localX = globalCoords.x % CHUNK_SIZE_X;
+    int localY = globalCoords.y % CHUNK_SIZE_Y;
     int localZ = globalCoords.z;
 
-    // Handle negative coordinates properly
-    if (globalCoords.x < 0 && localX != 0) localX = CHUNK_SIZE_X - localX;
-    if (globalCoords.y < 0 && localY != 0) localY = CHUNK_SIZE_Y - localY;
+    // Handle negative modulo results (C++ modulo can return negative values)
+    if (localX < 0) localX += CHUNK_SIZE_X;
+    if (localY < 0) localY += CHUNK_SIZE_Y;
 
     return IntVec3(localX, localY, localZ);
 }
