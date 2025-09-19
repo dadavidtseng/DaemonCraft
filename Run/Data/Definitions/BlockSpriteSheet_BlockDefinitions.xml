@@ -14,6 +14,7 @@
   <BlockDefinition name="Sand" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 1" bottomSpriteCoords="4, 1" sideSpriteCoords="4, 1"/>
   <BlockDefinition name="Snow" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="5, 1" bottomSpriteCoords="5, 1" sideSpriteCoords="5, 1"/>
   <BlockDefinition name="Ice" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="6, 1" bottomSpriteCoords="6, 1" sideSpriteCoords="6, 1"/>
+  <BlockDefinition name="Obsidian" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="7, 1" bottomSpriteCoords="7, 1" sideSpriteCoords="7, 1"/>
   <BlockDefinition name="AcaciaLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="1, 2" bottomSpriteCoords="1, 2" sideSpriteCoords="0, 2"/>
   <BlockDefinition name="AcaciaLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="2, 2" bottomSpriteCoords="2, 2" sideSpriteCoords="2, 2"/>
   <BlockDefinition name="BirchLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="4, 2" bottomSpriteCoords="4, 2" sideSpriteCoords="3, 2"/>
@@ -24,4 +25,5 @@
   <BlockDefinition name="OakLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="5, 3" bottomSpriteCoords="5, 3" sideSpriteCoords="5, 3"/>
   <BlockDefinition name="SpruceLog" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="1, 4" bottomSpriteCoords="1, 4" sideSpriteCoords="0, 4"/>
   <BlockDefinition name="SpruceLeaves" isVisible="true" isSolid="false" isOpaque="true" topSpriteCoords="2, 4" bottomSpriteCoords="2, 4" sideSpriteCoords="2, 4"/>
+  <BlockDefinition name="Lava" isVisible="true" isSolid="true" isOpaque="true" topSpriteCoords="0, 5" bottomSpriteCoords="0, 5" sideSpriteCoords="0, 5"/>
 </Definitions>
