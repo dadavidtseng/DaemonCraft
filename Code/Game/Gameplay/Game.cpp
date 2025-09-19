@@ -39,7 +39,7 @@ Game::Game()
     m_screenCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
     m_gameClock = new Clock(Clock::GetSystemClock());
 
-    m_grid->m_position       = Vec3::ZERO;
+    m_grid->m_position = Vec3::ZERO;
 
 #if defined GAME_DEBUG_MODE
     DebugAddWorldBasis(Mat44(), -1.f);
@@ -95,7 +95,7 @@ void Game::Render() const
     if (m_gameState == eGameState::GAME)
     {
         RenderEntities();
-m_world->Render();
+        m_world->Render();
         Vec2 screenDimensions = Window::s_mainWindow->GetScreenDimensions();
         Vec2 windowDimensions = Window::s_mainWindow->GetWindowDimensions();
         Vec2 clientDimensions = Window::s_mainWindow->GetClientDimensions();
@@ -203,14 +203,14 @@ void Game::UpdateFromKeyBoard()
         // ========================================
         // DIGGING AND PLACING SYSTEM
         // ========================================
-        
+
         // LMB - Dig highest non-air block at or below camera position
         if (g_input->WasKeyJustPressed(KEYCODE_LEFT_MOUSE))
         {
             if (m_world != nullptr && m_player != nullptr)
             {
                 Vec3 cameraPos = m_player->GetCamera()->GetPosition();
-                bool success = m_world->DigBlockAtCameraPosition(cameraPos);
+                bool success   = m_world->DigBlockAtCameraPosition(cameraPos);
                 if (!success)
                 {
                     DebuggerPrintf("No block to dig at camera position\n");
@@ -224,7 +224,7 @@ void Game::UpdateFromKeyBoard()
             if (m_world != nullptr && m_player != nullptr)
             {
                 Vec3 cameraPos = m_player->GetCamera()->GetPosition();
-                bool success = m_world->PlaceBlockAtCameraPosition(cameraPos, m_currentBlockType);
+                bool success   = m_world->PlaceBlockAtCameraPosition(cameraPos, m_currentBlockType);
                 if (!success)
                 {
                     DebuggerPrintf("Cannot place block at camera position\n");
