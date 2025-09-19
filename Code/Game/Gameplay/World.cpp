@@ -22,7 +22,7 @@
 //----------------------------------------------------------------------------------------------------
 // Hash function implementation for IntVec2
 //----------------------------------------------------------------------------------------------------
-size_t std::hash<IntVec2>::operator()( IntVec2 const& vec) const
+size_t std::hash<IntVec2>::operator()(IntVec2 const& vec) const noexcept
 {
     return std::hash<int>()(vec.x) ^ (std::hash<int>()(vec.y) << 1);
 }
@@ -341,15 +341,15 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
     // Read and validate header
     ChunkFileHeader header;
     memcpy(&header, buffer.data(), sizeof(ChunkFileHeader));
-    
+
     // Validate header
-    if (header.fourCC[0] != 'G' || header.fourCC[1] != 'C' || 
+    if (header.fourCC[0] != 'G' || header.fourCC[1] != 'C' ||
         header.fourCC[2] != 'H' || header.fourCC[3] != 'K')
     {
         return false; // Invalid 4CC
     }
-    
-    if (header.version != 1 || header.chunkBitsX != CHUNK_BITS_X || 
+
+    if (header.version != 1 || header.chunkBitsX != CHUNK_BITS_X ||
         header.chunkBitsY != CHUNK_BITS_Y || header.chunkBitsZ != CHUNK_BITS_Z)
     {
         return false; // Incompatible format
@@ -357,8 +357,8 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
 
     // Decompress RLE data
     size_t dataOffset = sizeof(ChunkFileHeader);
-    int blockIndex = 0;
-    
+    int    blockIndex = 0;
+
     while (dataOffset < buffer.size() && blockIndex < BLOCKS_PER_CHUNK)
     {
         // Read RLE entry
@@ -366,16 +366,16 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
         {
             return false; // Incomplete RLE entry
         }
-        
+
         RLEEntry entry;
         memcpy(&entry, buffer.data() + dataOffset, sizeof(RLEEntry));
         dataOffset += sizeof(RLEEntry);
-        
+
         // Apply run to blocks
         for (int i = 0; i < entry.runLength && blockIndex < BLOCKS_PER_CHUNK; i++)
         {
             IntVec3 localCoords = Chunk::IndexToLocalCoords(blockIndex);
-            Block* block = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
+            Block*  block       = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
             if (block != nullptr)
             {
                 block->m_typeIndex = entry.blockType;
@@ -383,7 +383,7 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
             blockIndex++;
         }
     }
-    
+
     // Verify we loaded exactly the right number of blocks
     if (blockIndex != BLOCKS_PER_CHUNK)
     {
@@ -414,7 +414,7 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
     for (int i = 0; i < BLOCKS_PER_CHUNK; i++)
     {
         IntVec3 localCoords = Chunk::IndexToLocalCoords(i);
-        Block* block = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
+        Block*  block       = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
         if (block != nullptr)
         {
             blockData[i] = block->m_typeIndex;
@@ -427,8 +427,8 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
 
     // Compress using RLE
     std::vector<RLEEntry> rleEntries;
-    uint8_t currentType = blockData[0];
-    uint8_t runLength = 1;
+    uint8_t               currentType = blockData[0];
+    uint8_t               runLength   = 1;
 
     for (int i = 1; i < BLOCKS_PER_CHUNK; i++)
     {
@@ -441,7 +441,7 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
             // End current run
             rleEntries.push_back({currentType, runLength});
             currentType = blockData[i];
-            runLength = 1;
+            runLength   = 1;
         }
     }
     // Don't forget the last run
@@ -449,17 +449,17 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
 
     // Create file header
     ChunkFileHeader header;
-    header.fourCC[0] = 'G';
-    header.fourCC[1] = 'C';
-    header.fourCC[2] = 'H';
-    header.fourCC[3] = 'K';
-    header.version = 1;
+    header.fourCC[0]  = 'G';
+    header.fourCC[1]  = 'C';
+    header.fourCC[2]  = 'H';
+    header.fourCC[3]  = 'K';
+    header.version    = 1;
     header.chunkBitsX = CHUNK_BITS_X;
     header.chunkBitsY = CHUNK_BITS_Y;
     header.chunkBitsZ = CHUNK_BITS_Z;
 
     // Calculate total file size
-    size_t fileSize = sizeof(ChunkFileHeader) + rleEntries.size() * sizeof(RLEEntry);
+    size_t               fileSize = sizeof(ChunkFileHeader) + rleEntries.size() * sizeof(RLEEntry);
     std::vector<uint8_t> fileBuffer(fileSize);
 
     // Write header
@@ -474,8 +474,8 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
     }
 
     // Write to file using safe fopen_s
-    FILE* file = nullptr;
-    errno_t err = fopen_s(&file, filename.c_str(), "wb");
+    FILE*   file = nullptr;
+    errno_t err  = fopen_s(&file, filename.c_str(), "wb");
     if (err != 0 || file == nullptr) return false;
 
     size_t written = fwrite(fileBuffer.data(), 1, fileBuffer.size(), file);
@@ -550,25 +550,25 @@ bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTyp
 {
     // Get the chunk that contains this global coordinate
     IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
-    Chunk* chunk = GetChunk(chunkCoords);
-    
+    Chunk*  chunk       = GetChunk(chunkCoords);
+
     if (chunk == nullptr)
     {
         return false; // Chunk not active, cannot modify
     }
-    
+
     // Convert global coordinates to local coordinates within the chunk
     IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
-    
+
     // Validate Z coordinate is within chunk bounds
     if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
     {
         return false; // Z coordinate out of bounds
     }
-    
+
     // Set the block using the chunk's SetBlock method (which handles save/mesh dirty flags)
     chunk->SetBlock(localCoords.x, localCoords.y, localCoords.z, blockTypeIndex);
-    
+
     return true;
 }
 
@@ -577,30 +577,30 @@ uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
 {
     // Get the chunk that contains this global coordinate
     IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
-    Chunk* chunk = GetChunk(chunkCoords);
-    
+    Chunk*  chunk       = GetChunk(chunkCoords);
+
     if (chunk == nullptr)
     {
         return 0; // Return air block if chunk not active
     }
-    
+
     // Convert global coordinates to local coordinates within the chunk
     IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
-    
+
     // Validate Z coordinate is within chunk bounds
     if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
     {
         return 0; // Return air block if out of bounds
     }
-    
+
     // Get the block using the chunk's GetBlock method
     Block* block = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
-    
+
     if (block == nullptr)
     {
         return 0; // Return air block if invalid
     }
-    
+
     return block->m_typeIndex;
 }
 
@@ -612,23 +612,23 @@ uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
 IntVec3 World::FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const
 {
     // Start from camera position and search downward
-    IntVec3 searchPos = IntVec3(static_cast<int>(floorf(position.x)), 
-                               static_cast<int>(floorf(position.y)), 
-                               static_cast<int>(floorf(position.z)));
-    
+    IntVec3 searchPos = IntVec3(static_cast<int>(floorf(position.x)),
+                                static_cast<int>(floorf(position.y)),
+                                static_cast<int>(floorf(position.z)));
+
     // Search downward from camera Z position to find highest non-air block
     for (int z = searchPos.z; z >= 0; z--)
     {
         IntVec3 testPos(searchPos.x, searchPos.y, z);
         uint8_t blockType = GetBlockTypeAtGlobalCoords(testPos);
-        
+
         // If we found a non-air block, this is our target
         if (blockType != 0) // 0 = BLOCK_AIR
         {
             return testPos;
         }
     }
-    
+
     // No non-air block found (all air down to bedrock)
     return IntVec3(INT_MAX, INT_MAX, INT_MAX); // Invalid position
 }
@@ -638,59 +638,60 @@ bool World::DigBlockAtCameraPosition(Vec3 const& cameraPos)
 {
     // Find highest non-air block at or below camera position
     IntVec3 targetBlock = FindHighestNonAirBlockAtOrBelow(cameraPos);
-    
+
     // Check if we found a valid block to dig
     if (targetBlock.x == INT_MAX || targetBlock.y == INT_MAX || targetBlock.z == INT_MAX)
     {
         return false; // No block to dig
     }
-    
+
     // Convert the block to air (dig it)
     bool success = SetBlockAtGlobalCoords(targetBlock, 0); // 0 = BLOCK_AIR
-    
+
     if (success)
     {
         DebuggerPrintf("Dug block at (%d,%d,%d)\n", targetBlock.x, targetBlock.y, targetBlock.z);
     }
-    
+
     return success;
 }
 
 //----------------------------------------------------------------------------------------------------
-bool World::PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType)
+bool World::PlaceBlockAtCameraPosition(Vec3 const&   cameraPos,
+                                       uint8_t const blockType)
 {
     // Find highest non-air block at or below camera position
     IntVec3 highestBlock = FindHighestNonAirBlockAtOrBelow(cameraPos);
-    
+
     // Check if we found a valid foundation block
     if (highestBlock.x == INT_MAX || highestBlock.y == INT_MAX || highestBlock.z == INT_MAX)
     {
         return false; // No foundation block found
     }
-    
+
     // Place block directly above the highest non-air block
     IntVec3 placePos = IntVec3(highestBlock.x, highestBlock.y, highestBlock.z + 1);
-    
+
     // Check if the target position is valid (within world bounds)
-    if (placePos.z >= 128) // CHUNK_SIZE_Z
+    if (placePos.z >= CHUNK_SIZE_Z)
     {
         return false; // Would place block above world height limit
     }
-    
+
     // Check if target position is already occupied by a non-air block
     uint8_t existingBlock = GetBlockTypeAtGlobalCoords(placePos);
     if (existingBlock != 0) // 0 = BLOCK_AIR
     {
         return false; // Position already occupied
     }
-    
+
     // Place the new block
     bool success = SetBlockAtGlobalCoords(placePos, blockType);
-    
+
     if (success)
     {
         DebuggerPrintf("Placed block type %d at (%d,%d,%d)\n", blockType, placePos.x, placePos.y, placePos.z);
     }
-    
+
     return success;
 }

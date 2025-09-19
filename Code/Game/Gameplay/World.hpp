@@ -21,7 +21,7 @@ namespace std
     template <>
     struct hash<IntVec2>
     {
-        size_t operator()(const IntVec2& vec) const;
+        size_t operator()(IntVec2 const& vec) const noexcept;
     };
 }
 
@@ -45,19 +45,19 @@ public:
     World();
     ~World();
 
-    void   Update(float deltaSeconds);
-    void   Render() const;
-    void   ActivateChunk(IntVec2 const& chunkCoords);
-    void   DeactivateChunk(IntVec2 const& chunkCoords);
-    void   DeactivateAllChunks(); // For debug F8 and shutdown
-    void   ToggleGlobalChunkDebugDraw(); // For debug F2 key
-    bool   SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
+    void    Update(float deltaSeconds);
+    void    Render() const;
+    void    ActivateChunk(IntVec2 const& chunkCoords);
+    void    DeactivateChunk(IntVec2 const& chunkCoords);
+    void    DeactivateAllChunks(); // For debug F8 and shutdown
+    void    ToggleGlobalChunkDebugDraw(); // For debug F2 key
+    bool    SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
-    Chunk* GetChunk(IntVec2 const& chunkCoords) const;
+    Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
 
     // Digging and placing methods
-    bool   DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera
-    bool   PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType); // RMB - place block above highest non-air block
+    bool    DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera
+    bool    PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType); // RMB - place block above highest non-air block
     IntVec3 FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const; // Helper to find highest solid block
 
     // Chunk management helper methods
