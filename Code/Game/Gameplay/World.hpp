@@ -54,6 +54,11 @@ public:
     bool    SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
     Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
+    
+    // Debug information getters
+    int     GetActiveChunkCount() const;
+    int     GetTotalVertexCount() const;
+    int     GetTotalIndexCount() const;
 
     // Digging and placing methods
     bool    DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera

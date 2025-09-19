@@ -210,6 +210,40 @@ Chunk* World::GetChunk(IntVec2 const& chunkCoords) const
 }
 
 //----------------------------------------------------------------------------------------------------
+int World::GetActiveChunkCount() const
+{
+    return (int)m_activeChunks.size();
+}
+
+//----------------------------------------------------------------------------------------------------
+int World::GetTotalVertexCount() const
+{
+    int totalVertices = 0;
+    for (const auto& pair : m_activeChunks)
+    {
+        if (pair.second)
+        {
+            totalVertices += pair.second->GetVertexCount();
+        }
+    }
+    return totalVertices;
+}
+
+//----------------------------------------------------------------------------------------------------
+int World::GetTotalIndexCount() const
+{
+    int totalIndices = 0;
+    for (const auto& pair : m_activeChunks)
+    {
+        if (pair.second)
+        {
+            totalIndices += pair.second->GetIndexCount();
+        }
+    }
+    return totalIndices;
+}
+
+//----------------------------------------------------------------------------------------------------
 Vec3 World::GetCameraPosition() const
 {
     if (g_game != nullptr)

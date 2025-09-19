@@ -49,6 +49,10 @@ public:
 
     IntVec2 GetChunkCoords() const { return m_chunkCoords; }
     AABB3   GetWorldBounds() const { return m_worldBounds; }
+    
+    // Debug information getters
+    int     GetVertexCount() const { return (int)m_vertices.size(); }
+    int     GetIndexCount() const { return (int)m_indices.size(); }
 
     // Core methods
     void    GenerateTerrain();
