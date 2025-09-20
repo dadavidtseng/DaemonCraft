@@ -4,6 +4,7 @@
 /.claude/
 /.spec-workflow/
 /[Tt]emporary/
+[Ss]aves/
 
 # Prerequisites
 *.d
