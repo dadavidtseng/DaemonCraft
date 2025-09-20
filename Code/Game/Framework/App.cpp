@@ -90,13 +90,6 @@ App::App()
 
     //-End-of-AudioSystem-----------------------------------------------------------------------------
     //------------------------------------------------------------------------------------------------
-    //-Start-of-LightSubsystem------------------------------------------------------------------------
-
-    sLightSubsystemConfig constexpr sLightSubsystemConfig;
-    g_lightSubsystem = new LightSubsystem(sLightSubsystemConfig);
-
-    //-End-of-LightSubsystem--------------------------------------------------------------------------
-    //------------------------------------------------------------------------------------------------
     //-Start-of-ResourceSubsystem---------------------------------------------------------------------
 
     sResourceSubsystemConfig resourceSubsystemConfig;
@@ -113,7 +106,6 @@ App::~App()
     GAME_SAFE_RELEASE(g_rng);
     GAME_SAFE_RELEASE(g_bitmapFont);
     GAME_SAFE_RELEASE(g_resourceSubsystem);
-    GAME_SAFE_RELEASE(g_lightSubsystem);
     GAME_SAFE_RELEASE(g_audio);
     GAME_SAFE_RELEASE(g_devConsole);
     GAME_SAFE_RELEASE(m_devConsoleCamera);
@@ -155,7 +147,6 @@ void App::Startup()
     g_devConsole->StartUp();
     g_input->Startup();
     g_audio->Startup();
-    g_lightSubsystem->StartUp();
     g_resourceSubsystem->Startup();
 
     g_bitmapFont = g_renderer->CreateOrGetBitmapFontFromFile("Data/Fonts/DaemonFont"); // DO NOT SPECIFY FILE .EXTENSION!!  (Important later on.)
@@ -170,7 +161,6 @@ void App::Shutdown()
 {
     GAME_SAFE_RELEASE(g_game);
     g_resourceSubsystem->Shutdown();
-    g_lightSubsystem->Shutdown();
     g_audio->Shutdown();
     g_input->Shutdown();
     g_devConsole->Shutdown();
@@ -228,7 +218,6 @@ void App::BeginFrame() const
     g_devConsole->BeginFrame();
     g_input->BeginFrame();
     g_audio->BeginFrame();
-    g_lightSubsystem->BeginFrame();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -268,7 +257,6 @@ void App::EndFrame() const
     g_devConsole->EndFrame();
     g_input->EndFrame();
     g_audio->EndFrame();
-    g_lightSubsystem->EndFrame();
 }
 
 //----------------------------------------------------------------------------------------------------
