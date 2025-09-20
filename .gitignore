@@ -5,6 +5,7 @@
 /.spec-workflow/
 /[Tt]emporary/
 [Ss]aves/
+.playwright-mcp/
 
 # Prerequisites
 *.d
