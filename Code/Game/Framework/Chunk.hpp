@@ -46,51 +46,49 @@ public:
     void Update(float deltaSeconds);
     void Render();
 
-
     IntVec2 GetChunkCoords() const { return m_chunkCoords; }
     AABB3   GetWorldBounds() const { return m_worldBounds; }
-    
+
     // Debug information getters
-    int     GetVertexCount() const { return (int)m_vertices.size(); }
-    int     GetIndexCount() const { return (int)m_indices.size(); }
+    int GetVertexCount() const { return (int)m_vertices.size(); }
+    int GetIndexCount() const { return (int)m_indices.size(); }
 
     // Core methods
-    void    GenerateTerrain();
-    void    RebuildMesh();
-    int     GetBlockIndexFromLocalCoords(int localX, int localY, int localZ) const;
-    IntVec3 GetLocalCoordsFromIndex(int blockIndex) const;
-    Block*  GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
-    void    SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex);
+    void GenerateTerrain();
+    void RebuildMesh();
+
+    Block* GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
+    void   SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex);
 
     // Static utility functions for chunk coordinate management
-    static int     LocalCoordsToIndex(const IntVec3& localCoords);
+    static int     LocalCoordsToIndex(IntVec3 const& localCoords);
     static int     LocalCoordsToIndex(int x, int y, int z);
     static int     IndexToLocalX(int index);
     static int     IndexToLocalY(int index);
     static int     IndexToLocalZ(int index);
     static IntVec3 IndexToLocalCoords(int index);
-    static int     GlobalCoordsToIndex(const IntVec3& globalCoords);
+    static int     GlobalCoordsToIndex(IntVec3 const& globalCoords);
     static int     GlobalCoordsToIndex(int x, int y, int z);
-    static IntVec2 GetChunkCoords(const IntVec3& globalCoords);
-    static IntVec2 GetChunkCenter(const IntVec2& chunkCoords);
-    static IntVec3 GlobalCoordsToLocalCoords(const IntVec3& globalCoords);
-    static IntVec3 GetGlobalCoords(const IntVec2& chunkCoords, int blockIndex);
-    static IntVec3 GetGlobalCoords(const IntVec2& chunkCoords, const IntVec3& localCoords);
-    static IntVec3 GetGlobalCoords(const Vec3& position);
-    
+    static IntVec2 GetChunkCoords(IntVec3 const& globalCoords);
+    static IntVec2 GetChunkCenter(IntVec2 const& chunkCoords);
+    static IntVec3 GlobalCoordsToLocalCoords(IntVec3 const& globalCoords);
+    static IntVec3 GetGlobalCoords(IntVec2 const& chunkCoords, int blockIndex);
+    static IntVec3 GetGlobalCoords(IntVec2 const& chunkCoords, IntVec3 const& localCoords);
+    static IntVec3 GetGlobalCoords(Vec3 const& position);
+
     // Chunk management methods for persistent world
     bool GetNeedsSaving() const { return m_needsSaving; }
-    void SetNeedsSaving(bool needsSaving) { m_needsSaving = needsSaving; }
+    void SetNeedsSaving(bool const needsSaving) { m_needsSaving = needsSaving; }
     bool GetIsMeshDirty() const { return m_isMeshDirty; }
-    void SetIsMeshDirty(bool isDirty) { m_isMeshDirty = isDirty; }
-    
+    void SetIsMeshDirty(bool const isDirty) { m_isMeshDirty = isDirty; }
+
     // Debug rendering control
     bool GetDebugDraw() const { return m_drawDebug; }
-    void SetDebugDraw(bool drawDebug) { m_drawDebug = drawDebug; }
-    
+    void SetDebugDraw(bool const drawDebug) { m_drawDebug = drawDebug; }
+
     // Neighbor chunk management
-    void SetNeighborChunks(Chunk* north, Chunk* south, Chunk* east, Chunk* west);
-    void ClearNeighborPointers();
+    void   SetNeighborChunks(Chunk* north, Chunk* south, Chunk* east, Chunk* west);
+    void   ClearNeighborPointers();
     Chunk* GetNorthNeighbor() const { return m_northNeighbor; }
     Chunk* GetSouthNeighbor() const { return m_southNeighbor; }
     Chunk* GetEastNeighbor() const { return m_eastNeighbor; }
@@ -114,24 +112,23 @@ private:
     IndexList      m_debugIndices;
     VertexBuffer*  m_debugVertexBuffer = nullptr;
     IndexBuffer*   m_debugBuffer       = nullptr;
-    bool           m_needsRebuild      = true;
     bool           m_drawDebug         = false;
 
     // Chunk management flags for persistent world
     bool m_needsSaving = false;        // true if chunk has been modified and needs to be saved to disk
     bool m_isMeshDirty = true;         // true if mesh needs regeneration
-    
+
     // Neighbor chunk pointers for efficient access
-    Chunk* m_northNeighbor = nullptr;  // +Y direction
-    Chunk* m_southNeighbor = nullptr;  // -Y direction  
-    Chunk* m_eastNeighbor = nullptr;   // +X direction
-    Chunk* m_westNeighbor = nullptr;   // -X direction
+    Chunk* m_northNeighbor = nullptr;   // +Y direction
+    Chunk* m_southNeighbor = nullptr;   // -Y direction
+    Chunk* m_eastNeighbor  = nullptr;   // +X direction
+    Chunk* m_westNeighbor  = nullptr;   // -X direction
 
     // Helper methods
     void AddBlockFacesIfVisible(Vec3 const& blockCenter, sBlockDefinition* def, IntVec3 const& coords);
     void AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 const& uvs, Rgba8 const& tint);
     void UpdateVertexBuffer();
-    
+
     // Advanced mesh generation with hidden surface removal
     void AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter, sBlockDefinition* def);
     bool IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDirection) const;

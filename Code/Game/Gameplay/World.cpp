@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <filesystem>
+
 #include "Engine/Core/EngineCommon.hpp"
+#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Core/FileUtils.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/IntVec2.hpp"
@@ -16,7 +18,6 @@
 #include "Engine/Math/Vec3.hpp"
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
-
 #include "Game/Gameplay/Game.hpp"
 
 //----------------------------------------------------------------------------------------------------
@@ -41,12 +42,12 @@ World::~World()
 }
 
 //----------------------------------------------------------------------------------------------------
-void World::Update(float deltaSeconds)
+void World::Update(float const deltaSeconds)
 {
     if (g_game == nullptr) return;
 
     // Update all active chunks first
-    for (auto& chunkPair : m_activeChunks)
+    for (auto const& chunkPair : m_activeChunks)
     {
         if (chunkPair.second != nullptr)
         {
@@ -55,13 +56,14 @@ void World::Update(float deltaSeconds)
     }
 
     // Get camera position for chunk management decisions
-    Vec3 cameraPos = GetCameraPosition();
+    Vec3 const cameraPos = GetCameraPosition();
 
     // Execute exactly one chunk management action per frame
     // Priority: 1) Regenerate dirty chunk, 2) Activate missing chunk, 3) Deactivate distant chunk
 
     // 1. Check for dirty chunks and regenerate the single nearest dirty chunk
     Chunk* nearestDirtyChunk = FindNearestDirtyChunk(cameraPos);
+
     if (nearestDirtyChunk != nullptr)
     {
         nearestDirtyChunk->RebuildMesh();
@@ -72,18 +74,19 @@ void World::Update(float deltaSeconds)
     // 2. If under max chunks, activate single nearest missing chunk within activation range
     if (m_activeChunks.size() < MAX_ACTIVE_CHUNKS)
     {
-        IntVec2 nearestMissingChunk = FindNearestMissingChunkInRange(cameraPos);
+        IntVec2 const nearestMissingChunk = FindNearestMissingChunkInRange(cameraPos);
+
         if (nearestMissingChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
         {
             ActivateChunk(nearestMissingChunk);
             return; // Only one action per frame
         }
     }
-
     // 3. Otherwise, deactivate the farthest active chunk if outside deactivation range
     else
     {
-        IntVec2 farthestChunk = FindFarthestActiveChunkOutsideDeactivationRange(cameraPos);
+        IntVec2 const farthestChunk = FindFarthestActiveChunkOutsideDeactivationRange(cameraPos);
+
         if (farthestChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
         {
             DeactivateChunk(farthestChunk);
@@ -101,7 +104,7 @@ void World::Update(float deltaSeconds)
 //----------------------------------------------------------------------------------------------------
 void World::Render() const
 {
-    for (std::pair<const IntVec2, Chunk*> const& chunkPair : m_activeChunks)
+    for (std::pair<IntVec2 const, Chunk*> const& chunkPair : m_activeChunks)
     {
         if (chunkPair.second != nullptr)
         {

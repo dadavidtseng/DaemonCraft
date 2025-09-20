@@ -5,7 +5,6 @@
 //----------------------------------------------------------------------------------------------------
 #pragma once
 
-#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Core/FileUtils.hpp"
 
 //----------------------------------------------------------------------------------------------------
@@ -16,66 +15,66 @@
 //----------------------------------------------------------------------------------------------------
 
 // World Generation Seed
-constexpr unsigned int GAME_SEED = 0u;
+unsigned int constexpr GAME_SEED = 0u;
 
 // Noise Base Parameters
-constexpr float DEFAULT_OCTAVE_PERSISTANCE = 0.5f;
-constexpr float DEFAULT_NOISE_OCTAVE_SCALE = 2.0f;
+float constexpr DEFAULT_OCTAVE_PERSISTANCE = 0.5f;
+float constexpr DEFAULT_NOISE_OCTAVE_SCALE = 2.f;
 
 // Terrain Height Configuration
-constexpr float DEFAULT_TERRAIN_HEIGHT = 64.0f;
-constexpr float RIVER_DEPTH = 8.0f;
-constexpr float TERRAIN_NOISE_SCALE = 200.0f;
-constexpr unsigned int TERRAIN_NOISE_OCTAVES = 5u;
+float constexpr        DEFAULT_TERRAIN_HEIGHT = 64.f;
+float constexpr        RIVER_DEPTH            = 8.f;
+float constexpr        TERRAIN_NOISE_SCALE    = 200.f;
+unsigned int constexpr TERRAIN_NOISE_OCTAVES  = 5u;
 
 // Humidity (Biome) Parameters
-constexpr float HUMIDITY_NOISE_SCALE = 800.0f;
-constexpr unsigned int HUMIDITY_NOISE_OCTAVES = 4u;
+float constexpr        HUMIDITY_NOISE_SCALE   = 800.f;
+unsigned int constexpr HUMIDITY_NOISE_OCTAVES = 4u;
 
 // Temperature Parameters
-constexpr float TEMPERATURE_RAW_NOISE_SCALE = 0.0075f;
-constexpr float TEMPERATURE_NOISE_SCALE = 400.0f;
-constexpr unsigned int TEMPERATURE_NOISE_OCTAVES = 4u;
+float constexpr        TEMPERATURE_RAW_NOISE_SCALE = 0.0075f;
+float constexpr        TEMPERATURE_NOISE_SCALE     = 400.f;
+unsigned int constexpr TEMPERATURE_NOISE_OCTAVES   = 4u;
 
 // Hill/Mountain Parameters
-constexpr float HILLINESS_NOISE_SCALE = 250.0f;
-constexpr unsigned int HILLINESS_NOISE_OCTAVES = 4u;
+float constexpr        HILLINESS_NOISE_SCALE   = 250.f;
+unsigned int constexpr HILLINESS_NOISE_OCTAVES = 4u;
 
 // Ocean Generation
-constexpr float OCEAN_START_THRESHOLD = 0.0f;
-constexpr float OCEAN_END_THRESHOLD = 0.5f;
-constexpr float OCEAN_DEPTH = 30.0f;
-constexpr float OCEANESS_NOISE_SCALE = 600.0f;
-constexpr unsigned int OCEANESS_NOISE_OCTAVES = 3u;
+float constexpr        OCEAN_START_THRESHOLD  = 0.0f;
+float constexpr        OCEAN_END_THRESHOLD    = 0.5f;
+float constexpr        OCEAN_DEPTH            = 30.f;
+float constexpr        OCEANESS_NOISE_SCALE   = 600.f;
+unsigned int constexpr OCEANESS_NOISE_OCTAVES = 3u;
 
 // Soil Layer Configuration
-constexpr int MIN_DIRT_OFFSET_Z = 3;
-constexpr int MAX_DIRT_OFFSET_Z = 4;
-constexpr float MIN_SAND_HUMIDITY = 0.4f;
-constexpr float MAX_SAND_HUMIDITY = 0.7f;
-constexpr int SEA_LEVEL_Z = 64; // CHUNK_SIZE_Z / 2 = 128 / 2
+int constexpr   MIN_DIRT_OFFSET_Z = 3;
+int constexpr   MAX_DIRT_OFFSET_Z = 4;
+float constexpr MIN_SAND_HUMIDITY = 0.4f;
+float constexpr MAX_SAND_HUMIDITY = 0.7f;
+int constexpr   SEA_LEVEL_Z       = 64; // CHUNK_SIZE_Z / 2 = 128 / 2
 
 // Ice Formation Parameters
-constexpr float ICE_TEMPERATURE_MAX = 0.37f;
-constexpr float ICE_TEMPERATURE_MIN = 0.0f;
-constexpr float ICE_DEPTH_MIN = 0.0f;
-constexpr float ICE_DEPTH_MAX = 8.0f;
+float constexpr ICE_TEMPERATURE_MAX = 0.37f;
+float constexpr ICE_TEMPERATURE_MIN = 0.f;
+float constexpr ICE_DEPTH_MIN       = 0.f;
+float constexpr ICE_DEPTH_MAX       = 8.f;
 
 // Sand Layer Configuration
-constexpr float MIN_SAND_DEPTH_HUMIDITY = 0.4f;
-constexpr float MAX_SAND_DEPTH_HUMIDITY = 0.0f;
-constexpr float SAND_DEPTH_MIN = 0.0f;
-constexpr float SAND_DEPTH_MAX = 6.0f;
+float constexpr MIN_SAND_DEPTH_HUMIDITY = 0.4f;
+float constexpr MAX_SAND_DEPTH_HUMIDITY = 0.f;
+float constexpr SAND_DEPTH_MIN          = 0.f;
+float constexpr SAND_DEPTH_MAX          = 6.f;
 
 // Ore Generation Probabilities
-constexpr float COAL_CHANCE = 0.05f;
-constexpr float IRON_CHANCE = 0.02f;
-constexpr float GOLD_CHANCE = 0.005f;
-constexpr float DIAMOND_CHANCE = 0.0001f;
+float constexpr COAL_CHANCE    = 0.05f;
+float constexpr IRON_CHANCE    = 0.02f;
+float constexpr GOLD_CHANCE    = 0.005f;
+float constexpr DIAMOND_CHANCE = 0.0001f;
 
 // Special Depth Layers
-constexpr int OBSIDIAN_Z = 1;
-constexpr int LAVA_Z = 0;
+int constexpr OBSIDIAN_Z = 1;
+int constexpr LAVA_Z     = 0;
 
 //----------------------------------------------------------------------------------------------------
 // Chunk File Format Structures
@@ -92,7 +91,7 @@ struct ChunkFileHeader
 };
 
 // Chunk-specific RLE entry type alias for Engine's generic RLE system
-using ChunkRLEEntry = RLEEntry<uint8_t>;
+using ChunkRLEEntry = sRLEEntry<uint8_t>;
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 struct Rgba8;

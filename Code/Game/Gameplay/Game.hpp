@@ -6,9 +6,9 @@
 #pragma once
 #include <cstdint>
 
-#include "World.hpp"
+#include "Game/Gameplay/World.hpp"
 
-//----------------------------------------------------------------------------------------------------
+//-Forward-Declaration--------------------------------------------------------------------------------
 class Camera;
 class Clock;
 class Player;
@@ -52,9 +52,9 @@ private:
     Player* m_player       = nullptr;
     World*  m_world        = nullptr;
 
-    Prop*      m_grid       = nullptr;
-    Clock*     m_gameClock  = nullptr;
-    eGameState m_gameState  = eGameState::GAME;
+    Prop*      m_grid      = nullptr;
+    Clock*     m_gameClock = nullptr;
+    eGameState m_gameState = eGameState::GAME;
 
     // Block placing system
     uint8_t m_currentBlockType = 9; // Start with BLOCK_GLOWSTONE (index 9 in XML)

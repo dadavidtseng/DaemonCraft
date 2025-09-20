@@ -6,6 +6,7 @@
 #include "Game/Framework/Chunk.hpp"
 
 #include "Engine/Core/EngineCommon.hpp"
+#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Core/Rgba8.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/RandomNumberGenerator.hpp"
@@ -24,23 +25,23 @@
 
 //----------------------------------------------------------------------------------------------------
 // Block Type Constants - Must match BlockSpriteSheet_BlockDefinitions.xml exactly (0-indexed)
-const uint8_t BLOCK_AIR              = 0;   // Air
-const uint8_t BLOCK_GRASS            = 1;   // Grass
-const uint8_t BLOCK_DIRT             = 2;   // Dirt
-const uint8_t BLOCK_STONE            = 3;   // Stone
-const uint8_t BLOCK_COAL             = 4;   // Coal
-const uint8_t BLOCK_IRON             = 5;   // Iron
-const uint8_t BLOCK_GOLD             = 6;   // Gold
-const uint8_t BLOCK_DIAMOND          = 7;   // Diamond
-const uint8_t BLOCK_WATER            = 8;   // Water
-const uint8_t BLOCK_GLOWSTONE        = 9;   // Glowstone (index 9 in XML)
-const uint8_t BLOCK_COBBLESTONE      = 10;  // Cobblestone (index 10 in XML)
-const uint8_t BLOCK_CHISELED_BRICK   = 11;  // ChiseledBrick (index 11 in XML)
-const uint8_t BLOCK_SAND             = 12;  // Sand (index 12 in XML)
-const uint8_t BLOCK_SNOW             = 13;  // Snow (index 13 in XML)
-const uint8_t BLOCK_ICE              = 14;  // Ice (index 14 in XML)
-const uint8_t BLOCK_OBSIDIAN         = 15;  // Obsidian (index 15 in XML)
-const uint8_t BLOCK_LAVA             = 26;  // Lava (index 26 in XML)
+const uint8_t BLOCK_AIR            = 0;   // Air
+const uint8_t BLOCK_GRASS          = 1;   // Grass
+const uint8_t BLOCK_DIRT           = 2;   // Dirt
+const uint8_t BLOCK_STONE          = 3;   // Stone
+const uint8_t BLOCK_COAL           = 4;   // Coal
+const uint8_t BLOCK_IRON           = 5;   // Iron
+const uint8_t BLOCK_GOLD           = 6;   // Gold
+const uint8_t BLOCK_DIAMOND        = 7;   // Diamond
+const uint8_t BLOCK_WATER          = 8;   // Water
+const uint8_t BLOCK_GLOWSTONE      = 9;   // Glowstone (index 9 in XML)
+const uint8_t BLOCK_COBBLESTONE    = 10;  // Cobblestone (index 10 in XML)
+const uint8_t BLOCK_CHISELED_BRICK = 11;  // ChiseledBrick (index 11 in XML)
+const uint8_t BLOCK_SAND           = 12;  // Sand (index 12 in XML)
+const uint8_t BLOCK_SNOW           = 13;  // Snow (index 13 in XML)
+const uint8_t BLOCK_ICE            = 14;  // Ice (index 14 in XML)
+const uint8_t BLOCK_OBSIDIAN       = 15;  // Obsidian (index 15 in XML)
+const uint8_t BLOCK_LAVA           = 26;  // Lava (index 26 in XML)
 
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
@@ -71,7 +72,7 @@ void Chunk::Update(float const deltaSeconds)
     // NOTE: Mesh rebuilding is now managed by World class to ensure only one chunk per frame
     // The World::Update() method calls RebuildMesh() directly on the nearest dirty chunk
     // This ensures the assignment requirement of "up to one active chunk at most may be built or rebuilt per frame"
-    
+
     // NOTE: F2 debug key handling is now managed by World class to ensure consistent behavior
     // across all chunks including newly activated ones
 }
@@ -104,21 +105,21 @@ void Chunk::GenerateTerrain()
     // Establish world-space position and bounds of this chunk
     Vec3 chunkPosition((float)(m_chunkCoords.x) * CHUNK_SIZE_X, (float)(m_chunkCoords.y) * CHUNK_SIZE_Y, 0.f);
     Vec3 chunkBounds = chunkPosition + Vec3((float)CHUNK_SIZE_X, (float)CHUNK_SIZE_Y, (float)CHUNK_SIZE_Z);
-    
+
     // Derive deterministic seeds for each noise channel
-    unsigned int terrainSeed = GAME_SEED;
-    unsigned int humiditySeed = GAME_SEED + 1;
+    unsigned int terrainSeed     = GAME_SEED;
+    unsigned int humiditySeed    = GAME_SEED + 1;
     unsigned int temperatureSeed = humiditySeed + 1;
-    unsigned int hillSeed = temperatureSeed + 1;
-    unsigned int oceanSeed = hillSeed + 1;
-    unsigned int dirtSeed = oceanSeed + 1;
-    
+    unsigned int hillSeed        = temperatureSeed + 1;
+    unsigned int oceanSeed       = hillSeed + 1;
+    unsigned int dirtSeed        = oceanSeed + 1;
+
     // Allocate per-(x,y) maps
-    int heightMapXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
-    int dirtDepthXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
+    int   heightMapXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
+    int   dirtDepthXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
     float humidityMapXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
     float temperatureMapXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
-    
+
     // --- Pass 1: compute surface & biome fields per (x,y) pillar ---
     for (int y = 0; y < CHUNK_SIZE_Y; y++)
     {
@@ -126,7 +127,7 @@ void Chunk::GenerateTerrain()
         {
             int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
             int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
-            
+
             // Humidity calculation (0.5 + 0.5 * Perlin2D(...))
             float humidity = 0.5f + 0.5f * Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
@@ -137,10 +138,10 @@ void Chunk::GenerateTerrain()
                 true,  // renormalize
                 humiditySeed
             );
-            
+
             // Temperature calculation (raw noise + Perlin)
             float temperature = Get2dNoiseNegOneToOne(globalX, globalY, temperatureSeed) * TEMPERATURE_RAW_NOISE_SCALE;
-            temperature = temperature + 0.5f + 0.5f * Compute2dPerlinNoise(
+            temperature       = temperature + 0.5f + 0.5f * Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
                 TEMPERATURE_NOISE_SCALE,
                 TEMPERATURE_NOISE_OCTAVES,
@@ -149,7 +150,7 @@ void Chunk::GenerateTerrain()
                 true,  // renormalize
                 temperatureSeed
             );
-            
+
             // Hilliness calculation
             float rawHill = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
@@ -161,7 +162,7 @@ void Chunk::GenerateTerrain()
                 hillSeed
             );
             float hill = SmoothStep3(RangeMap(rawHill, -1.f, 1.f, 0.f, 1.f));
-            
+
             // Ocean calculation
             float ocean = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
@@ -172,7 +173,7 @@ void Chunk::GenerateTerrain()
                 true,  // renormalize
                 oceanSeed
             );
-            
+
             // Terrain height calculation
             float rawTerrain = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
@@ -183,29 +184,29 @@ void Chunk::GenerateTerrain()
                 true,  // renormalize
                 terrainSeed
             );
-            
+
             // Base terrain height with river/hill shaping
             float terrainHeightF = DEFAULT_TERRAIN_HEIGHT + hill * RangeMap(fabsf(rawTerrain), 0.f, 1.f, -RIVER_DEPTH, DEFAULT_TERRAIN_HEIGHT);
-            
+
             // Ocean depressions
             if (ocean > OCEAN_START_THRESHOLD)
             {
                 float oceanBlend = RangeMapClamped(ocean, OCEAN_START_THRESHOLD, OCEAN_END_THRESHOLD, 0.f, 1.f);
-                terrainHeightF = terrainHeightF - Interpolate(0.f, OCEAN_DEPTH, oceanBlend);
+                terrainHeightF   = terrainHeightF - Interpolate(0.f, OCEAN_DEPTH, oceanBlend);
             }
-            
+
             // Dirt layer thickness driven by noise
             float dirtDepthPct = Get2dNoiseZeroToOne(globalX, globalY, dirtSeed);
-            int dirtDepth = MIN_DIRT_OFFSET_Z + (int)roundf(dirtDepthPct * (float)(MAX_DIRT_OFFSET_Z - MIN_DIRT_OFFSET_Z));
-            
-            int idxXY = y * CHUNK_SIZE_X + x;
-            humidityMapXY[idxXY] = humidity;
+            int   dirtDepth    = MIN_DIRT_OFFSET_Z + (int)roundf(dirtDepthPct * (float)(MAX_DIRT_OFFSET_Z - MIN_DIRT_OFFSET_Z));
+
+            int idxXY               = y * CHUNK_SIZE_X + x;
+            humidityMapXY[idxXY]    = humidity;
             temperatureMapXY[idxXY] = temperature;
-            heightMapXY[idxXY] = (int)floorf(terrainHeightF);
-            dirtDepthXY[idxXY] = dirtDepth;
+            heightMapXY[idxXY]      = (int)floorf(terrainHeightF);
+            dirtDepthXY[idxXY]      = dirtDepth;
         }
     }
-    
+
     // --- Pass 2: assign block types for every (x,y,z) using cache-coherent iteration ---
     for (int z = 0; z < CHUNK_SIZE_Z; z++)
     {
@@ -215,20 +216,20 @@ void Chunk::GenerateTerrain()
             {
                 IntVec3 localCoords(x, y, z);
                 IntVec3 globalCoords = GetGlobalCoords(m_chunkCoords, localCoords);
-                int idx = LocalCoordsToIndex(localCoords);
-                int idxXY = y * CHUNK_SIZE_X + x;
-                
-                int terrainHeight = heightMapXY[idxXY];
-                int dirtDepth = dirtDepthXY[idxXY];
-                float humidity = humidityMapXY[idxXY];
-                float temperature = temperatureMapXY[idxXY];
-                
+                int     idx          = LocalCoordsToIndex(localCoords);
+                int     idxXY        = y * CHUNK_SIZE_X + x;
+
+                int   terrainHeight = heightMapXY[idxXY];
+                int   dirtDepth     = dirtDepthXY[idxXY];
+                float humidity      = humidityMapXY[idxXY];
+                float temperature   = temperatureMapXY[idxXY];
+
                 // Temperature-driven ice ceiling depth
                 float iceDepth = DEFAULT_TERRAIN_HEIGHT - floorf(RangeMapClamped(temperature,
-                    ICE_TEMPERATURE_MAX, ICE_TEMPERATURE_MIN, ICE_DEPTH_MIN, ICE_DEPTH_MAX));
-                
+                                                                                 ICE_TEMPERATURE_MAX, ICE_TEMPERATURE_MIN, ICE_DEPTH_MIN, ICE_DEPTH_MAX));
+
                 uint8_t blockType = BLOCK_AIR; // Default to air
-                
+
                 // Water and ice between surface and sea level
                 if (globalCoords.z > terrainHeight && globalCoords.z < SEA_LEVEL_Z)
                 {
@@ -238,7 +239,7 @@ void Chunk::GenerateTerrain()
                         blockType = BLOCK_ICE;
                     }
                 }
-                
+
                 // Surface block (grass vs sand by humidity and elevation)
                 if (globalCoords.z == terrainHeight)
                 {
@@ -252,12 +253,12 @@ void Chunk::GenerateTerrain()
                         blockType = BLOCK_SAND;
                     }
                 }
-                
+
                 // Subsurface: dirt or sand cap above stone/ores
                 int dirtTopZ = terrainHeight - dirtDepth;
                 int sandTopZ = terrainHeight - (int)floorf(RangeMapClamped(humidity,
-                    MIN_SAND_DEPTH_HUMIDITY, MAX_SAND_DEPTH_HUMIDITY, SAND_DEPTH_MIN, SAND_DEPTH_MAX));
-                
+                                                                           MIN_SAND_DEPTH_HUMIDITY, MAX_SAND_DEPTH_HUMIDITY, SAND_DEPTH_MIN, SAND_DEPTH_MAX));
+
                 if (globalCoords.z < terrainHeight && globalCoords.z >= dirtTopZ)
                 {
                     blockType = BLOCK_DIRT;
@@ -266,7 +267,7 @@ void Chunk::GenerateTerrain()
                         blockType = BLOCK_SAND;
                     }
                 }
-                
+
                 // Deep underground: special layers, lava/obsidian, ores, stone
                 if (globalCoords.z < dirtTopZ)
                 {
@@ -303,13 +304,13 @@ void Chunk::GenerateTerrain()
                         }
                     }
                 }
-                
+
                 m_blocks[idx].m_typeIndex = blockType;
             }
         }
     }
-    
-    // Mark mesh as needing regeneration 
+
+    // Mark mesh as needing regeneration
     m_isMeshDirty = true;
 }
 
@@ -324,44 +325,27 @@ void Chunk::RebuildMesh()
     // Memory layout is: index = x + (y << CHUNK_BITS_X) + (z << (CHUNK_BITS_X + CHUNK_BITS_Y))
     for (int blockIndex = 0; blockIndex < BLOCKS_PER_CHUNK; blockIndex++)
     {
-        Block& block = m_blocks[blockIndex];
-        sBlockDefinition* def = sBlockDefinition::GetDefinitionByIndex(block.m_typeIndex);
+        Block&            block = m_blocks[blockIndex];
+        sBlockDefinition* def   = sBlockDefinition::GetDefinitionByIndex(block.m_typeIndex);
 
         // Skip invisible blocks (air, transparent blocks)
         if (!def || !def->IsVisible()) continue;
 
         // Create block iterator for efficient neighbor access
         BlockIterator blockIter(this, blockIndex);
-        
+
         // Use hidden surface removal for only visible faces
         AddBlockFacesWithHiddenSurfaceRemoval(blockIter, def);
     }
-    
+
     // Add debug wireframe for chunk bounds
     AddVertsForWireframeAABB3D(m_debugVertices, m_worldBounds, 0.1f);
 
     // Update GPU buffers from CPU arrays
     UpdateVertexBuffer();
-    
+
     // Mark mesh as no longer dirty
     m_isMeshDirty = false;
-}
-
-//----------------------------------------------------------------------------------------------------
-int Chunk::GetBlockIndexFromLocalCoords(int const localX,
-                                        int const localY,
-                                        int const localZ) const
-{
-    return localX + (localY << CHUNK_BITS_X) + (localZ << (CHUNK_BITS_X + CHUNK_BITS_Y));
-}
-
-//----------------------------------------------------------------------------------------------------
-IntVec3 Chunk::GetLocalCoordsFromIndex(int const blockIndex) const
-{
-    int const x = blockIndex & CHUNK_MASK_X;
-    int const y = (blockIndex & CHUNK_MASK_Y) >> CHUNK_BITS_X;
-    int const z = (blockIndex & CHUNK_MASK_Z) >> (CHUNK_BITS_X + CHUNK_BITS_Y);
-    return IntVec3(x, y, z);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -393,20 +377,20 @@ void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockI
     }
 
     // Calculate block index
-    int index = GetBlockIndexFromLocalCoords(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
-    
+    int index = LocalCoordsToIndex(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
+
     // Check if block type is actually changing
     if (m_blocks[index].m_typeIndex != blockTypeIndex)
     {
         // Debug output to help diagnose modification
-        DebuggerPrintf("Block modified at (%d,%d,%d) in chunk (%d,%d): %d -> %d\n", 
-                      localBlockIndexX, localBlockIndexY, localBlockIndexZ,
-                      m_chunkCoords.x, m_chunkCoords.y,
-                      m_blocks[index].m_typeIndex, blockTypeIndex);
-        
+        DebuggerPrintf("Block modified at (%d,%d,%d) in chunk (%d,%d): %d -> %d\n",
+                       localBlockIndexX, localBlockIndexY, localBlockIndexZ,
+                       m_chunkCoords.x, m_chunkCoords.y,
+                       m_blocks[index].m_typeIndex, blockTypeIndex);
+
         // Set the new block type
         m_blocks[index].m_typeIndex = blockTypeIndex;
-        
+
         // Mark chunk as modified - needs saving and mesh regeneration
         SetNeedsSaving(true);
         SetIsMeshDirty(true);
@@ -623,8 +607,8 @@ void Chunk::SetNeighborChunks(Chunk* north, Chunk* south, Chunk* east, Chunk* we
 {
     m_northNeighbor = north;
     m_southNeighbor = south;
-    m_eastNeighbor = east;
-    m_westNeighbor = west;
+    m_eastNeighbor  = east;
+    m_westNeighbor  = west;
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -632,8 +616,8 @@ void Chunk::ClearNeighborPointers()
 {
     m_northNeighbor = nullptr;
     m_southNeighbor = nullptr;
-    m_eastNeighbor = nullptr;
-    m_westNeighbor = nullptr;
+    m_eastNeighbor  = nullptr;
+    m_westNeighbor  = nullptr;
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -641,12 +625,13 @@ void Chunk::ClearNeighborPointers()
 //----------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------
-void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter, sBlockDefinition* def)
+void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter,
+                                                  sBlockDefinition*    def)
 {
     IntVec3 localCoords = blockIter.GetLocalCoords();
-    Vec3 blockCenter = Vec3((float)localCoords.x + 0.5f, (float)localCoords.y + 0.5f, (float)localCoords.z + 0.5f) + 
-                       Vec3(m_chunkCoords.x * CHUNK_SIZE_X, m_chunkCoords.y * CHUNK_SIZE_Y, 0);
-    
+    Vec3    blockCenter = Vec3((float)localCoords.x + 0.5f, (float)localCoords.y + 0.5f, (float)localCoords.z + 0.5f) +
+    Vec3(m_chunkCoords.x * CHUNK_SIZE_X, m_chunkCoords.y * CHUNK_SIZE_Y, 0);
+
     // Check each face direction and only add visible faces
     // Face directions as offset vectors
     IntVec3 faceDirections[6] = {
@@ -657,7 +642,7 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
         IntVec3(0, 1, 0),   // North face (+Y)
         IntVec3(0, -1, 0)   // South face (-Y)
     };
-    
+
     Vec3 faceNormals[6] = {
         Vec3::Z_BASIS,      // Top
         -Vec3::Z_BASIS,     // Bottom
@@ -666,7 +651,7 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
         Vec3::Y_BASIS,      // North
         -Vec3::Y_BASIS      // South
     };
-    
+
     Rgba8 faceTints[6] = {
         Rgba8::WHITE,               // Top
         Rgba8::WHITE,               // Bottom
@@ -675,17 +660,17 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
         Rgba8(200, 200, 200),       // North
         Rgba8(200, 200, 200)        // South
     };
-    
+
     // For each face, check if it's visible before adding it
     for (int faceIndex = 0; faceIndex < 6; faceIndex++)
     {
         if (IsFaceVisible(blockIter, faceDirections[faceIndex]))
         {
             Vec2 uvs;
-            if (faceIndex == 0)       uvs = def->GetTopUVs();     // Top
-            else if (faceIndex == 1)  uvs = def->GetBottomUVs();  // Bottom  
-            else                      uvs = def->GetSideUVs();    // Sides
-            
+            if (faceIndex == 0) uvs = def->GetTopUVs();     // Top
+            else if (faceIndex == 1) uvs = def->GetBottomUVs();  // Bottom
+            else uvs                     = def->GetSideUVs();    // Sides
+
             AddBlockFace(blockCenter, faceNormals[faceIndex], uvs, faceTints[faceIndex]);
         }
     }
@@ -696,27 +681,27 @@ bool Chunk::IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDir
 {
     // Get neighboring block in the face direction
     BlockIterator neighborIter = blockIter.GetNeighbor(faceDirection);
-    
+
     // If neighbor is outside this chunk, always render face (assignment requirement)
     if (!neighborIter.IsValid())
     {
         return true;  // Face against neighboring blocks in other chunks are always rendered
     }
-    
+
     // Get the neighboring block
     Block* neighborBlock = neighborIter.GetBlock();
     if (!neighborBlock)
     {
         return true;  // No block = air, so face is visible
     }
-    
+
     // Get neighbor block definition
     sBlockDefinition* neighborDef = sBlockDefinition::GetDefinitionByIndex(neighborBlock->m_typeIndex);
     if (!neighborDef)
     {
         return true;  // No definition = air, so face is visible
     }
-    
+
     // Face is hidden if neighbor is opaque (not visible = air, visible = solid)
     // Hidden surface removal: skip faces whose neighboring block is opaque
     return !neighborDef->IsVisible() || !neighborDef->IsOpaque();

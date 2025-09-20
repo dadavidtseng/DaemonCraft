@@ -5,21 +5,19 @@
 //----------------------------------------------------------------------------------------------------
 #include "Game/Gameplay/Player.hpp"
 
-#include "Game.hpp"
-#include "Engine/Core/Clock.hpp"
 #include "Engine/Core/EngineCommon.hpp"
-#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/MathUtils.hpp"
 #include "Engine/Renderer/Camera.hpp"
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Gameplay/Game.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Player::Player(Game* owner)
     : Entity(owner)
 {
     m_worldCamera = new Camera();
-    m_worldCamera->SetPerspectiveGraphicView(2.f, 60.f, 0.1f, 1000.f);
+    m_worldCamera->SetPerspectiveGraphicView(2.f, 60.f, 0.1f, 10000.f);
     m_worldCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
 
     Mat44 c2r;
@@ -33,8 +31,8 @@ Player::Player(Game* owner)
 
     m_worldCamera->SetCameraToRenderTransform(c2r);
 
-    m_position    = Vec3(-50, -50, 150);
-    m_orientation = EulerAngles(45, 45, 0);
+    m_position    = Vec3(0, 0, 128);
+    m_orientation = EulerAngles(-45,30, 0);
 }
 
 //----------------------------------------------------------------------------------------------------

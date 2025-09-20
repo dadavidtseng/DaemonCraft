@@ -45,8 +45,9 @@ public:
     World();
     ~World();
 
-    void    Update(float deltaSeconds);
-    void    Render() const;
+    void Update(float deltaSeconds);
+    void Render() const;
+
     void    ActivateChunk(IntVec2 const& chunkCoords);
     void    DeactivateChunk(IntVec2 const& chunkCoords);
     void    DeactivateAllChunks(); // For debug F8 and shutdown
@@ -54,16 +55,16 @@ public:
     bool    SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
     Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
-    
+
     // Debug information getters
-    int     GetActiveChunkCount() const;
-    int     GetTotalVertexCount() const;
-    int     GetTotalIndexCount() const;
+    int GetActiveChunkCount() const;
+    int GetTotalVertexCount() const;
+    int GetTotalIndexCount() const;
 
     // Digging and placing methods
     bool    DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera
     bool    PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType); // RMB - place block above highest non-air block
-    IntVec3 FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const; // Helper to find highest solid block
+    IntVec3 FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const; // Helper to find the highest solid block
 
     // Chunk management helper methods
     Vec3    GetCameraPosition() const;
