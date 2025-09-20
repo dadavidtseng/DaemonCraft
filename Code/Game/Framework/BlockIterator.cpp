@@ -4,13 +4,14 @@
 
 //----------------------------------------------------------------------------------------------------
 #include "Game/Framework/BlockIterator.hpp"
-#include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/Block.hpp"
+#include "Game/Framework/Chunk.hpp"
 
 //----------------------------------------------------------------------------------------------------
-BlockIterator::BlockIterator(Chunk* chunk, int blockIndex)
-    : m_chunk(chunk)
-    , m_blockIndex(blockIndex)
+BlockIterator::BlockIterator(Chunk*    chunk,
+                             int const blockIndex)
+    : m_chunk(chunk),
+      m_blockIndex(blockIndex)
 {
 }
 
@@ -18,8 +19,9 @@ BlockIterator::BlockIterator(Chunk* chunk, int blockIndex)
 Block* BlockIterator::GetBlock() const
 {
     if (!IsValid()) return nullptr;
-    
-    IntVec3 localCoords = GetLocalCoords();
+
+    IntVec3 const localCoords = GetLocalCoords();
+
     return m_chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
 }
 
@@ -75,14 +77,15 @@ bool BlockIterator::MoveDown()
 bool BlockIterator::MoveByOffset(IntVec3 const& offset)
 {
     if (!IsValid()) return false;
-    
-    int newIndex = CalculateIndexFromOffset(offset);
+
+    int const newIndex = CalculateIndexFromOffset(offset);
+
     if (IsIndexValid(newIndex))
     {
         m_blockIndex = newIndex;
         return true;
     }
-    
+
     return false;
 }
 
@@ -90,13 +93,14 @@ bool BlockIterator::MoveByOffset(IntVec3 const& offset)
 BlockIterator BlockIterator::GetNeighbor(IntVec3 const& offset) const
 {
     if (!IsValid()) return BlockIterator(nullptr, -1);
-    
-    int newIndex = CalculateIndexFromOffset(offset);
+
+    int const newIndex = CalculateIndexFromOffset(offset);
+
     if (IsIndexValid(newIndex))
     {
         return BlockIterator(m_chunk, newIndex);
     }
-    
+
     return BlockIterator(nullptr, -1);  // Invalid iterator
 }
 
@@ -137,7 +141,7 @@ BlockIterator BlockIterator::GetDownNeighbor() const
 }
 
 //----------------------------------------------------------------------------------------------------
-bool BlockIterator::IsIndexValid(int index) const
+bool BlockIterator::IsIndexValid(int const index) const
 {
     return index >= 0 && index < BLOCKS_PER_CHUNK;
 }
@@ -145,9 +149,9 @@ bool BlockIterator::IsIndexValid(int index) const
 //----------------------------------------------------------------------------------------------------
 int BlockIterator::CalculateIndexFromOffset(IntVec3 const& offset) const
 {
-    IntVec3 currentCoords = GetLocalCoords();
-    IntVec3 newCoords = currentCoords + offset;
-    
+    IntVec3 const currentCoords = GetLocalCoords();
+    IntVec3 const newCoords     = currentCoords + offset;
+
     // Check bounds using bit operations for efficiency
     if (newCoords.x < 0 || newCoords.x >= CHUNK_SIZE_X ||
         newCoords.y < 0 || newCoords.y >= CHUNK_SIZE_Y ||
@@ -155,7 +159,7 @@ int BlockIterator::CalculateIndexFromOffset(IntVec3 const& offset) const
     {
         return -1;  // Out of bounds
     }
-    
+
     // Use bit operations for fast index calculation
     return Chunk::LocalCoordsToIndex(newCoords);
 }
