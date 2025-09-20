@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Engine/Core/ErrorWarningAssert.hpp"
+#include "Engine/Core/FileUtils.hpp"
 
 //----------------------------------------------------------------------------------------------------
 #define GAME_DEBUG_MODE
@@ -90,12 +91,8 @@ struct ChunkFileHeader
     uint8_t chunkBitsZ;     // Will be set to CHUNK_BITS_Z (7)
 };
 
-// RLE compression entry for chunk data (2 bytes per run)
-struct RLEEntry
-{
-    uint8_t blockType;      // Block type index [0-255]
-    uint8_t runLength;      // Number of consecutive blocks [1-255]
-};
+// Chunk-specific RLE entry type alias for Engine's generic RLE system
+using ChunkRLEEntry = RLEEntry<uint8_t>;
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 struct Rgba8;

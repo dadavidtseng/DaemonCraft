@@ -367,7 +367,7 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
     }
 
     // Verify minimum file size (header + at least one RLE entry)
-    if (buffer.size() < sizeof(ChunkFileHeader) + sizeof(RLEEntry))
+    if (buffer.size() < sizeof(ChunkFileHeader) + sizeof(ChunkRLEEntry))
     {
         return false; // File too small
     }
@@ -396,23 +396,23 @@ bool World::LoadChunkFromDisk(Chunk* chunk) const
     while (dataOffset < buffer.size() && blockIndex < BLOCKS_PER_CHUNK)
     {
         // Read RLE entry
-        if (dataOffset + sizeof(RLEEntry) > buffer.size())
+        if (dataOffset + sizeof(ChunkRLEEntry) > buffer.size())
         {
             return false; // Incomplete RLE entry
         }
 
-        RLEEntry entry;
-        memcpy(&entry, buffer.data() + dataOffset, sizeof(RLEEntry));
-        dataOffset += sizeof(RLEEntry);
+        ChunkRLEEntry entry;
+        memcpy(&entry, buffer.data() + dataOffset, sizeof(ChunkRLEEntry));
+        dataOffset += sizeof(ChunkRLEEntry);
 
         // Apply run to blocks
-        for (int i = 0; i < entry.runLength && blockIndex < BLOCKS_PER_CHUNK; i++)
+        for (int i = 0; i < entry.count && blockIndex < BLOCKS_PER_CHUNK; i++)
         {
             IntVec3 localCoords = Chunk::IndexToLocalCoords(blockIndex);
             Block*  block       = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
             if (block != nullptr)
             {
-                block->m_typeIndex = entry.blockType;
+                block->m_typeIndex = entry.value;
             }
             blockIndex++;
         }
@@ -460,9 +460,9 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
     }
 
     // Compress using RLE
-    std::vector<RLEEntry> rleEntries;
-    uint8_t               currentType = blockData[0];
-    uint8_t               runLength   = 1;
+    std::vector<ChunkRLEEntry> rleEntries;
+    uint8_t                    currentType = blockData[0];
+    uint8_t                    runLength   = 1;
 
     for (int i = 1; i < BLOCKS_PER_CHUNK; i++)
     {
@@ -493,7 +493,7 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
     header.chunkBitsZ = CHUNK_BITS_Z;
 
     // Calculate total file size
-    size_t               fileSize = sizeof(ChunkFileHeader) + rleEntries.size() * sizeof(RLEEntry);
+    size_t               fileSize = sizeof(ChunkFileHeader) + rleEntries.size() * sizeof(ChunkRLEEntry);
     std::vector<uint8_t> fileBuffer(fileSize);
 
     // Write header
@@ -501,10 +501,10 @@ bool World::SaveChunkToDisk(Chunk* chunk) const
 
     // Write RLE entries
     size_t offset = sizeof(ChunkFileHeader);
-    for (const RLEEntry& entry : rleEntries)
+    for (const ChunkRLEEntry& entry : rleEntries)
     {
-        memcpy(fileBuffer.data() + offset, &entry, sizeof(RLEEntry));
-        offset += sizeof(RLEEntry);
+        memcpy(fileBuffer.data() + offset, &entry, sizeof(ChunkRLEEntry));
+        offset += sizeof(ChunkRLEEntry);
     }
 
     // Write to file using safe fopen_s
