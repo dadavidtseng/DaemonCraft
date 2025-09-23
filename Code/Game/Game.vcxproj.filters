@@ -11,12 +11,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Subsystem">
-      <UniqueIdentifier>{8426af66-dfd7-4c82-92cc-127a885b31ed}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Subsystem\Light">
-      <UniqueIdentifier>{5bbbd4fc-9984-4f94-8118-657dfacd0a1f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Definition">
       <UniqueIdentifier>{c9b7dcf2-8880-469c-a068-95df674abf22}</UniqueIdentifier>
     </Filter>
@@ -58,9 +52,6 @@
     <ClCompile Include="Gameplay/World.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
-    <ClCompile Include="Subsystem/Light/LightSubsystem.cpp">
-      <Filter>Framework</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EngineBuildPreferences.hpp">
@@ -77,7 +68,6 @@
     <ClInclude Include="Gameplay/Player.hpp" />
     <ClInclude Include="Gameplay/Prop.hpp" />
     <ClInclude Include="Gameplay/World.hpp" />
-    <ClInclude Include="Subsystem/Light/LightSubsystem.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../Docs/README.md" />

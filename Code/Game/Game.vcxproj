@@ -231,6 +231,7 @@
     <ClCompile Include="Framework/Block.cpp" />
     <ClCompile Include="Framework/BlockIterator.cpp" />
     <ClCompile Include="Framework/Chunk.cpp" />
+    <ClCompile Include="Framework/ChunkGenerateJob.cpp" />
     <ClCompile Include="Framework/GameCommon.cpp" />
     <ClCompile Include="Framework/Main_Windows.cpp" />
     <ClCompile Include="Gameplay/Entity.cpp" />
@@ -238,7 +239,6 @@
     <ClCompile Include="Gameplay/Player.cpp" />
     <ClCompile Include="Gameplay/Prop.cpp" />
     <ClCompile Include="Gameplay/World.cpp" />
-    <ClCompile Include="Subsystem/Light/LightSubsystem.cpp" />
   </ItemGroup>
   <!-- Header Files -->
   <ItemGroup>
@@ -248,13 +248,13 @@
     <ClInclude Include="Framework/Block.hpp" />
     <ClInclude Include="Framework/BlockIterator.hpp" />
     <ClInclude Include="Framework/Chunk.hpp" />
+    <ClInclude Include="Framework/ChunkGenerateJob.hpp" />
     <ClInclude Include="Framework/GameCommon.hpp" />
     <ClInclude Include="Gameplay/Entity.hpp" />
     <ClInclude Include="Gameplay/Game.hpp" />
     <ClInclude Include="Gameplay/Player.hpp" />
     <ClInclude Include="Gameplay/Prop.hpp" />
     <ClInclude Include="Gameplay/World.hpp" />
-    <ClInclude Include="Subsystem/Light/LightSubsystem.hpp" />
   </ItemGroup>
   <!-- Other Files -->
   <ItemGroup>

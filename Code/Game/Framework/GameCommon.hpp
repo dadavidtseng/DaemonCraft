@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Engine/Core/FileUtils.hpp"
+#include "Engine/Core/JobSystem.hpp"
 
 //----------------------------------------------------------------------------------------------------
 #define GAME_DEBUG_MODE
