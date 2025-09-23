@@ -52,7 +52,11 @@ Chunk::Chunk(IntVec2 const& chunkCoords)
     Vec3 worldMaxs = worldMins + Vec3((float)CHUNK_SIZE_X, (float)CHUNK_SIZE_Y, (float)CHUNK_SIZE_Z);
     m_worldBounds  = AABB3(worldMins, worldMaxs);
 
-    GenerateTerrain();
+    // Initialize all blocks to air (terrain generation happens asynchronously)
+    for (int i = 0; i < BLOCKS_PER_CHUNK; ++i)
+    {
+        m_blocks[i].m_typeIndex = 0; // BLOCK_AIR
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -705,4 +709,28 @@ bool Chunk::IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDir
     // Face is hidden if neighbor is opaque (not visible = air, visible = solid)
     // Hidden surface removal: skip faces whose neighboring block is opaque
     return !neighborDef->IsVisible() || !neighborDef->IsOpaque();
+}
+
+//----------------------------------------------------------------------------------------------------
+// Thread-safe chunk state management methods
+//----------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------
+bool Chunk::SetState(ChunkState newState)
+{
+    m_state.store(newState);
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+bool Chunk::CompareAndSetState(ChunkState expected, ChunkState desired)
+{
+    return m_state.compare_exchange_strong(expected, desired);
+}
+
+//----------------------------------------------------------------------------------------------------
+bool Chunk::IsStateOneOf(ChunkState state1, ChunkState state2, ChunkState state3, ChunkState state4) const
+{
+    ChunkState currentState = m_state.load();
+    return (currentState == state1) || (currentState == state2) || (currentState == state3) || (currentState == state4);
 }

@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------------------------------
 #pragma once
 #include <vector>
+#include <atomic>
 
 #include "Engine/Math/AABB3.hpp"
 #include "Engine/Math/IntVec2.hpp"
@@ -35,6 +36,32 @@ int constexpr CHUNK_MASK_X     = CHUNK_MAX_X;                                   
 int constexpr CHUNK_MASK_Y     = CHUNK_MAX_Y << CHUNK_BITS_X;                       // Bit mask (0x00F0) to extract Y bits from block index
 int constexpr CHUNK_MASK_Z     = CHUNK_MAX_Z << (CHUNK_BITS_X + CHUNK_BITS_Y);      // Bit mask (0x7F00) to extract Z bits from block index
 int constexpr BLOCKS_PER_CHUNK = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;        // Total blocks per chunk (16×16×128 = 32,768)
+
+//----------------------------------------------------------------------------------------------------
+// ChunkState - Thread-safe chunk lifecycle management
+//
+// This enum tracks the current state of a chunk throughout its lifecycle,
+// enabling thread-safe coordination between main thread and worker threads.
+// Uses atomic operations to prevent race conditions during state transitions.
+//
+// State Flow:
+// CONSTRUCTING -> ACTIVATING -> TERRAIN_GENERATING -> LIGHTING_INITIALIZING -> COMPLETE -> DEACTIVATING -> DECONSTRUCTING
+//
+// Thread Safety Rules:
+// - Only main thread can transition: CONSTRUCTING, ACTIVATING, COMPLETE, DEACTIVATING, DECONSTRUCTING
+// - Only worker threads can transition: TERRAIN_GENERATING, LIGHTING_INITIALIZING
+// - All state changes must use atomic compare-and-swap operations
+//----------------------------------------------------------------------------------------------------
+enum class ChunkState : uint8_t
+{
+    CONSTRUCTING = 0,       // Initial state during memory allocation (main thread)
+    ACTIVATING,             // Being added to world systems (main thread)
+    TERRAIN_GENERATING,     // Worker thread generating block data
+    LIGHTING_INITIALIZING,  // Setting up lighting data (worker thread or main thread)
+    COMPLETE,              // Ready for rendering and interaction (main thread)
+    DEACTIVATING,          // Being removed from world systems (main thread)
+    DECONSTRUCTING         // Final cleanup before deletion (main thread)
+};
 
 //----------------------------------------------------------------------------------------------------
 class Chunk
@@ -94,6 +121,16 @@ public:
     Chunk* GetEastNeighbor() const { return m_eastNeighbor; }
     Chunk* GetWestNeighbor() const { return m_westNeighbor; }
 
+    // Thread-safe chunk state management
+    ChunkState GetState() const { return m_state.load(); }
+    bool SetState(ChunkState newState);
+    bool CompareAndSetState(ChunkState expected, ChunkState desired);
+    bool IsStateOneOf(ChunkState state1, ChunkState state2 = ChunkState::CONSTRUCTING, 
+                     ChunkState state3 = ChunkState::CONSTRUCTING, ChunkState state4 = ChunkState::CONSTRUCTING) const;
+    bool IsReadyForWork() const { return GetState() == ChunkState::TERRAIN_GENERATING; }
+    bool IsComplete() const { return GetState() == ChunkState::COMPLETE; }
+    bool CanBeModified() const { return GetState() == ChunkState::COMPLETE; }
+
 private:
     /// @brief 6. Chunk coordinates: 2D, IntVec2 (int x,y), with x and y axes aligned with world axes (above).
     ///           Adjacent chunks have adjacent chunk coordinates; for example, chunk (4,7) is the immediate eastern neighbor of chunk (3,7), and chunk (3,7)'s easternmost edge lines up exactly with chunk (4,7)'s westernmost edge.
@@ -117,6 +154,9 @@ private:
     // Chunk management flags for persistent world
     bool m_needsSaving = false;        // true if chunk has been modified and needs to be saved to disk
     bool m_isMeshDirty = true;         // true if mesh needs regeneration
+
+    // Thread-safe chunk state (atomic for multi-threaded access)
+    mutable std::atomic<ChunkState> m_state{ChunkState::CONSTRUCTING};
 
     // Neighbor chunk pointers for efficient access
     Chunk* m_northNeighbor = nullptr;   // +Y direction
