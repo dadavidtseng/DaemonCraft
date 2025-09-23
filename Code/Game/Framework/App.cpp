@@ -9,6 +9,7 @@
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/DevConsole.hpp"
 #include "Engine/Core/EngineCommon.hpp"
+#include "Engine/Core/JobSystem.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/RandomNumberGenerator.hpp"
 #include "Engine/Platform/Window.hpp"
@@ -19,6 +20,7 @@
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Game.hpp"
 #include "Game/Subsystem/Light/LightSubsystem.hpp"
+#include <thread>
 
 //----------------------------------------------------------------------------------------------------
 App*                   g_app               = nullptr;       // Created and owned by Main_Windows.cpp
@@ -33,6 +35,7 @@ ResourceSubsystem*     g_resourceSubsystem = nullptr;       // Created and owned
 
 //----------------------------------------------------------------------------------------------------
 STATIC bool App::m_isQuitting = false;
+STATIC JobSystem* App::s_jobSystem = nullptr;
 
 //----------------------------------------------------------------------------------------------------
 App::App()
@@ -149,6 +152,12 @@ void App::Startup()
     g_audio->Startup();
     g_resourceSubsystem->Startup();
 
+    // Initialize JobSystem with N-1 worker threads
+    s_jobSystem = new JobSystem();
+    int numWorkerThreads = static_cast<int>(std::thread::hardware_concurrency()) - 1;
+    if (numWorkerThreads < 1) numWorkerThreads = 1; // Ensure at least one worker thread
+    s_jobSystem->StartUp(numWorkerThreads);
+
     g_bitmapFont = g_renderer->CreateOrGetBitmapFontFromFile("Data/Fonts/DaemonFont"); // DO NOT SPECIFY FILE .EXTENSION!!  (Important later on.)
     g_rng        = new RandomNumberGenerator();
     g_game       = new Game();
@@ -160,6 +169,15 @@ void App::Startup()
 void App::Shutdown()
 {
     GAME_SAFE_RELEASE(g_game);
+    
+    // Shutdown JobSystem before other systems
+    if (s_jobSystem)
+    {
+        s_jobSystem->ShutDown();
+        delete s_jobSystem;
+        s_jobSystem = nullptr;
+    }
+    
     g_resourceSubsystem->Shutdown();
     g_audio->Shutdown();
     g_input->Shutdown();

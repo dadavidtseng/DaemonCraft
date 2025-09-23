@@ -8,6 +8,7 @@
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 class Camera;
+class JobSystem;
 
 //----------------------------------------------------------------------------------------------------
 class App
@@ -24,6 +25,9 @@ public:
 
     void DeleteAndCreateNewGame();
 
+    // JobSystem access for global use
+    static JobSystem* GetJobSystem() { return s_jobSystem; }
+
     static bool OnCloseButtonClicked(EventArgs& args);
     static void RequestQuit();
     static bool m_isQuitting;
@@ -37,4 +41,7 @@ private:
     void UpdateCursorMode();
 
     Camera* m_devConsoleCamera = nullptr;
+    
+    // Global JobSystem instance
+    static JobSystem* s_jobSystem;
 };
