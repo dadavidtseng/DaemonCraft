@@ -16,7 +16,9 @@
 #include "Engine/Math/IntVec3.hpp"
 #include "Engine/Math/MathUtils.hpp"
 #include "Engine/Math/Vec3.hpp"
+#include "Game/Framework/App.hpp"
 #include "Game/Framework/Chunk.hpp"
+#include "Game/Framework/ChunkGenerateJob.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Game.hpp"
 
@@ -31,7 +33,6 @@ size_t std::hash<IntVec2>::operator()(IntVec2 const& vec) const noexcept
 //----------------------------------------------------------------------------------------------------
 World::World()
 {
-    // No longer hardcode chunks - they will be dynamically loaded based on camera position
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -54,6 +55,10 @@ void World::Update(float const deltaSeconds)
             chunkPair.second->Update(deltaSeconds);
         }
     }
+
+    // Process asynchronous job operations
+    ProcessCompletedChunkGenerationJobs();
+    ProcessDirtyChunkMeshes();
 
     // Get camera position for chunk management decisions
     Vec3 const cameraPos = GetCameraPosition();
@@ -122,34 +127,40 @@ void World::ActivateChunk(IntVec2 const& chunkCoords)
         return; // Already active
     }
 
+    // Check if chunk is already queued for generation
+    if (m_queuedGenerateChunks.find(chunkCoords) != m_queuedGenerateChunks.end())
+    {
+        return; // Already queued for generation
+    }
+
     // Create new chunk
     Chunk* newChunk = new Chunk(chunkCoords);
+    
+    // Set initial state
+    newChunk->SetState(ChunkState::ACTIVATING);
 
     // Try to load from disk first
     if (ChunkExistsOnDisk(chunkCoords))
     {
         if (!LoadChunkFromDisk(newChunk))
         {
-            // If load fails, generate terrain
-            newChunk->GenerateTerrain();
+            // If load fails, submit for asynchronous generation
+            SubmitChunkForGeneration(newChunk);
+        }
+        else
+        {
+            // Successfully loaded from disk
+            newChunk->SetState(ChunkState::COMPLETE);
+            m_activeChunks[chunkCoords] = newChunk;
+            UpdateNeighborPointers(chunkCoords);
+            newChunk->SetIsMeshDirty(true); // Needs mesh rebuild
         }
     }
     else
     {
-        // No save file exists, generate terrain
-        newChunk->GenerateTerrain();
+        // No save file exists, submit for asynchronous generation
+        SubmitChunkForGeneration(newChunk);
     }
-
-    // Set initial chunk state
-    newChunk->SetIsMeshDirty(true);  // Mesh needs generation
-    newChunk->SetNeedsSaving(false); // Fresh chunk doesn't need saving yet
-    newChunk->SetDebugDraw(m_globalChunkDebugDraw); // Inherit current global debug state
-
-    // Add to active chunks map
-    m_activeChunks[chunkCoords] = newChunk;
-
-    // Hook up neighbor pointers
-    UpdateNeighborPointers(chunkCoords);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -198,6 +209,78 @@ void World::DeactivateAllChunks()
 
         DeactivateChunk(it->first);
     }
+}
+
+//----------------------------------------------------------------------------------------------------
+void World::ToggleGlobalChunkDebugDraw()
+{
+    m_globalChunkDebugDraw = !m_globalChunkDebugDraw;
+    for (auto& chunkPair : m_activeChunks)
+    {
+        if (chunkPair.second != nullptr)
+        {
+            chunkPair.second->SetDebugDraw(m_globalChunkDebugDraw);
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex)
+{
+    // Get the chunk that contains this global coordinate
+    IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
+    Chunk*  chunk       = GetChunk(chunkCoords);
+
+    if (chunk == nullptr)
+    {
+        return false; // Chunk not active, cannot modify
+    }
+
+    // Convert global coordinates to local coordinates within the chunk
+    IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
+
+    // Validate Z coordinate is within chunk bounds
+    if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
+    {
+        return false; // Z coordinate out of bounds
+    }
+
+    // Set the block using the chunk's SetBlock method (which handles save/mesh dirty flags)
+    chunk->SetBlock(localCoords.x, localCoords.y, localCoords.z, blockTypeIndex);
+
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
+{
+    // Get the chunk that contains this global coordinate
+    IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
+    Chunk*  chunk       = GetChunk(chunkCoords);
+
+    if (chunk == nullptr)
+    {
+        return 0; // Return air block if chunk not active
+    }
+
+    // Convert global coordinates to local coordinates within the chunk
+    IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
+
+    // Validate Z coordinate is within chunk bounds
+    if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
+    {
+        return 0; // Return air block if out of bounds
+    }
+
+    // Get the block using the chunk's GetBlock method
+    Block* block = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
+
+    if (block == nullptr)
+    {
+        return 0; // Return air block if invalid
+    }
+
+    return block->m_typeIndex;
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -570,78 +653,6 @@ void World::ClearNeighborReferences(IntVec2 const& chunkCoords)
 }
 
 //----------------------------------------------------------------------------------------------------
-void World::ToggleGlobalChunkDebugDraw()
-{
-    m_globalChunkDebugDraw = !m_globalChunkDebugDraw;
-    for (auto& chunkPair : m_activeChunks)
-    {
-        if (chunkPair.second != nullptr)
-        {
-            chunkPair.second->SetDebugDraw(m_globalChunkDebugDraw);
-        }
-    }
-}
-
-//----------------------------------------------------------------------------------------------------
-bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex)
-{
-    // Get the chunk that contains this global coordinate
-    IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
-    Chunk*  chunk       = GetChunk(chunkCoords);
-
-    if (chunk == nullptr)
-    {
-        return false; // Chunk not active, cannot modify
-    }
-
-    // Convert global coordinates to local coordinates within the chunk
-    IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
-
-    // Validate Z coordinate is within chunk bounds
-    if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
-    {
-        return false; // Z coordinate out of bounds
-    }
-
-    // Set the block using the chunk's SetBlock method (which handles save/mesh dirty flags)
-    chunk->SetBlock(localCoords.x, localCoords.y, localCoords.z, blockTypeIndex);
-
-    return true;
-}
-
-//----------------------------------------------------------------------------------------------------
-uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
-{
-    // Get the chunk that contains this global coordinate
-    IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
-    Chunk*  chunk       = GetChunk(chunkCoords);
-
-    if (chunk == nullptr)
-    {
-        return 0; // Return air block if chunk not active
-    }
-
-    // Convert global coordinates to local coordinates within the chunk
-    IntVec3 localCoords = Chunk::GlobalCoordsToLocalCoords(globalCoords);
-
-    // Validate Z coordinate is within chunk bounds
-    if (localCoords.z < 0 || localCoords.z > CHUNK_MAX_Z)
-    {
-        return 0; // Return air block if out of bounds
-    }
-
-    // Get the block using the chunk's GetBlock method
-    Block* block = chunk->GetBlock(localCoords.x, localCoords.y, localCoords.z);
-
-    if (block == nullptr)
-    {
-        return 0; // Return air block if invalid
-    }
-
-    return block->m_typeIndex;
-}
-
-//----------------------------------------------------------------------------------------------------
 // Digging and Placing System
 //----------------------------------------------------------------------------------------------------
 
@@ -731,4 +742,152 @@ bool World::PlaceBlockAtCameraPosition(Vec3 const&   cameraPos,
     }
 
     return success;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Asynchronous job processing methods
+//----------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------
+void World::ProcessCompletedChunkGenerationJobs()
+{
+    JobSystem* jobSystem = App::GetJobSystem();
+    if (!jobSystem)
+    {
+        return;
+    }
+
+    // Retrieve all completed jobs from JobSystem
+    std::vector<Job*> completedJobs = jobSystem->RetrieveAllCompletedJobs();
+    
+    // Process each completed job
+    for (Job* completedJob : completedJobs)
+    {
+        // Find the corresponding ChunkGenerateJob in our tracking list
+        for (int i = 0; i < (int)m_chunkGenerationJobs.size(); ++i)
+        {
+            ChunkGenerateJob* job = m_chunkGenerationJobs[i];
+            if (job == completedJob)
+            {
+                Chunk* chunk = job->GetChunk();
+                if (!chunk)
+                {
+                    // Clean up invalid job
+                    delete job;
+                    m_chunkGenerationJobs.erase(m_chunkGenerationJobs.begin() + i);
+                    --i;
+                    continue;
+                }
+
+                // Verify the chunk is in the expected state
+                if (chunk->GetState() == ChunkState::LIGHTING_INITIALIZING)
+                {
+                    // Job completed successfully - handle lighting initialization on main thread
+                    // For now, just transition to COMPLETE state
+                    chunk->SetState(ChunkState::COMPLETE);
+                    
+                    // Add to active chunks if not already there
+                    IntVec2 chunkCoords = chunk->GetChunkCoords();
+                    if (m_activeChunks.find(chunkCoords) == m_activeChunks.end())
+                    {
+                        m_activeChunks[chunkCoords] = chunk;
+                        UpdateNeighborPointers(chunkCoords);
+                    }
+
+                    // Remove from queued chunks
+                    m_queuedGenerateChunks.erase(chunkCoords);
+
+                    // Mark chunk mesh as dirty for rebuilding
+                    chunk->SetIsMeshDirty(true);
+                }
+                else
+                {
+                    // Job completed but chunk is in unexpected state - handle error
+                    // This could happen if the job failed or chunk was modified externally
+                    // For now, we'll clean up and let the chunk be retried later
+                    IntVec2 chunkCoords = chunk->GetChunkCoords();
+                    m_queuedGenerateChunks.erase(chunkCoords);
+                    
+                    // Reset chunk to ACTIVATING state so it can be retried
+                    chunk->SetState(ChunkState::ACTIVATING);
+                }
+
+                // Clean up the job
+                delete job;
+                m_chunkGenerationJobs.erase(m_chunkGenerationJobs.begin() + i);
+                --i; // Adjust index after removal
+                break; // Found our job, move to next completed job
+            }
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+void World::ProcessDirtyChunkMeshes()
+{
+    Vec3 cameraPos = GetCameraPosition();
+    
+    // Find up to 2 dirty chunks closest to camera
+    std::vector<std::pair<float, Chunk*>> dirtyChunksWithDistance;
+    
+    for (auto const& chunkPair : m_activeChunks)
+    {
+        Chunk* chunk = chunkPair.second;
+        if (chunk && chunk->GetIsMeshDirty() && chunk->GetState() == ChunkState::COMPLETE)
+        {
+            float distance = GetDistanceToChunkCenter(chunk->GetChunkCoords(), cameraPos);
+            dirtyChunksWithDistance.emplace_back(distance, chunk);
+        }
+    }
+    
+    // Sort by distance (closest first)
+    std::sort(dirtyChunksWithDistance.begin(), dirtyChunksWithDistance.end());
+    
+    // Rebuild mesh for up to 2 closest dirty chunks
+    int meshesRebuilt = 0;
+    for (auto const& pair : dirtyChunksWithDistance)
+    {
+        if (meshesRebuilt >= 2)
+        {
+            break;
+        }
+        
+        Chunk* chunk = pair.second;
+        chunk->RebuildMesh();
+        chunk->SetIsMeshDirty(false);
+        ++meshesRebuilt;
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+void World::SubmitChunkForGeneration(Chunk* chunk)
+{
+    if (!chunk)
+    {
+        return;
+    }
+
+    JobSystem* jobSystem = App::GetJobSystem();
+    if (!jobSystem)
+    {
+        return;
+    }
+
+    IntVec2 chunkCoords = chunk->GetChunkCoords();
+    
+    // Check if chunk is already queued for generation
+    if (m_queuedGenerateChunks.find(chunkCoords) != m_queuedGenerateChunks.end())
+    {
+        return; // Already queued
+    }
+
+    // Set chunk state and submit job
+    if (chunk->CompareAndSetState(ChunkState::ACTIVATING, ChunkState::TERRAIN_GENERATING))
+    {
+        ChunkGenerateJob* job = new ChunkGenerateJob(chunk);
+        m_chunkGenerationJobs.push_back(job);
+        m_queuedGenerateChunks.insert(chunkCoords);
+        
+        jobSystem->SubmitJob(job);
+    }
 }

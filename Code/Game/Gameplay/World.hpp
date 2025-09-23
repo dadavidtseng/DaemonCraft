@@ -6,12 +6,14 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 struct IntVec2;
 struct IntVec3;
 struct Vec3;
 class Camera;
 class Chunk;
+class ChunkGenerateJob;
 
 //----------------------------------------------------------------------------------------------------
 // Hash function for IntVec2 to enable std::unordered_map usage
@@ -73,9 +75,19 @@ public:
     IntVec2 FindFarthestActiveChunkOutsideDeactivationRange(Vec3 const& cameraPos) const;
     Chunk*  FindNearestDirtyChunk(Vec3 const& cameraPos) const;
 
+    // Asynchronous job processing
+    void ProcessCompletedChunkGenerationJobs();
+    void ProcessDirtyChunkMeshes();
+    void SubmitChunkForGeneration(Chunk* chunk);
+
 private:
     /// @brief Active chunks stored in hash map for O(1) lookup
     std::unordered_map<IntVec2, Chunk*> m_activeChunks;
+
+    // Job management for asynchronous chunk operations
+    std::vector<ChunkGenerateJob*> m_chunkGenerationJobs;
+    std::unordered_set<IntVec2>    m_queuedGenerateChunks;
+    std::vector<Chunk*>            m_dirtyChunks;
 
     // Global debug state for all chunks
     bool m_globalChunkDebugDraw = false;
