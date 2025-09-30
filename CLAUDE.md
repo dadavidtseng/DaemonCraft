@@ -1,6 +1,11 @@
 # SimpleMiner - Voxel Game Engine
 
 ## Changelog
+- **2025-09-30**: Implemented multi-threaded chunk system with JobSystem integration
+  - Added dedicated I/O worker thread for disk operations
+  - Implemented asynchronous chunk generation, loading, and saving
+  - Added comprehensive mutex protection for thread-safe world management
+  - Fixed critical job processing bug preventing chunk generation
 - **2025-09-13**: Initial AI context documentation created
 - **Recent Commits**: Fixed Game.vcxproj relative paths, resolved compiler warnings and DirectX 11 memory leaks, added NuGet configuration for V8 integration, implemented proper chunk rendering system
 
@@ -13,8 +18,15 @@ SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engin
 The project follows a modular architecture with clear separation between engine core and game logic:
 
 - **Custom Engine Architecture**: Built on a separate engine project with modular subsystems
+- **Multi-threaded Job System**: Asynchronous chunk generation with (N-1) worker threads
+  - 1 dedicated I/O thread for disk operations (LoadChunkJob, SaveChunkJob)
+  - (N-2) generic threads for computation (ChunkGenerateJob)
+  - Thread-safe chunk state machine with std::atomic transitions
 - **DirectX 11 Rendering**: Modern GPU-accelerated graphics with HLSL shaders
 - **Chunk-based World System**: Efficient voxel storage and rendering using 16x16x128 block chunks
+  - Asynchronous chunk loading/generation with thread-safe activation
+  - RLE-compressed disk I/O for persistent world saves
+  - Mutex-protected shared data structures
 - **Block Definition System**: Data-driven block types with XML configuration
 - **V8 JavaScript Integration**: Embedded scripting engine for game logic
 - **FMOD Audio**: Professional audio system for immersive sound design
