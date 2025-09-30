@@ -5,8 +5,11 @@
 //----------------------------------------------------------------------------------------------------
 #include "Game/Framework/Chunk.hpp"
 
+#include <filesystem>
+
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Core/ErrorWarningAssert.hpp"
+#include "Engine/Core/FileUtils.hpp"
 #include "Engine/Core/Rgba8.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/RandomNumberGenerator.hpp"
@@ -733,4 +736,164 @@ bool Chunk::IsStateOneOf(ChunkState state1, ChunkState state2, ChunkState state3
 {
     ChunkState currentState = m_state.load();
     return (currentState == state1) || (currentState == state2) || (currentState == state3) || (currentState == state4);
+}
+
+//----------------------------------------------------------------------------------------------------
+// Disk I/O operations - Thread-safe, called by I/O worker thread
+//----------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------
+bool Chunk::LoadFromDisk()
+{
+    std::string filename = StringFormat("Saves/Chunk({0},{1}).chunk", m_chunkCoords.x, m_chunkCoords.y);
+
+    std::vector<uint8_t> buffer;
+    if (!FileReadToBuffer(buffer, filename))
+    {
+        return false;
+    }
+
+    // Verify minimum file size (header + at least one RLE entry)
+    if (buffer.size() < sizeof(ChunkFileHeader) + sizeof(ChunkRLEEntry))
+    {
+        return false; // File too small
+    }
+
+    // Read and validate header
+    ChunkFileHeader header;
+    memcpy(&header, buffer.data(), sizeof(ChunkFileHeader));
+
+    // Validate header
+    if (header.fourCC[0] != 'G' || header.fourCC[1] != 'C' ||
+        header.fourCC[2] != 'H' || header.fourCC[3] != 'K')
+    {
+        return false; // Invalid 4CC
+    }
+
+    if (header.version != 1 || header.chunkBitsX != CHUNK_BITS_X ||
+        header.chunkBitsY != CHUNK_BITS_Y || header.chunkBitsZ != CHUNK_BITS_Z)
+    {
+        return false; // Incompatible format
+    }
+
+    // Decompress RLE data
+    size_t dataOffset = sizeof(ChunkFileHeader);
+    int    blockIndex = 0;
+
+    while (dataOffset < buffer.size() && blockIndex < BLOCKS_PER_CHUNK)
+    {
+        // Read RLE entry
+        if (dataOffset + sizeof(ChunkRLEEntry) > buffer.size())
+        {
+            return false; // Incomplete RLE entry
+        }
+
+        ChunkRLEEntry entry;
+        memcpy(&entry, buffer.data() + dataOffset, sizeof(ChunkRLEEntry));
+        dataOffset += sizeof(ChunkRLEEntry);
+
+        // Apply run to blocks
+        for (int i = 0; i < entry.count && blockIndex < BLOCKS_PER_CHUNK; i++)
+        {
+            IntVec3 localCoords = IndexToLocalCoords(blockIndex);
+            Block*  block       = GetBlock(localCoords.x, localCoords.y, localCoords.z);
+            if (block != nullptr)
+            {
+                block->m_typeIndex = entry.value;
+            }
+            blockIndex++;
+        }
+    }
+
+    // Verify we loaded exactly the right number of blocks
+    if (blockIndex != BLOCKS_PER_CHUNK)
+    {
+        return false; // RLE data doesn't match expected block count
+    }
+
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+bool Chunk::SaveToDisk() const
+{
+    // Ensure save directory exists (relative to executable in Run/ directory)
+    std::string saveDir = "Saves/";
+    std::filesystem::create_directories(saveDir);
+
+    std::string filename = StringFormat("{0}Chunk({1},{2}).chunk", saveDir, m_chunkCoords.x, m_chunkCoords.y);
+
+    // Collect block data in order for RLE compression
+    std::vector<uint8_t> blockData(BLOCKS_PER_CHUNK);
+    for (int i = 0; i < BLOCKS_PER_CHUNK; i++)
+    {
+        IntVec3 localCoords = IndexToLocalCoords(i);
+        Block*  block       = const_cast<Chunk*>(this)->GetBlock(localCoords.x, localCoords.y, localCoords.z);
+        if (block != nullptr)
+        {
+            blockData[i] = block->m_typeIndex;
+        }
+        else
+        {
+            blockData[i] = 0; // Air block if invalid
+        }
+    }
+
+    // Compress using RLE
+    std::vector<ChunkRLEEntry> rleEntries;
+    uint8_t                    currentType = blockData[0];
+    uint8_t                    runLength   = 1;
+
+    for (int i = 1; i < BLOCKS_PER_CHUNK; i++)
+    {
+        if (blockData[i] == currentType && runLength < 255)
+        {
+            runLength++;
+        }
+        else
+        {
+            // End current run
+            rleEntries.push_back({currentType, runLength});
+            currentType = blockData[i];
+            runLength   = 1;
+        }
+    }
+    // Don't forget the last run
+    rleEntries.push_back({currentType, runLength});
+
+    // Create file header
+    ChunkFileHeader header;
+    header.fourCC[0]  = 'G';
+    header.fourCC[1]  = 'C';
+    header.fourCC[2]  = 'H';
+    header.fourCC[3]  = 'K';
+    header.version    = 1;
+    header.chunkBitsX = CHUNK_BITS_X;
+    header.chunkBitsY = CHUNK_BITS_Y;
+    header.chunkBitsZ = CHUNK_BITS_Z;
+
+    // Calculate total file size
+    size_t               fileSize = sizeof(ChunkFileHeader) + rleEntries.size() * sizeof(ChunkRLEEntry);
+    std::vector<uint8_t> fileBuffer(fileSize);
+
+    // Write header
+    memcpy(fileBuffer.data(), &header, sizeof(ChunkFileHeader));
+
+    // Write RLE entries
+    size_t offset = sizeof(ChunkFileHeader);
+    for (const ChunkRLEEntry& entry : rleEntries)
+    {
+        memcpy(fileBuffer.data() + offset, &entry, sizeof(ChunkRLEEntry));
+        offset += sizeof(ChunkRLEEntry);
+    }
+
+    // Write to file using safe fopen_s
+    FILE*   file = nullptr;
+    errno_t err  = fopen_s(&file, filename.c_str(), "wb");
+    if (err != 0 || file == nullptr) return false;
+
+    size_t written = fwrite(fileBuffer.data(), 1, fileBuffer.size(), file);
+    fclose(file);
+
+    return written == fileBuffer.size();
 }

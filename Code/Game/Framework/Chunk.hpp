@@ -45,22 +45,33 @@ int constexpr BLOCKS_PER_CHUNK = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;    
 // Uses atomic operations to prevent race conditions during state transitions.
 //
 // State Flow:
-// CONSTRUCTING -> ACTIVATING -> TERRAIN_GENERATING -> LIGHTING_INITIALIZING -> COMPLETE -> DEACTIVATING -> DECONSTRUCTING
+// CONSTRUCTING -> ACTIVATING -> [LOADING or TERRAIN_GENERATING] -> LIGHTING_INITIALIZING -> COMPLETE
+//              -> DEACTIVATING -> SAVING -> SAVE_COMPLETE -> DECONSTRUCTING
 //
 // Thread Safety Rules:
 // - Only main thread can transition: CONSTRUCTING, ACTIVATING, COMPLETE, DEACTIVATING, DECONSTRUCTING
-// - Only worker threads can transition: TERRAIN_GENERATING, LIGHTING_INITIALIZING
+// - Only I/O worker threads can transition: LOADING, LOAD_COMPLETE, SAVING, SAVE_COMPLETE
+// - Only generic worker threads can transition: TERRAIN_GENERATING, LIGHTING_INITIALIZING
 // - All state changes must use atomic compare-and-swap operations
 //----------------------------------------------------------------------------------------------------
 enum class ChunkState : uint8_t
 {
     CONSTRUCTING = 0,       // Initial state during memory allocation (main thread)
     ACTIVATING,             // Being added to world systems (main thread)
-    TERRAIN_GENERATING,     // Worker thread generating block data
+
+    LOADING,                // I/O worker thread loading chunk from disk file
+    LOAD_COMPLETE,          // Load finished, main thread can activate chunk
+
+    TERRAIN_GENERATING,     // Generic worker thread generating block data
     LIGHTING_INITIALIZING,  // Setting up lighting data (worker thread or main thread)
-    COMPLETE,              // Ready for rendering and interaction (main thread)
-    DEACTIVATING,          // Being removed from world systems (main thread)
-    DECONSTRUCTING         // Final cleanup before deletion (main thread)
+
+    COMPLETE,               // Ready for rendering and interaction (main thread)
+
+    DEACTIVATING,           // Being removed from world systems (main thread)
+    SAVING,                 // I/O worker thread saving chunk to disk file
+    SAVE_COMPLETE,          // Save finished, main thread can delete chunk
+
+    DECONSTRUCTING          // Final cleanup before deletion (main thread)
 };
 
 //----------------------------------------------------------------------------------------------------
@@ -125,11 +136,15 @@ public:
     ChunkState GetState() const { return m_state.load(); }
     bool SetState(ChunkState newState);
     bool CompareAndSetState(ChunkState expected, ChunkState desired);
-    bool IsStateOneOf(ChunkState state1, ChunkState state2 = ChunkState::CONSTRUCTING, 
+    bool IsStateOneOf(ChunkState state1, ChunkState state2 = ChunkState::CONSTRUCTING,
                      ChunkState state3 = ChunkState::CONSTRUCTING, ChunkState state4 = ChunkState::CONSTRUCTING) const;
     bool IsReadyForWork() const { return GetState() == ChunkState::TERRAIN_GENERATING; }
     bool IsComplete() const { return GetState() == ChunkState::COMPLETE; }
     bool CanBeModified() const { return GetState() == ChunkState::COMPLETE; }
+
+    // Disk I/O operations (thread-safe, called by I/O worker thread)
+    bool LoadFromDisk();
+    bool SaveToDisk() const;
 
 private:
     /// @brief 6. Chunk coordinates: 2D, IntVec2 (int x,y), with x and y axes aligned with world axes (above).
