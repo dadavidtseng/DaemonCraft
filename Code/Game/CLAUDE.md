@@ -20,6 +20,10 @@ The Game module serves as the primary entry point and core logic container for S
 ### Application Architecture
 - **App Class** (`Framework/App.hpp/cpp`): Main application controller
   - Manages game lifecycle (startup, main loop, shutdown)
+  - Initializes JobSystem with specialized worker threads
+    - 1 dedicated I/O worker thread (for ChunkLoadJob, ChunkSaveJob)
+    - (N-2) generic worker threads (for ChunkGenerateJob)
+    - Thread count based on `std::thread::hardware_concurrency()`
   - Handles window events and cursor management
   - Coordinates with DevConsole camera system
   - Provides quit request handling

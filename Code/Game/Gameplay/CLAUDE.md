@@ -16,7 +16,14 @@ The Gameplay module implements the core game mechanics, world management, and pl
 
 ### World Initialization
 - **World Class**: Container for all active chunks and spatial management
-- **Chunk Activation**: Dynamic loading/unloading based on player position
+- **Multi-threaded Architecture**:
+  - 4 mutexes protect shared data: `m_activeChunksMutex`, `m_nonActiveChunksMutex`, `m_jobListsMutex`, `m_queuedChunksMutex`
+  - `m_nonActiveChunks` std::set tracks chunks being processed by worker threads
+  - Atomic chunk state transitions coordinate between main and worker threads
+- **Chunk Activation**: Dynamic async loading/generation based on player position
+  - Burst mode: 5 chunks/frame when count < 20 (startup optimization)
+  - Steady state: 1 chunk/frame when count >= 20
+- **Job Queue Limiting**: MAX_PENDING_GENERATE_JOBS=16, MAX_PENDING_LOAD_JOBS=4, MAX_PENDING_SAVE_JOBS=4
 - **Camera Management**: World camera separate from UI/debug cameras
 
 ## External Interfaces
@@ -33,19 +40,52 @@ The Gameplay module implements the core game mechanics, world management, and pl
 - **Update Coordination**: `UpdateEntities()` manages entity lifecycle and interactions
 
 ### World-Chunk Interface
-- **Chunk Activation**: `World::ActivateChunk()` creates and initializes chunks
-- **Spatial Queries**: `World::GetChunk()` retrieves chunks by coordinates
-- **Dynamic Loading**: Chunks created/destroyed based on player proximity
+- **Chunk Activation**: `World::ActivateChunk()` submits async jobs
+  - Checks if chunk file exists on disk
+  - Submits `ChunkLoadJob` (I/O worker) or `ChunkGenerateJob` (generic worker)
+  - Never blocks main thread
+- **Chunk Deactivation**: `World::DeactivateChunk()` submits async save
+  - Submits `ChunkSaveJob` if chunk modified (I/O worker)
+  - Cleans up neighbor pointers without blocking
+- **Spatial Queries**: `World::GetChunk()` retrieves chunks by coordinates (mutex-protected)
+- **Job Processing**: `ProcessCompletedJobs()` handles all completed work
+  - Single `RetrieveAllCompletedJobs()` call prevents job loss
+  - Processes generation, load, and save jobs in one pass
+  - Transitions chunks from worker states to main thread states
+- **Mesh Rebuilding**: `ProcessDirtyChunkMeshes()` rebuilds 2 nearest dirty chunks per frame (main thread only)
 
 ## Key Dependencies and Configuration
 
 ### World Management System
 ```cpp
 class World {
-    std::vector<Chunk*> m_activeChunks;  // Dynamic chunk collection
-    Camera* m_worldCamera;               // Primary gameplay camera
+    // Active chunks (ready for rendering, main thread only)
+    std::unordered_map<IntVec2, Chunk*> m_activeChunks;
+    mutable std::mutex m_activeChunksMutex;
+
+    // Non-active chunks (being processed by workers)
+    std::set<Chunk*> m_nonActiveChunks;
+    mutable std::mutex m_nonActiveChunksMutex;
+
+    // Job tracking
+    std::vector<ChunkGenerateJob*> m_chunkGenerationJobs;
+    std::vector<ChunkLoadJob*>     m_chunkLoadJobs;
+    std::vector<ChunkSaveJob*>     m_chunkSaveJobs;
+    mutable std::mutex m_jobListsMutex;
+
+    // Queued chunk tracking
+    std::unordered_set<IntVec2> m_queuedGenerateChunks;
+    mutable std::mutex m_queuedChunksMutex;
+
+    Camera* m_worldCamera;  // Primary gameplay camera
 };
 ```
+
+**Thread Safety Rules:**
+- Main thread: Adds/removes chunks from lists, handles D3D11 operations
+- Worker threads: Access chunk blocks only during LOADING/TERRAIN_GENERATING/SAVING states
+- All shared data access protected by mutexes with minimal lock duration
+- No heavy work performed while holding mutexes
 
 ### Player System Architecture
 - **Movement**: 3D character controller with collision detection

@@ -59,6 +59,28 @@ class Block {
 - **Performance**: Block instances reference shared definitions for memory efficiency
 
 ### Chunk System Architecture
+
+#### Chunk State Machine (Thread-Safe)
+```cpp
+enum class ChunkState : uint8_t {
+    CONSTRUCTING,          // Initial allocation (main thread)
+    ACTIVATING,            // Being added to world (main thread)
+    LOADING,               // I/O worker loading from disk
+    LOAD_COMPLETE,         // Load finished
+    TERRAIN_GENERATING,    // Generic worker generating terrain
+    LIGHTING_INITIALIZING, // Setting up lighting
+    COMPLETE,              // Ready for rendering (main thread)
+    DEACTIVATING,          // Being removed (main thread)
+    SAVING,                // I/O worker saving to disk
+    SAVE_COMPLETE,         // Save finished
+    DECONSTRUCTING         // Final cleanup (main thread)
+};
+```
+
+- **Atomic Transitions**: `std::atomic<ChunkState>` for thread safety
+- **Worker Threads**: Only access chunks in LOADING, TERRAIN_GENERATING, SAVING states
+- **Main Thread**: Only accesses chunks in COMPLETE state, handles D3D11 operations
+
 #### Chunk Storage (16x16x128 blocks = 32,768 blocks per chunk)
 ```cpp
 Block m_blocks[CHUNK_TOTAL_BLOCKS];  // 1D array for cache efficiency
@@ -69,7 +91,13 @@ Block m_blocks[CHUNK_TOTAL_BLOCKS];  // 1D array for cache efficiency
 - **No Vertical Stacking**: Each chunk extends full world height (0-128)
 - **Adjacent Mapping**: Chunk (4,7) borders chunk (3,7) seamlessly
 
-#### Mesh Generation
+#### Asynchronous Chunk Jobs
+- **ChunkGenerateJob**: Generic workers generate terrain procedurally
+- **ChunkLoadJob**: I/O worker loads from disk with RLE decompression
+- **ChunkSaveJob**: I/O worker saves to disk with RLE compression
+- **File Format**: 'GCHK' fourCC + version + dimensions + RLE entries
+
+#### Mesh Generation (Main Thread Only)
 - **Face Culling**: Only visible faces are added to vertex buffer
 - **Texture Atlas**: UV mapping to sprite sheet coordinates
 - **Vertex Format**: Position-Color-UV (PCU) for basic rendering
