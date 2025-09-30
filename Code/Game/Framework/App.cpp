@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------------------------------
 #include "Game/Framework/App.hpp"
 
+#include <thread>
 #include "Engine/Audio/AudioSystem.hpp"
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/DevConsole.hpp"
@@ -15,12 +16,11 @@
 #include "Engine/Platform/Window.hpp"
 #include "Engine/Renderer/BitmapFont.hpp"
 #include "Engine/Renderer/DebugRenderSystem.hpp"
+#include "Engine/Renderer/LightSubsystem.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Game.hpp"
-#include "Game/Subsystem/Light/LightSubsystem.hpp"
-#include <thread>
 
 //----------------------------------------------------------------------------------------------------
 App*                   g_app               = nullptr;       // Created and owned by Main_Windows.cpp
@@ -152,11 +152,18 @@ void App::Startup()
     g_audio->Startup();
     g_resourceSubsystem->Startup();
 
-    // Initialize JobSystem with N-1 worker threads
+    // Initialize JobSystem with specialized worker threads
+    // Assignment Requirement: 1 I/O thread + (N-2) generic threads, where N = hardware_concurrency()
     s_jobSystem = new JobSystem();
-    int numWorkerThreads = static_cast<int>(std::thread::hardware_concurrency()) - 1;
-    if (numWorkerThreads < 1) numWorkerThreads = 1; // Ensure at least one worker thread
-    s_jobSystem->StartUp(numWorkerThreads);
+
+    int totalCores = static_cast<int>(std::thread::hardware_concurrency());
+    if (totalCores < 3) totalCores = 3;  // Minimum: main thread + 1 IO + 1 generic
+
+    int numIOThreads = 1;                         // 1 dedicated thread for file I/O
+    int numGenericThreads = totalCores - 2;       // N-2 threads for computation (terrain generation, etc.)
+    if (numGenericThreads < 1) numGenericThreads = 1;  // Ensure at least 1 generic worker
+
+    s_jobSystem->StartUp(numGenericThreads, numIOThreads);
 
     g_bitmapFont = g_renderer->CreateOrGetBitmapFontFromFile("Data/Fonts/DaemonFont"); // DO NOT SPECIFY FILE .EXTENSION!!  (Important later on.)
     g_rng        = new RandomNumberGenerator();
