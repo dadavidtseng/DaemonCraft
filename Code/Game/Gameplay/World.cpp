@@ -200,7 +200,7 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords)
     Chunk* chunk = nullptr;
     {
         std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-        auto const it = m_activeChunks.find(chunkCoords);
+        auto const                  it = m_activeChunks.find(chunkCoords);
 
         if (it == m_activeChunks.end())
         {
@@ -325,7 +325,7 @@ uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
 Chunk* World::GetChunk(IntVec2 const& chunkCoords) const
 {
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    auto const it = m_activeChunks.find(chunkCoords);
+    auto const                  it = m_activeChunks.find(chunkCoords);
 
     if (it != m_activeChunks.end())
     {
@@ -345,7 +345,7 @@ int World::GetActiveChunkCount() const
 int World::GetTotalVertexCount() const
 {
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    int totalVertices = 0;
+    int                         totalVertices = 0;
     for (const auto& pair : m_activeChunks)
     {
         if (pair.second)
@@ -360,7 +360,7 @@ int World::GetTotalVertexCount() const
 int World::GetTotalIndexCount() const
 {
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    int totalIndices = 0;
+    int                         totalIndices = 0;
     for (const auto& pair : m_activeChunks)
     {
         if (pair.second)
@@ -369,6 +369,27 @@ int World::GetTotalIndexCount() const
         }
     }
     return totalIndices;
+}
+
+//----------------------------------------------------------------------------------------------------
+int World::GetPendingGenerateJobCount() const
+{
+    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    return (int)m_chunkGenerationJobs.size();
+}
+
+//----------------------------------------------------------------------------------------------------
+int World::GetPendingLoadJobCount() const
+{
+    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    return (int)m_chunkLoadJobs.size();
+}
+
+//----------------------------------------------------------------------------------------------------
+int World::GetPendingSaveJobCount() const
+{
+    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    return (int)m_chunkSaveJobs.size();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -445,8 +466,8 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
 IntVec2 World::FindFarthestActiveChunkOutsideDeactivationRange(Vec3 const& cameraPos) const
 {
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    float   farthestDistance = 0.0f;
-    IntVec2 farthestChunk    = IntVec2(INT_MAX, INT_MAX);
+    float                       farthestDistance = 0.0f;
+    IntVec2                     farthestChunk    = IntVec2(INT_MAX, INT_MAX);
 
     for (auto const& chunkPair : m_activeChunks)
     {
@@ -467,8 +488,8 @@ IntVec2 World::FindFarthestActiveChunkOutsideDeactivationRange(Vec3 const& camer
 Chunk* World::FindNearestDirtyChunk(Vec3 const& cameraPos) const
 {
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    float  nearestDistance   = FLT_MAX;
-    Chunk* nearestDirtyChunk = nullptr;
+    float                       nearestDistance   = FLT_MAX;
+    Chunk*                      nearestDirtyChunk = nullptr;
 
     for (const auto& chunkPair : m_activeChunks)
     {
@@ -807,20 +828,16 @@ bool World::PlaceBlockAtCameraPosition(Vec3 const&   cameraPos,
 //----------------------------------------------------------------------------------------------------
 void World::ProcessCompletedJobs()
 {
-    JobSystem* jobSystem = App::GetJobSystem();
-    if (!jobSystem)
-    {
-        return;
-    }
+    if (g_jobSystem == nullptr) return;
 
     // Retrieve all completed jobs from JobSystem ONCE
-    std::vector<Job*> completedJobs = jobSystem->RetrieveAllCompletedJobs();
+    std::vector<Job*> completedJobs = g_jobSystem->RetrieveAllCompletedJobs();
 
     // Process each completed job
     for (Job* completedJob : completedJobs)
     {
-        ChunkGenerateJob* job = nullptr;
-        int jobIndex = -1;
+        ChunkGenerateJob* job      = nullptr;
+        int               jobIndex = -1;
 
         // Find the corresponding ChunkGenerateJob in our tracking list
         {
@@ -829,7 +846,7 @@ void World::ProcessCompletedJobs()
             {
                 if (m_chunkGenerationJobs[i] == completedJob)
                 {
-                    job = m_chunkGenerationJobs[i];
+                    job      = m_chunkGenerationJobs[i];
                     jobIndex = i;
                     break;
                 }
@@ -845,7 +862,7 @@ void World::ProcessCompletedJobs()
                 if (m_chunkLoadJobs[i] == completedJob)
                 {
                     ChunkLoadJob* loadJob = m_chunkLoadJobs[i];
-                    Chunk* chunk = loadJob->GetChunk();
+                    Chunk*        chunk   = loadJob->GetChunk();
 
                     if (chunk)
                     {
@@ -854,6 +871,7 @@ void World::ProcessCompletedJobs()
                         if (loadJob->WasSuccessful() && chunk->GetState() == ChunkState::LOAD_COMPLETE)
                         {
                             chunk->SetState(ChunkState::COMPLETE);
+                            chunk->SetDebugDraw(m_globalChunkDebugDraw); // Inherit global debug state
 
                             {
                                 std::lock_guard<std::mutex> nonActiveLock(m_nonActiveChunksMutex);
@@ -897,7 +915,7 @@ void World::ProcessCompletedJobs()
                 if (m_chunkSaveJobs[i] == completedJob)
                 {
                     ChunkSaveJob* saveJob = m_chunkSaveJobs[i];
-                    Chunk* chunk = saveJob->GetChunk();
+                    Chunk*        chunk   = saveJob->GetChunk();
 
                     if (chunk)
                     {
@@ -925,82 +943,82 @@ void World::ProcessCompletedJobs()
         // If job is a real ChunkGenerateJob pointer (not marker), process it
         if (job != reinterpret_cast<ChunkGenerateJob*>(1))
         {
+            Chunk* chunk = job->GetChunk();
+            if (!chunk)
+            {
+                // Clean up invalid job
+                {
+                    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+                    m_chunkGenerationJobs.erase(m_chunkGenerationJobs.begin() + jobIndex);
+                }
+                delete job;
+                continue;
+            }
 
-        Chunk* chunk = job->GetChunk();
-        if (!chunk)
-        {
-            // Clean up invalid job
+            IntVec2 chunkCoords = chunk->GetChunkCoords();
+
+            // Verify the chunk is in the expected state
+            if (chunk->GetState() == ChunkState::LIGHTING_INITIALIZING)
+            {
+                // Job completed successfully - handle lighting initialization on main thread
+                // For now, just transition to COMPLETE state
+                chunk->SetState(ChunkState::COMPLETE);
+                chunk->SetDebugDraw(m_globalChunkDebugDraw); // Inherit global debug state
+
+                // Remove from non-active chunks, add to active chunks
+                {
+                    std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+                    m_nonActiveChunks.erase(chunk);
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+                    if (m_activeChunks.find(chunkCoords) == m_activeChunks.end())
+                    {
+                        m_activeChunks[chunkCoords] = chunk;
+                    }
+                }
+
+                // Update neighbor pointers (needs active chunks mutex, but UpdateNeighborPointers handles it)
+                UpdateNeighborPointers(chunkCoords);
+
+                // Remove from queued chunks
+                {
+                    std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+                    m_queuedGenerateChunks.erase(chunkCoords);
+                }
+
+                // Mark chunk mesh as dirty for rebuilding
+                chunk->SetIsMeshDirty(true);
+            }
+            else
+            {
+                // Job completed but chunk is in unexpected state - handle error
+                // This could happen if the job failed or chunk was modified externally
+                // For now, we'll clean up and let the chunk be retried later
+
+                // Remove from non-active chunks
+                {
+                    std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+                    m_nonActiveChunks.erase(chunk);
+                }
+
+                // Remove from queued chunks
+                {
+                    std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+                    m_queuedGenerateChunks.erase(chunkCoords);
+                }
+
+                // Reset chunk to ACTIVATING state so it can be retried
+                chunk->SetState(ChunkState::ACTIVATING);
+            }
+
+            // Clean up the job
             {
                 std::lock_guard<std::mutex> lock(m_jobListsMutex);
                 m_chunkGenerationJobs.erase(m_chunkGenerationJobs.begin() + jobIndex);
             }
             delete job;
-            continue;
-        }
-
-        IntVec2 chunkCoords = chunk->GetChunkCoords();
-
-        // Verify the chunk is in the expected state
-        if (chunk->GetState() == ChunkState::LIGHTING_INITIALIZING)
-        {
-            // Job completed successfully - handle lighting initialization on main thread
-            // For now, just transition to COMPLETE state
-            chunk->SetState(ChunkState::COMPLETE);
-
-            // Remove from non-active chunks, add to active chunks
-            {
-                std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
-                m_nonActiveChunks.erase(chunk);
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-                if (m_activeChunks.find(chunkCoords) == m_activeChunks.end())
-                {
-                    m_activeChunks[chunkCoords] = chunk;
-                }
-            }
-
-            // Update neighbor pointers (needs active chunks mutex, but UpdateNeighborPointers handles it)
-            UpdateNeighborPointers(chunkCoords);
-
-            // Remove from queued chunks
-            {
-                std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
-                m_queuedGenerateChunks.erase(chunkCoords);
-            }
-
-            // Mark chunk mesh as dirty for rebuilding
-            chunk->SetIsMeshDirty(true);
-        }
-        else
-        {
-            // Job completed but chunk is in unexpected state - handle error
-            // This could happen if the job failed or chunk was modified externally
-            // For now, we'll clean up and let the chunk be retried later
-
-            // Remove from non-active chunks
-            {
-                std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
-                m_nonActiveChunks.erase(chunk);
-            }
-
-            // Remove from queued chunks
-            {
-                std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
-                m_queuedGenerateChunks.erase(chunkCoords);
-            }
-
-            // Reset chunk to ACTIVATING state so it can be retried
-            chunk->SetState(ChunkState::ACTIVATING);
-        }
-
-        // Clean up the job
-        {
-            std::lock_guard<std::mutex> lock(m_jobListsMutex);
-            m_chunkGenerationJobs.erase(m_chunkGenerationJobs.begin() + jobIndex);
-        }
-        delete job;
         } // End if (job is real ChunkGenerateJob)
     }
 }
@@ -1053,11 +1071,7 @@ void World::SubmitChunkForGeneration(Chunk* chunk)
         return;
     }
 
-    JobSystem* jobSystem = App::GetJobSystem();
-    if (!jobSystem)
-    {
-        return;
-    }
+    if (g_jobSystem == nullptr) return;
 
     IntVec2 chunkCoords = chunk->GetChunkCoords();
 
@@ -1102,7 +1116,7 @@ void World::SubmitChunkForGeneration(Chunk* chunk)
             m_queuedGenerateChunks.insert(chunkCoords);
         }
 
-        jobSystem->SubmitJob(job);
+        g_jobSystem->SubmitJob(job);
     }
 }
 
@@ -1114,11 +1128,7 @@ void World::SubmitChunkForLoading(Chunk* chunk)
         return;
     }
 
-    JobSystem* jobSystem = App::GetJobSystem();
-    if (!jobSystem)
-    {
-        return;
-    }
+    if (g_jobSystem == nullptr) return;
 
     // Check if we've reached the maximum number of pending load jobs
     {
@@ -1146,7 +1156,7 @@ void World::SubmitChunkForLoading(Chunk* chunk)
             m_chunkLoadJobs.push_back(job);
         }
 
-        jobSystem->SubmitJob(job);
+        g_jobSystem->SubmitJob(job);
     }
 }
 
@@ -1158,8 +1168,7 @@ void World::SubmitChunkForSaving(Chunk* chunk)
         return;
     }
 
-    JobSystem* jobSystem = App::GetJobSystem();
-    if (!jobSystem)
+    if (g_jobSystem == nullptr)
     {
         // Can't save asynchronously, delete chunk
         delete chunk;
@@ -1195,6 +1204,5 @@ void World::SubmitChunkForSaving(Chunk* chunk)
         m_chunkSaveJobs.push_back(job);
     }
 
-    jobSystem->SubmitJob(job);
+    g_jobSystem->SubmitJob(job);
 }
-

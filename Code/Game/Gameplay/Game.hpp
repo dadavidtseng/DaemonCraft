@@ -4,8 +4,7 @@
 
 //----------------------------------------------------------------------------------------------------
 #pragma once
-#include <cstdint>
-
+//----------------------------------------------------------------------------------------------------
 #include "Game/Gameplay/World.hpp"
 
 //-Forward-Declaration--------------------------------------------------------------------------------
@@ -46,16 +45,16 @@ private:
     void RenderPlayerBasis() const;
 
     void SpawnPlayer();
-    void SpawnProp();
 
-    Camera* m_screenCamera = nullptr;
-    Player* m_player       = nullptr;
-    World*  m_world        = nullptr;
-
-    Prop*      m_grid      = nullptr;
-    Clock*     m_gameClock = nullptr;
-    eGameState m_gameState = eGameState::GAME;
+    Camera*    m_screenCamera = nullptr;
+    Player*    m_player       = nullptr;
+    World*     m_world        = nullptr;
+    Clock*     m_gameClock    = nullptr;
+    eGameState m_gameState    = eGameState::GAME;
 
     // Block placing system
     uint8_t m_currentBlockType = 9; // Start with BLOCK_GLOWSTONE (index 9 in XML)
+
+    // Debug display toggle
+    bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)
 };

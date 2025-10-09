@@ -19,13 +19,11 @@
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Player.hpp"
-#include "Game/Gameplay/Prop.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Game::Game()
 {
     SpawnPlayer();
-    SpawnProp();
 
     m_screenCamera = new Camera();
 
@@ -36,8 +34,6 @@ Game::Game()
     m_screenCamera->SetOrthoGraphicView(bottomLeft, clientDimensions);
     m_screenCamera->SetNormalizedViewport(AABB2::ZERO_TO_ONE);
     m_gameClock = new Clock(Clock::GetSystemClock());
-
-    m_grid->m_position = Vec3::ZERO;
 
 #if defined GAME_DEBUG_MODE
     DebugAddWorldBasis(Mat44(), -1.f);
@@ -62,9 +58,6 @@ Game::Game()
 //----------------------------------------------------------------------------------------------------
 Game::~Game()
 {
-    delete m_grid;
-    m_grid = nullptr;
-
     GAME_SAFE_RELEASE(m_gameClock);
     GAME_SAFE_RELEASE(m_screenCamera);
     GAME_SAFE_RELEASE(m_player);
@@ -198,6 +191,12 @@ void Game::UpdateFromKeyBoard()
             }
         }
 
+        if (g_input->WasKeyJustPressed(KEYCODE_F3))
+        {
+            m_showDebugInfo = !m_showDebugInfo;
+            DebuggerPrintf("Debug Info Display: %s\n", m_showDebugInfo ? "ON" : "OFF");
+        }
+
         // ========================================
         // DIGGING AND PLACING SYSTEM
         // ========================================
@@ -261,99 +260,46 @@ void Game::UpdateFromKeyBoard()
         }
 
 #if defined GAME_DEBUG_MODE
-        DebugAddScreenText(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), Vec2(0.f, 120.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-
-        // Add debug info for current block type and coordinates
-        DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[9] Cobblestone[10] ChiseledBrick[11]", m_currentBlockType), Vec2(0.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-
-        // Calculate chunk and local coordinates for player position
-        IntVec3 playerGlobalCoords = IntVec3((int)m_player->m_position.x, (int)m_player->m_position.y, (int)m_player->m_position.z);
-        IntVec2 chunkCoords        = Chunk::GetChunkCoords(playerGlobalCoords);
-        IntVec3 localCoords        = Chunk::GlobalCoordsToLocalCoords(playerGlobalCoords);
-
-        DebugAddScreenText(Stringf("ChunkCoords: (%d, %d) LocalCoords: (%d, %d, %d) GlobalCoords: (%d, %d, %d)",
-                                   chunkCoords.x, chunkCoords.y,
-                                   localCoords.x, localCoords.y, localCoords.z,
-                                   playerGlobalCoords.x, playerGlobalCoords.y, playerGlobalCoords.z), Vec2(0.f, 160.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-
-        // Display current chunk ID and world statistics
-        if (m_world)
+        if (m_showDebugInfo)
         {
-            if (Chunk const* currentChunk = m_world->GetChunk(chunkCoords))
+            DebugAddScreenText(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), Vec2(0.f, 120.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+
+            // Add debug info for current block type and coordinates
+            DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[9] Cobblestone[10] ChiseledBrick[11]", m_currentBlockType), Vec2(0.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+
+            // Calculate chunk and local coordinates for player position
+            IntVec3 playerGlobalCoords = IntVec3((int)m_player->m_position.x, (int)m_player->m_position.y, (int)m_player->m_position.z);
+            IntVec2 chunkCoords        = Chunk::GetChunkCoords(playerGlobalCoords);
+            IntVec3 localCoords        = Chunk::GlobalCoordsToLocalCoords(playerGlobalCoords);
+
+            DebugAddScreenText(Stringf("ChunkCoords: (%d, %d) LocalCoords: (%d, %d, %d) GlobalCoords: (%d, %d, %d)",
+                                       chunkCoords.x, chunkCoords.y,
+                                       localCoords.x, localCoords.y, localCoords.z,
+                                       playerGlobalCoords.x, playerGlobalCoords.y, playerGlobalCoords.z), Vec2(0.f, 160.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+
+            // Display current chunk ID and world statistics
+            if (m_world)
             {
-                DebugAddScreenText(Stringf("Current Chunk: (%d, %d)",
-                                           currentChunk->GetChunkCoords().x,
-                                           currentChunk->GetChunkCoords().y), Vec2(0.f, 180.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+                if (Chunk const* currentChunk = m_world->GetChunk(chunkCoords))
+                {
+                    DebugAddScreenText(Stringf("Current Chunk: (%d, %d)",
+                                               currentChunk->GetChunkCoords().x,
+                                               currentChunk->GetChunkCoords().y), Vec2(0.f, 180.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+                }
+
+                // Add world statistics like in the screenshot
+                DebugAddScreenText(Stringf("Chunks: %d Vertices: %d Indices: %d",
+                                           m_world->GetActiveChunkCount(),
+                                           m_world->GetTotalVertexCount(),
+                                           m_world->GetTotalIndexCount()), Vec2(0.f, 200.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+
+                // Add JobSystem metrics
+                DebugAddScreenText(Stringf("=== Job System ==="), Vec2(0.f, 220.f), 20.f, Vec2::ZERO, 0.f, Rgba8::YELLOW, Rgba8::YELLOW);
+                DebugAddScreenText(Stringf("Pending Jobs - Generate: %d Load: %d Save: %d",
+                                           m_world->GetPendingGenerateJobCount(),
+                                           m_world->GetPendingLoadJobCount(),
+                                           m_world->GetPendingSaveJobCount()), Vec2(0.f, 240.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
             }
-
-            // Add world statistics like in the screenshot
-            DebugAddScreenText(Stringf("Chunks: %d Vertices: %d Indices: %d",
-                                       m_world->GetActiveChunkCount(),
-                                       m_world->GetTotalVertexCount(),
-                                       m_world->GetTotalIndexCount()), Vec2(0.f, 200.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-        }
-
-        if (g_input->WasKeyJustPressed(NUMCODE_1))
-        {
-            Vec3 forward;
-            Vec3 right;
-            Vec3 up;
-            m_player->m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, right, up);
-
-            DebugAddWorldLine(m_player->m_position, m_player->m_position + forward * 20.f, 0.01f, 10.f, Rgba8(255, 255, 0), Rgba8(255, 255, 0), eDebugRenderMode::X_RAY);
-        }
-
-        if (g_input->IsKeyDown(NUMCODE_2))
-        {
-            DebugAddWorldPoint(Vec3(m_player->m_position.x, m_player->m_position.y, 0.f), 0.25f, 60.f, Rgba8(150, 75, 0), Rgba8(150, 75, 0));
-        }
-
-        if (g_input->WasKeyJustPressed(NUMCODE_3))
-        {
-            Vec3 forward;
-            Vec3 right;
-            Vec3 up;
-            m_player->m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, right, up);
-
-            DebugAddWorldWireSphere(m_player->m_position + forward * 2.f, 1.f, 5.f, Rgba8::GREEN, Rgba8::RED);
-        }
-
-        if (g_input->WasKeyJustPressed(NUMCODE_4))
-        {
-            DebugAddWorldBasis(m_player->GetModelToWorldTransform(), 20.f);
-        }
-
-        if (g_input->WasKeyJustReleased(NUMCODE_5))
-        {
-            float const  positionX    = m_player->m_position.x;
-            float const  positionY    = m_player->m_position.y;
-            float const  positionZ    = m_player->m_position.z;
-            float const  orientationX = m_player->m_orientation.m_yawDegrees;
-            float const  orientationY = m_player->m_orientation.m_pitchDegrees;
-            float const  orientationZ = m_player->m_orientation.m_rollDegrees;
-            String const text         = Stringf("Position: (%.2f, %.2f, %.2f)\nOrientation: (%.2f, %.2f, %.2f)", positionX, positionY, positionZ, orientationX, orientationY, orientationZ);
-
-            Vec3 forward;
-            Vec3 right;
-            Vec3 up;
-            m_player->m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, right, up);
-
-            DebugAddBillboardText(text, m_player->m_position + forward, 0.1f, Vec2::HALF, 10.f, Rgba8::WHITE, Rgba8::RED);
-        }
-
-        if (g_input->WasKeyJustPressed(NUMCODE_6))
-        {
-            DebugAddWorldCylinder(m_player->m_position, m_player->m_position + Vec3::Z_BASIS * 2, 1.f, 10.f, true, Rgba8::WHITE, Rgba8::RED);
-        }
-
-
-        if (g_input->WasKeyJustReleased(NUMCODE_7))
-        {
-            float const orientationX = m_player->GetCamera()->GetOrientation().m_yawDegrees;
-            float const orientationY = m_player->GetCamera()->GetOrientation().m_pitchDegrees;
-            float const orientationZ = m_player->GetCamera()->GetOrientation().m_rollDegrees;
-
-            DebugAddScreenText(Stringf("Camera Orientation: (%.2f, %.2f, %.2f)", orientationX, orientationY, orientationZ), Vec2(10.f, 220.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
         }
 #endif
     }
@@ -414,8 +360,8 @@ void Game::UpdateFromController()
 //----------------------------------------------------------------------------------------------------
 void Game::UpdateEntities(float const gameDeltaSeconds, float const systemDeltaSeconds) const
 {
+    UNUSED(gameDeltaSeconds)
     m_player->Update(systemDeltaSeconds);
-    m_grid->Update(gameDeltaSeconds);
 }
 
 void Game::UpdateWorld(float const gameDeltaSeconds)
@@ -444,8 +390,6 @@ void Game::RenderAttractMode() const
 //----------------------------------------------------------------------------------------------------
 void Game::RenderEntities() const
 {
-    m_grid->Render();
-
     // g_renderer->SetModelConstants(m_player->GetModelToWorldTransform());
     m_player->Render();
 }
@@ -475,14 +419,6 @@ void Game::RenderPlayerBasis() const
 void Game::SpawnPlayer()
 {
     m_player = new Player(this);
-}
-
-//----------------------------------------------------------------------------------------------------
-void Game::SpawnProp()
-{
-    m_grid = new Prop(this);
-
-    m_grid->InitializeLocalVertsForGrid();
 }
 
 //----------------------------------------------------------------------------------------------------

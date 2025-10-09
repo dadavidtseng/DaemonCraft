@@ -73,6 +73,9 @@ public:
     int GetActiveChunkCount() const;
     int GetTotalVertexCount() const;
     int GetTotalIndexCount() const;
+    int GetPendingGenerateJobCount() const;
+    int GetPendingLoadJobCount() const;
+    int GetPendingSaveJobCount() const;
 
     // Digging and placing methods
     bool    DigBlockAtCameraPosition(Vec3 const& cameraPos); // LMB - dig highest non-air block at or below camera
