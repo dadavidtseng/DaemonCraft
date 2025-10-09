@@ -4,10 +4,20 @@
 
 //----------------------------------------------------------------------------------------------------
 #pragma once
+//----------------------------------------------------------------------------------------------------
 #include "Game/Gameplay/Entity.hpp"
+//----------------------------------------------------------------------------------------------------
+#include <cstdint>
+
+//-Forward-Declaration--------------------------------------------------------------------------------
+class Camera;
 
 //----------------------------------------------------------------------------------------------------
-class Camera;
+enum class ePlayerCameraMode : int8_t
+{
+    FREE_FLY,
+    SPECTATOR_XY
+};
 
 //----------------------------------------------------------------------------------------------------
 class Player : public Entity
@@ -25,6 +35,8 @@ public:
     Camera* GetCamera() const;
 
 private:
-    Camera* m_worldCamera = nullptr;
-    float   m_moveSpeed   = 4.f;
+    Camera*           m_worldCamera   = nullptr;
+    float             m_moveSpeed     = 4.f;
+    ePlayerCameraMode m_cameraMode    = ePlayerCameraMode::FREE_FLY;
+    bool              m_wasCKeyPressed = false;
 };

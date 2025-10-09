@@ -4,13 +4,15 @@
 
 //----------------------------------------------------------------------------------------------------
 #include "Game/Gameplay/Player.hpp"
-
+//----------------------------------------------------------------------------------------------------
+#include "Game/Framework/GameCommon.hpp"
+#include "Game/Gameplay/Game.hpp"
+//----------------------------------------------------------------------------------------------------
 #include "Engine/Core/EngineCommon.hpp"
+#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math/MathUtils.hpp"
 #include "Engine/Renderer/Camera.hpp"
-#include "Game/Framework/GameCommon.hpp"
-#include "Game/Gameplay/Game.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Player::Player(Game* owner)
@@ -31,8 +33,8 @@ Player::Player(Game* owner)
 
     m_worldCamera->SetCameraToRenderTransform(c2r);
 
-    m_position    = Vec3(0, 0, 128);
-    m_orientation = EulerAngles(-45,30, 0);
+    m_position    = Vec3(-50, -50, 150);
+    m_orientation = EulerAngles(45, 45, 0);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -71,6 +73,23 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
         }
     }
 
+    // Camera mode toggle with C key
+    bool isCKeyDown = g_input->WasKeyJustPressed(KEYCODE_C);
+    if (isCKeyDown && !m_wasCKeyPressed)
+    {
+        if (m_cameraMode == ePlayerCameraMode::FREE_FLY)
+        {
+            m_cameraMode = ePlayerCameraMode::SPECTATOR_XY;
+            DebuggerPrintf("Camera Mode: SPECTATOR_XY (XY-Plane Only)\n");
+        }
+        else
+        {
+            m_cameraMode = ePlayerCameraMode::FREE_FLY;
+            DebuggerPrintf("Camera Mode: FREE_FLY (Full 3D)\n");
+        }
+    }
+    m_wasCKeyPressed = isCKeyDown;
+
     Vec3 forward, left, up = Vec3::ZERO;
     m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, left, up);
 
@@ -81,24 +100,30 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
     if (g_input->IsKeyDown(KEYCODE_A)) m_velocity += left * m_moveSpeed;
     if (g_input->IsKeyDown(KEYCODE_D)) m_velocity -= left * m_moveSpeed;
     if (g_input->IsKeyDown(KEYCODE_Z)) m_velocity -= Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
-    if (g_input->IsKeyDown(KEYCODE_C)) m_velocity += Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
+    if (g_input->IsKeyDown(KEYCODE_SPACE)) m_velocity += Vec3(0.f, 0.f, 1.f) * m_moveSpeed;
+
+    // Apply movement restrictions based on camera mode
+    if (m_cameraMode == ePlayerCameraMode::SPECTATOR_XY)
+    {
+        // Zero out Z-component to restrict movement to XY-plane
+        m_velocity.z = 0.f;
+    }
 
     if (g_input->IsKeyDown(KEYCODE_SHIFT)) deltaSeconds *= 20.f;
 
     m_position += m_velocity * deltaSeconds;
 
-
     m_orientation.m_yawDegrees -= g_input->GetCursorClientDelta().x * 0.075f;
     m_orientation.m_pitchDegrees += g_input->GetCursorClientDelta().y * 0.075f;
     m_orientation.m_pitchDegrees = GetClamped(m_orientation.m_pitchDegrees, -85.f, 85.f);
 
-    m_angularVelocity.m_rollDegrees = 0.f;
+    // m_angularVelocity.m_rollDegrees = 0.f;
 
-    if (g_input->IsKeyDown(KEYCODE_Q)) m_angularVelocity.m_rollDegrees = 90.f;
-    if (g_input->IsKeyDown(KEYCODE_E)) m_angularVelocity.m_rollDegrees = -90.f;
+    // if (g_input->IsKeyDown(KEYCODE_Q)) m_angularVelocity.m_rollDegrees = 90.f;
+    // if (g_input->IsKeyDown(KEYCODE_E)) m_angularVelocity.m_rollDegrees = -90.f;
 
-    m_orientation.m_rollDegrees += m_angularVelocity.m_rollDegrees * deltaSeconds;
-    m_orientation.m_rollDegrees = GetClamped(m_orientation.m_rollDegrees, -45.f, 45.f);
+    // m_orientation.m_rollDegrees += m_angularVelocity.m_rollDegrees * deltaSeconds;
+    // m_orientation.m_rollDegrees = GetClamped(m_orientation.m_rollDegrees, -45.f, 45.f);
 
     m_worldCamera->SetPositionAndOrientation(m_position, m_orientation);
 }
