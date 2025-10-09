@@ -20,6 +20,7 @@
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Renderer/VertexBuffer.hpp"
 #include "Engine/Renderer/VertexUtils.hpp"
+#include "Engine/Resource/ResourceSubsystem.hpp"
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Framework/BlockIterator.hpp"
@@ -93,7 +94,8 @@ void Chunk::Render()
         g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);
         g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
-        g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
+        // g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
+        g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
 
         // Use m_indices.size() instead of m_indexBuffer->GetSize()
         g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, (int)m_indices.size());
