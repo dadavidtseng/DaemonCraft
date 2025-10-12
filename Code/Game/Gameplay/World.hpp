@@ -34,18 +34,18 @@ namespace std
 //----------------------------------------------------------------------------------------------------
 // Chunk Management Constants - Reduced for Intel graphics compatibility
 //----------------------------------------------------------------------------------------------------
-constexpr int CHUNK_ACTIVATION_RANGE    = 320;
+constexpr int CHUNK_ACTIVATION_RANGE    = 480;
 constexpr int CHUNK_DEACTIVATION_RANGE  = CHUNK_ACTIVATION_RANGE + 16 + 16; // CHUNK_SIZE_X + CHUNK_SIZE_Y
 constexpr int CHUNK_ACTIVATION_RADIUS_X = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_X
 constexpr int CHUNK_ACTIVATION_RADIUS_Y = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_Y
-constexpr int MAX_ACTIVE_CHUNKS         = (2 * CHUNK_ACTIVATION_RADIUS_X) * (2 * CHUNK_ACTIVATION_RADIUS_Y)*2;
+// NOTE: MAX_ACTIVE_CHUNKS removed - deactivation at CHUNK_DEACTIVATION_RANGE provides natural memory limit
 
 //----------------------------------------------------------------------------------------------------
 // Job Queue Limiting - Prevent overwhelming the worker threads
 //----------------------------------------------------------------------------------------------------
-constexpr int MAX_PENDING_GENERATE_JOBS = 16;  // Maximum chunk generation jobs in flight
-constexpr int MAX_PENDING_LOAD_JOBS     = 4;   // Maximum chunk load jobs in flight
-constexpr int MAX_PENDING_SAVE_JOBS     = 4;   // Maximum chunk save jobs in flight
+constexpr int MAX_PENDING_GENERATE_JOBS = 128;  // Maximum chunk generation jobs in flight (increased from 16)
+constexpr int MAX_PENDING_LOAD_JOBS     = 16;   // Maximum chunk load jobs in flight (increased from 4)
+constexpr int MAX_PENDING_SAVE_JOBS     = 4;    // Maximum chunk save jobs in flight
 
 //----------------------------------------------------------------------------------------------------
 // 4. World units: Each world unit is 1 meter.  Each block is 1.0 x 1.0 x 1.0 world units (meters) in size.

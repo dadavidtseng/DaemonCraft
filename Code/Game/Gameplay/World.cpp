@@ -76,11 +76,28 @@ void World::Update(float const deltaSeconds)
         activeChunkCount = m_activeChunks.size();
     }
 
-    int chunksToActivateThisFrame = 1; // Default: one chunk per frame
-    if (activeChunkCount < 20)
+    // Tiered burst mode activation thresholds for responsive world generation
+    // Adjusted for CHUNK_ACTIVATION_RANGE = 640 (doubled from 320)
+    // With 640m range, need ~42×42 = 1,764 chunks for full coverage
+    int chunksToActivateThisFrame = 1; // Default: steady state (minimal activation)
+
+    if (activeChunkCount < 400)
     {
-        chunksToActivateThisFrame = 5; // Activate 5 chunks per frame when starting up
+        chunksToActivateThisFrame = 50; // AGGRESSIVE burst: fill initial activation range quickly
     }
+    else if (activeChunkCount < 1200)
+    {
+        chunksToActivateThisFrame = 30; // HIGH burst: continue populating surrounding areas
+    }
+    else if (activeChunkCount < 2500)
+    {
+        chunksToActivateThisFrame = 15; // MEDIUM burst: approaching full coverage
+    }
+    else if (activeChunkCount < 5000)
+    {
+        chunksToActivateThisFrame = 5; // LOW burst: taper off to steady state
+    }
+    // else: steady state (1 per frame) - world is well-populated
 
     // Execute chunk management actions
     // Priority: 1) Regenerate dirty chunk, 2) Activate missing chunks, 3) Deactivate distant chunk
@@ -92,46 +109,30 @@ void World::Update(float const deltaSeconds)
     {
         nearestDirtyChunk->RebuildMesh();
         nearestDirtyChunk->SetIsMeshDirty(false);
-        return; // Only one action per frame
+        // Continue to other operations (removed early return)
     }
 
-    // 2. If under max chunks, activate nearest missing chunks within activation range
-    if (activeChunkCount < MAX_ACTIVE_CHUNKS)
+    // 2. Activate missing chunks within activation range
+    for (int i = 0; i < chunksToActivateThisFrame; i++)
     {
-        for (int i = 0; i < chunksToActivateThisFrame; i++)
-        {
-            IntVec2 const nearestMissingChunk = FindNearestMissingChunkInRange(cameraPos);
+        IntVec2 const nearestMissingChunk = FindNearestMissingChunkInRange(cameraPos);
 
-            if (nearestMissingChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
-            {
-                ActivateChunk(nearestMissingChunk);
-                // Update active chunk count for next iteration
-                {
-                    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-                    activeChunkCount = m_activeChunks.size();
-                }
-                if (activeChunkCount >= MAX_ACTIVE_CHUNKS)
-                {
-                    break; // Stop if we've reached max chunks
-                }
-            }
-            else
-            {
-                break; // No more chunks to activate in range
-            }
+        if (nearestMissingChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
+        {
+            ActivateChunk(nearestMissingChunk);
         }
-        return; // Done with chunk activation for this frame
+        else
+        {
+            break; // No more chunks to activate in range
+        }
     }
-    // 3. Otherwise, deactivate the farthest active chunk if outside deactivation range
-    else
-    {
-        IntVec2 const farthestChunk = FindFarthestActiveChunkOutsideDeactivationRange(cameraPos);
 
-        if (farthestChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
-        {
-            DeactivateChunk(farthestChunk);
-            return; // Only one action per frame
-        }
+    // 3. Deactivate the farthest active chunk if outside deactivation range
+    IntVec2 const farthestChunk = FindFarthestActiveChunkOutsideDeactivationRange(cameraPos);
+
+    if (farthestChunk != IntVec2(INT_MAX, INT_MAX)) // Valid chunk found
+    {
+        DeactivateChunk(farthestChunk);
     }
 
     // Debug key F8 - force deactivate all chunks
@@ -419,47 +420,64 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
 {
     IntVec2 cameraChunkCoords = Chunk::GetChunkCoords(IntVec3(static_cast<int>(cameraPos.x), static_cast<int>(cameraPos.y), static_cast<int>(cameraPos.z)));
 
-    float   nearestDistance     = FLT_MAX;
-    IntVec2 nearestMissingChunk = IntVec2(INT_MAX, INT_MAX);
+    int maxRadius = (CHUNK_ACTIVATION_RANGE / 16) + 2; // CHUNK_SIZE_X is 16
 
-    // Search in a square around the camera position
-    int searchRadius = (CHUNK_ACTIVATION_RANGE / 16) + 2; // CHUNK_SIZE_X is 16
+    // OPTIMIZATION: Build lookup sets ONCE with single mutex lock per set
+    // This reduces mutex locks from ~1,936 per call to just 2 total
+    std::unordered_set<IntVec2> activeSet;
+    std::unordered_set<IntVec2> queuedSet;
 
-    for (int x = cameraChunkCoords.x - searchRadius; x <= cameraChunkCoords.x + searchRadius; x++)
     {
-        for (int y = cameraChunkCoords.y - searchRadius; y <= cameraChunkCoords.y + searchRadius; y++)
+        std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+        for (auto const& pair : m_activeChunks)
         {
-            IntVec2 testChunk(x, y);
+            activeSet.insert(pair.first);
+        }
+    }
 
-            // Skip if chunk is already active (with mutex protection)
+    {
+        std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+        queuedSet = m_queuedGenerateChunks; // Copy the set
+    }
+
+    // OPTIMIZATION: Spiral search outward from camera (nearest-first)
+    // Returns immediately when first valid chunk found, avoiding distance sorting
+    for (int radius = 0; radius <= maxRadius; radius++)
+    {
+        // Check ring at 'radius' distance from camera
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
             {
-                std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-                if (m_activeChunks.find(testChunk) != m_activeChunks.end())
+                // Only check perimeter of current ring (not interior)
+                if (abs(dx) != radius && abs(dy) != radius)
                 {
                     continue;
                 }
-            }
 
-            // Skip if chunk is already queued for generation (with mutex protection)
-            {
-                std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
-                if (m_queuedGenerateChunks.find(testChunk) != m_queuedGenerateChunks.end())
+                IntVec2 testChunk(cameraChunkCoords.x + dx, cameraChunkCoords.y + dy);
+
+                // Fast O(1) lookups without mutex locks
+                if (activeSet.find(testChunk) != activeSet.end())
                 {
                     continue;
                 }
-            }
+                if (queuedSet.find(testChunk) != queuedSet.end())
+                {
+                    continue;
+                }
 
-            // Check if within activation range
-            float distance = GetDistanceToChunkCenter(testChunk, cameraPos);
-            if (distance <= CHUNK_ACTIVATION_RANGE && distance < nearestDistance)
-            {
-                nearestDistance     = distance;
-                nearestMissingChunk = testChunk;
+                // Check if within activation range
+                float distance = GetDistanceToChunkCenter(testChunk, cameraPos);
+                if (distance <= CHUNK_ACTIVATION_RANGE)
+                {
+                    return testChunk; // Found nearest! Return immediately
+                }
             }
         }
     }
 
-    return nearestMissingChunk;
+    return IntVec2(INT_MAX, INT_MAX); // No valid chunk found in range
 }
 
 //----------------------------------------------------------------------------------------------------
