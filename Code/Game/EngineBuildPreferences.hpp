@@ -9,5 +9,22 @@
 //
 
 #pragma once
-// #define ENGINE_DISABLE_AUDIO	// (If uncommented) Disables AudioSystem code and fmod linkage.
+//
+// Engine Build Preferences for SimpleMiner
+//
+// These defines control which Engine subsystems are compiled and linked.
+// Disabling unused subsystems reduces binary size and removes runtime DLL dependencies.
+//
+
+// #define ENGINE_DISABLE_AUDIO	   // Disables AudioSystem code and removes FMOD linkage
+#define ENGINE_DISABLE_SCRIPT	   // Disables ScriptSubsystem code (NOTE: V8 linking controlled in Engine.vcxproj)
+
+// Enable Debug Rendering System
 #define ENGINE_DEBUG_RENDER
+
+//
+// V8 JavaScript Engine Configuration:
+// V8 linking is controlled by <EnableV8ScriptEngine> in Engine/Code/Engine/Engine.vcxproj (line 87)
+// - Set to 'false': No V8 linking, SimpleMiner.exe runs without V8 DLLs (current setting)
+// - Set to 'true':  V8 links, requires v8.dll/v8_libbase.dll/v8_libplatform.dll at runtime
+//
