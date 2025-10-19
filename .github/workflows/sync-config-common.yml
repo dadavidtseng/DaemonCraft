@@ -111,13 +111,13 @@ jobs:
           declare -A SYNC_CONFIG=(
             ["gitignore"]="${{ github.event.inputs.sync_gitignore || 'true' }}"
             ["gitattributes"]="${{ github.event.inputs.sync_gitattributes || 'true' }}"
-            ["editorconfig"]="${{ github.event.inputs.sync_editorconfig || 'true' }}"
+            ["editorconfig"]="${{ github.event.inputs.sync_editorconfig || 'false' }}"
             ["clangformat"]="${{ github.event.inputs.sync_clangformat || 'false' }}"
           )
           
           declare -A SOURCE_CONFIG=(
-            ["gitignore"]="${{ github.event.inputs.gitignore_source || 'UnrealEngine.gitignore' }}"
-            ["gitattributes"]="${{ github.event.inputs.gitattributes_source || 'UnrealEngine.gitattributes' }}"
+            ["gitignore"]="${{ github.event.inputs.gitignore_source || 'DaemonEngine.gitignore' }}"
+            ["gitattributes"]="${{ github.event.inputs.gitattributes_source || 'DaemonEngine.gitattributes' }}"
             ["editorconfig"]="${{ github.event.inputs.editorconfig_source || '.editorconfig' }}"
             ["clangformat"]="${{ github.event.inputs.clangformat_source || '.clang-format' }}"
           )
@@ -168,29 +168,29 @@ jobs:
               echo "⚠ Skipping invalid file pair format: $FILE_PAIR"
               continue
             fi
-            
+          
             # Split local and remote file names using colon as delimiter
             IFS=':' read -r LOCAL_FILE REMOTE_FILE <<< "$FILE_PAIR"
-            
+          
             # Remove leading and trailing whitespace
             LOCAL_FILE=$(echo "$LOCAL_FILE" | xargs)
             REMOTE_FILE=$(echo "$REMOTE_FILE" | xargs)
-            
+          
             # Validate file names are not empty
             if [ -z "$LOCAL_FILE" ] || [ -z "$REMOTE_FILE" ]; then
               echo "⚠ Skipping empty file names: '$LOCAL_FILE' : '$REMOTE_FILE'"
               continue
             fi
-            
+          
             echo "📥 Processing $LOCAL_FILE (source: $REMOTE_FILE)"
-            
+          
             # Download file with better error handling
             TEMP_FILE="${LOCAL_FILE}.temp.$$"
             if curl -fsSL --max-time 30 --retry 3 "$BASE_URL/$REMOTE_FILE" -o "$TEMP_FILE"; then
               # Verify downloaded file is not empty
               if [ -s "$TEMP_FILE" ]; then
                 echo "✓ Successfully downloaded $REMOTE_FILE"
-                
+          
                 # Check for changes between existing and downloaded file
                 if [ -f "$LOCAL_FILE" ]; then
                   # Compare files byte by byte
