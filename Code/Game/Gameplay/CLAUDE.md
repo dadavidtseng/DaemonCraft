@@ -1,6 +1,48 @@
-[Root Directory](../../../CLAUDE.md) > [Code](../../) > [Game](../) > **Gameplay**
+[🏠 Root](../../../CLAUDE.md) > [📂 Code](../../) > [📂 Game](../) > **[🌍 Gameplay]**
+
+**Navigation:** [Back to Game](../CLAUDE.md) | [Framework](../Framework/CLAUDE.md) | [Definition](../Definition/CLAUDE.md) | [Root](../../../CLAUDE.md)
+
+---
 
 # Gameplay Module - Game Logic and World Systems
+
+## Quick Navigation
+- **[Game Module](../CLAUDE.md)** - Core game logic and entry points
+- **[Framework Module](../Framework/CLAUDE.md)** - App, Block, Chunk systems (**Assignment 4: Primary implementation**)
+- **[Definition Module](../Definition/CLAUDE.md)** - BlockDefinition configuration
+- **[Runtime Assets](../../../Run/CLAUDE.md)** - Shaders, models, configurations
+- **[Development Plan](../../../.claude/plan/development.md)** - Assignment 4: World Generation
+- **[Task Pointer](../../../.claude/plan/task-pointer.md)** - Quick task reference
+
+---
+
+## Assignment 4: World Generation - Chunk Management Context
+
+**Status:** Phase 0 - Prerequisites (Upcoming)
+
+This module manages the [World class](CLAUDE.md) which coordinates chunk activation and manages the multi-threaded chunk generation system. While the primary terrain generation occurs in [Chunk.cpp](../Framework/CLAUDE.md), this module handles:
+
+**World Class Responsibilities:**
+- Async chunk activation/deactivation based on player position
+- Job queue management (ChunkGenerateJob, ChunkLoadJob, ChunkSaveJob)
+- Thread-safe chunk state transitions with mutexes
+- Processing completed generation jobs
+- Mesh rebuilding coordination
+
+**Changes for Assignment 4:**
+- Chunk activation may be enhanced with biome-based loading strategies
+- Job processing will handle new biome data and enhanced terrain complexity
+- Mesh rebuilding may need performance optimization for complex 3D terrain
+
+**Key Files:**
+- `World.hpp/cpp` - Chunk coordination and job management
+- `Game.hpp/cpp` - Game state and player management
+
+**Resources:**
+- [Development Plan](../../../.claude/plan/development.md) - Complete implementation phases
+- [Framework Module](../Framework/CLAUDE.md) - Primary terrain generation implementation
+
+---
 
 ## Module Responsibilities
 
@@ -161,23 +203,39 @@ A: Multiple cameras exist: m_screenCamera for UI, m_worldCamera for 3D gameplay.
 
 ### Core Gameplay Files
 - `Game.hpp/cpp` - Main game controller and state machine
-- `World.hpp/cpp` - World management and chunk coordination
+- `World.hpp/cpp` - World management and chunk coordination (**Assignment 4: Enhanced job processing**)
 - `Player.hpp/cpp` - Player character controller and input
 - `Entity.hpp/cpp` - Base class for dynamic game objects
 - `Prop.hpp/cpp` - Static and dynamic world objects
 
 ### Framework Dependencies
-- `../Framework/Chunk.hpp` - Individual chunk management
-- `../Framework/Block.hpp` - Block data structure
-- `../Framework/App.hpp` - Application lifecycle coordination
+- [Framework/Chunk.hpp](../Framework/CLAUDE.md) - Individual chunk management (**Assignment 4: PRIMARY FILE**)
+- [Framework/Block.hpp](../Framework/CLAUDE.md) - Block data structure
+- [Framework/App.hpp](../Framework/CLAUDE.md) - Application lifecycle coordination
+
+### Definition Dependencies
+- [Definition/BlockDefinition.hpp/cpp](../Definition/CLAUDE.md) - Block type definitions
 
 ### Engine Dependencies
 - Engine math libraries for Vec3, camera, transformations
 - Engine input system for keyboard/controller handling
 - Engine rendering for entity and world visualization
 
+### Related Modules
+- **[Game Module](../CLAUDE.md)** - Entry points and build configuration
+- **[Framework Module](../Framework/CLAUDE.md)** - Core systems (**Assignment 4: Primary implementation**)
+- **[Definition Module](../Definition/CLAUDE.md)** - Block configuration
+- **[Runtime Assets](../../../Run/CLAUDE.md)** - Asset files
+- **[Development Plan](../../../.claude/plan/development.md)** - Assignment 4 guide
+
 ## Changelog
 
+- **2025-10-26**: Updated documentation for Assignment 4: World Generation
+  - Added Assignment 4 context section explaining World class role in chunk management
+  - Added navigation breadcrumbs and quick navigation
+  - Enhanced inline cross-references to Framework and Definition modules
+  - Documented World class responsibilities for job management and chunk activation
+  - Linked to development planning resources
 - **2025-09-13**: Initial Gameplay module documentation created
 - **Recent**: World class now properly manages active chunks for dynamic loading
 - **Recent**: Player system integration with input handling and camera control

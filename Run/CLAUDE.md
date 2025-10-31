@@ -1,6 +1,63 @@
-[Root Directory](../../CLAUDE.md) > **Run**
+[🏠 Root](../../CLAUDE.md) > **[📦 Run]**
+
+**Navigation:** [Back to Root](../../CLAUDE.md) | [Game Module](../../Code/Game/CLAUDE.md) | [Framework](../../Code/Game/Framework/CLAUDE.md) | [Gameplay](../../Code/Game/Gameplay/CLAUDE.md)
+
+---
 
 # Run Module - Runtime Assets and Executables
+
+## Quick Navigation
+- **[Game Module](../../Code/Game/CLAUDE.md)** - Core game logic and entry points
+- **[Framework Module](../../Code/Game/Framework/CLAUDE.md)** - Core systems (**Assignment 4: Primary implementation**)
+- **[Definition Module](../../Code/Game/Definition/CLAUDE.md)** - BlockDefinition configuration
+- **[Development Plan](../../.claude/plan/development.md)** - Assignment 4: World Generation
+- **[Task Pointer](../../.claude/plan/task-pointer.md)** - Quick task reference
+
+---
+
+## Assignment 4: World Generation - Asset Requirements
+
+**Status:** Phase 0 - Prerequisites (Upcoming)
+
+**CRITICAL ASSET UPDATES REQUIRED:** Assignment 4 requires new sprite sheets and block definitions to support biome-specific blocks (trees, leaves, surface variants).
+
+### Files to Replace/Add
+
+**REQUIRED (Phase 1, Task 1.1):**
+1. **BlockSpriteSheet_BlockDefinitions.xml**
+   - Location: `Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml`
+   - Action: **REPLACE** with new file from Canvas assignment zip
+   - Contents: New block types for trees (wood, leaves), biome-specific surfaces
+   - Must be done FIRST before any code changes
+
+2. **New Sprite Sheets**
+   - Location: `Data/Images/`
+   - Action: **ADD** new sprite sheet files from Canvas assignment zip
+   - Contents: Biome-specific block textures (oak/pine/palm trees, varied leaves, etc.)
+   - Resolution: Likely 32px and/or 128px versions
+
+**Verification Steps:**
+- [ ] Download assignment zip from Canvas
+- [ ] Replace `Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml`
+- [ ] Add new sprite sheets to `Data/Images/`
+- [ ] Launch game to verify assets load (may have missing textures initially - expected)
+- [ ] Document new block type indices for use in code
+
+### New Block Types Expected
+
+Based on Assignment 4 requirements, the new sprite sheet should include:
+- **Wood Types**: Oak, Pine, Palm (for tree trunks)
+- **Leaf Types**: Oak leaves, Pine needles, Palm fronds
+- **Surface Variants**: Biome-specific grass, sand, snow textures
+- **Underground**: Cave-specific blocks (stalactites/stalagmites if supported)
+
+**Block Index Documentation:** After loading new definitions, update [Framework/GameCommon.hpp](../../Code/Game/Framework/CLAUDE.md) with new block type constants.
+
+**Resources:**
+- [Development Plan](../../.claude/plan/development.md) - Phase 1, Task 1.1: Asset Integration
+- [Task Pointer](../../.claude/plan/task-pointer.md) - Quick reference for asset setup
+
+---
 
 ## Module Responsibilities
 
@@ -152,6 +209,13 @@ A: Yes, GameConfig.xml and BlockSpriteSheet_BlockDefinitions.xml are loaded at r
 
 ## Changelog
 
+- **2025-10-26**: Updated documentation for Assignment 4: World Generation
+  - Added Assignment 4 Asset Requirements section detailing critical file replacements
+  - Added navigation breadcrumbs and quick navigation
+  - Documented new sprite sheets and block definitions from Canvas assignment zip
+  - Added verification steps for asset integration (Phase 1, Task 1.1)
+  - Enhanced inline cross-references to Framework and Definition modules
+  - Linked to development planning resources
 - **2025-09-13**: Initial Run module documentation created
 - **Recent**: Added comprehensive block definitions with 27+ block types
 - **Recent**: Texture atlas system with multiple resolution support

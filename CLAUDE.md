@@ -1,6 +1,32 @@
 # SimpleMiner - Voxel Game Engine
 
+**[🏠 Root]** | [📂 Game](Code/Game/CLAUDE.md) | [🎮 Framework](Code/Game/Framework/CLAUDE.md) | [🌍 Gameplay](Code/Game/Gameplay/CLAUDE.md) | [📦 Run](Run/CLAUDE.md) | [📖 Docs](Docs/CLAUDE.md)
+
+---
+
+## Quick Navigation
+
+### Core Modules
+- **[Game Core](Code/Game/CLAUDE.md)** - Main game logic, entry points, and build configuration
+- **[Framework](Code/Game/Framework/CLAUDE.md)** - Core systems (App, Block, Chunk management)
+- **[Gameplay](Code/Game/Gameplay/CLAUDE.md)** - Game logic (World, Player, Entities)
+- **[Definition](Code/Game/Definition/CLAUDE.md)** - Data-driven configuration for blocks
+- **[Runtime Assets](Run/CLAUDE.md)** - Executables, shaders, models, configurations
+- **[Documentation](Docs/CLAUDE.md)** - Development resources and analysis
+
+### Development Planning (Assignment 4: World Generation)
+- **[Development Plan](.claude/plan/development.md)** - Comprehensive world generation implementation guide
+- **[Task Pointer](.claude/plan/task-pointer.md)** - Quick reference task index
+
+---
+
 ## Changelog
+- **2025-10-26**: Updated documentation structure with comprehensive linking and Assignment 4 context
+  - Added quick navigation section with links to all modules
+  - Added development planning section linking to Assignment 4 resources
+  - Enhanced mermaid diagram with clickable links to all modules
+  - Added inline cross-references throughout documentation
+  - Created missing CLAUDE.md files (Definition, Docs)
 - **2025-09-30**: Implemented multi-threaded chunk system with JobSystem integration
   - Added dedicated I/O worker thread for disk operations
   - Implemented asynchronous chunk generation, loading, and saving
@@ -13,24 +39,48 @@
 
 SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engine built in C++ with DirectX 11 rendering. The project demonstrates advanced game engine architecture patterns, including chunk-based world generation, block systems, JavaScript integration via V8, and professional audio through FMOD. The engine supports both debug and release builds with optimized rendering pipelines for Minecraft-like gameplay experiences.
 
+## Current Assignment: World Generation (Assignment 4)
+
+**Status:** Phase 0 - Prerequisites (Upcoming)
+
+SimpleMiner is preparing for Assignment 4, which will upgrade the procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline with:
+- **6D Biome System** - Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys
+- **3D Density Terrain** - Volumetric terrain generation with overhangs and caves
+- **Biome-based Features** - Trees, surface blocks, and environmental elements
+- **Cave Systems** - Cheese and spaghetti cave types using 3D noise
+- **Carvers** - Ravines, canyons, and rivers for dramatic terrain features
+
+**Key Files to be Modified:**
+- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` method will be completely restructured
+- [Chunk.hpp](Code/Game/Framework/CLAUDE.md) - New BiomeData structure and tree stamp systems
+- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - New constants for biome and cave parameters
+
+**Planning Resources:**
+- [Development Plan](.claude/plan/development.md) - Detailed implementation phases and technical specifications
+- [Task Pointer](.claude/plan/task-pointer.md) - Quick task reference index
+
+> **Note:** CLAUDE.md files will be updated throughout Assignment 4 implementation to reflect current state and architectural changes.
+
+---
+
 ## Architecture Overview
 
 The project follows a modular architecture with clear separation between engine core and game logic:
 
 - **Custom Engine Architecture**: Built on a separate engine project with modular subsystems
 - **Multi-threaded Job System**: Asynchronous chunk generation with (N-1) worker threads
-  - 1 dedicated I/O thread for disk operations (LoadChunkJob, SaveChunkJob)
-  - (N-2) generic threads for computation (ChunkGenerateJob)
+  - 1 dedicated I/O thread for disk operations ([LoadChunkJob, SaveChunkJob](Code/Game/Gameplay/CLAUDE.md))
+  - (N-2) generic threads for computation ([ChunkGenerateJob](Code/Game/Gameplay/CLAUDE.md))
   - Thread-safe chunk state machine with std::atomic transitions
 - **DirectX 11 Rendering**: Modern GPU-accelerated graphics with HLSL shaders
 - **Chunk-based World System**: Efficient voxel storage and rendering using 16x16x128 block chunks
   - Asynchronous chunk loading/generation with thread-safe activation
   - RLE-compressed disk I/O for persistent world saves
-  - Mutex-protected shared data structures
-- **Block Definition System**: Data-driven block types with XML configuration
+  - Mutex-protected shared data structures (see [World class](Code/Game/Gameplay/CLAUDE.md))
+- **Block Definition System**: Data-driven block types with XML configuration (see [Definition](Code/Game/Definition/CLAUDE.md))
 - **V8 JavaScript Integration**: Embedded scripting engine for game logic
 - **FMOD Audio**: Professional audio system for immersive sound design
-- **Entity-Component Architecture**: Flexible system for game objects and players
+- **Entity-Component Architecture**: Flexible system for game objects and players (see [Gameplay](Code/Game/Gameplay/CLAUDE.md))
 
 ## Module Structure Diagram
 
@@ -39,31 +89,30 @@ graph TD
     A["SimpleMiner (Root)"] --> B["Code"];
     A --> C["Run"];
     A --> D["Docs"];
-    A --> E["Temporary"];
-    
+    A --> E[".claude/plan"];
+
     B --> F["Game"];
     F --> G["Framework"];
     F --> H["Gameplay"];
     F --> I["Definition"];
-    F --> J["Subsystem"];
-    
+
+    E --> E1["development.md"];
+    E --> E2["task-pointer.md"];
+
     G --> K["App.hpp/cpp"];
     G --> L["Block.hpp/cpp"];
-    G --> M["Chunk.hpp/cpp"];
+    G --> M["Chunk.hpp/cpp - GenerateTerrain()"];
     G --> N["GameCommon.hpp/cpp"];
     G --> O["Main_Windows.cpp"];
-    
+
     H --> P["Game.hpp/cpp"];
     H --> Q["World.hpp/cpp"];
     H --> R["Player.hpp/cpp"];
     H --> S["Entity.hpp/cpp"];
     H --> T["Prop.hpp/cpp"];
-    
+
     I --> U["BlockDefinition.hpp/cpp"];
-    
-    J --> V["Light"];
-    V --> W["LightSubsystem.hpp/cpp"];
-    
+
     C --> X["Data"];
     X --> Y["Shaders"];
     X --> Z["Definitions"];
@@ -71,23 +120,30 @@ graph TD
     X --> AB["Models"];
     X --> AC["Audio"];
     X --> AD["Fonts"];
-    
+
+    D --> D1["Henrik_Kniberg_Analysis.md"];
+    D --> D2["WorldGenerationDevelopmentBlog"];
+
     click F "./Code/Game/CLAUDE.md" "View Game module documentation"
     click G "./Code/Game/Framework/CLAUDE.md" "View Framework module documentation"
     click H "./Code/Game/Gameplay/CLAUDE.md" "View Gameplay module documentation"
+    click I "./Code/Game/Definition/CLAUDE.md" "View Definition module documentation"
     click C "./Run/CLAUDE.md" "View Runtime assets documentation"
+    click D "./Docs/CLAUDE.md" "View Documentation resources"
+    click E1 "./.claude/plan/development.md" "View Assignment 4 development plan"
+    click E2 "./.claude/plan/task-pointer.md" "View quick task reference"
 ```
 
 ## Module Index
 
-| Module | Path | Responsibility |
-|--------|------|---------------|
-| **Game Core** | `Code/Game/` | Main game logic, entry points, and build configuration |
-| **Framework** | `Code/Game/Framework/` | Core game systems including App, Block, Chunk management |
-| **Gameplay** | `Code/Game/Gameplay/` | Game-specific logic including World, Player, Entities |
-| **Definitions** | `Code/Game/Definition/` | Data-driven configuration for blocks and game elements |
-| **Subsystems** | `Code/Game/Subsystem/` | Specialized systems like lighting and rendering |
-| **Runtime Assets** | `Run/` | Executable, game data, shaders, models, and configurations |
+| Module | Path | Responsibility | Documentation |
+|--------|------|---------------|---------------|
+| **Game Core** | `Code/Game/` | Main game logic, entry points, and build configuration | [CLAUDE.md](Code/Game/CLAUDE.md) |
+| **Framework** | `Code/Game/Framework/` | Core game systems including App, Block, Chunk management | [CLAUDE.md](Code/Game/Framework/CLAUDE.md) |
+| **Gameplay** | `Code/Game/Gameplay/` | Game-specific logic including World, Player, Entities | [CLAUDE.md](Code/Game/Gameplay/CLAUDE.md) |
+| **Definition** | `Code/Game/Definition/` | Data-driven configuration for blocks and game elements | [CLAUDE.md](Code/Game/Definition/CLAUDE.md) |
+| **Runtime Assets** | `Run/` | Executable, game data, shaders, models, and configurations | [CLAUDE.md](Run/CLAUDE.md) |
+| **Documentation** | `Docs/` | Development resources, Henrik Kniberg analysis, professor's blog | [CLAUDE.md](Docs/CLAUDE.md) |
 
 ## Running and Development
 

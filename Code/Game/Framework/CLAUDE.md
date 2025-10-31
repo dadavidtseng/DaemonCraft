@@ -1,6 +1,72 @@
-[Root Directory](../../../CLAUDE.md) > [Code](../../) > [Game](../) > **Framework**
+[🏠 Root](../../../CLAUDE.md) > [📂 Code](../../) > [📂 Game](../) > **[🎮 Framework]**
+
+**Navigation:** [Back to Game](../CLAUDE.md) | [Gameplay](../Gameplay/CLAUDE.md) | [Definition](../Definition/CLAUDE.md) | [Root](../../../CLAUDE.md)
+
+---
 
 # Framework Module - Core Game Systems
+
+## Quick Navigation
+- **[Game Module](../CLAUDE.md)** - Core game logic and entry points
+- **[Gameplay Module](../Gameplay/CLAUDE.md)** - World, Player, Entity systems
+- **[Definition Module](../Definition/CLAUDE.md)** - BlockDefinition configuration
+- **[Runtime Assets](../../../Run/CLAUDE.md)** - Shaders, models, configurations
+- **[Development Plan](../../../.claude/plan/development.md)** - Assignment 4: World Generation
+- **[Task Pointer](../../../.claude/plan/task-pointer.md)** - Quick task reference
+
+---
+
+## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
+
+**Status:** Phase 0 - Prerequisites (Upcoming)
+
+**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method will undergo a complete restructure.
+
+### Files to be Modified
+
+**Chunk.cpp** (lines 112-324)
+- **Pass 1** (lines 132-217): Per-(x,y) column calculations
+  - **ADD:** 6 biome noise layers (Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys)
+  - **ADD:** Biome selection using lookup tables
+  - **STORE:** BiomeData for each column
+- **Pass 2** (lines 220-320): Per-(x,y,z) block placement
+  - **REPLACE:** 2D heightmap logic with 3D density formula: D(x,y,z) = N(x,y,z,s) + B(z)
+  - **ADD:** Terrain shaping curves based on Continentalness, Erosion, and Peaks & Valleys
+  - **ADD:** Top and bottom slides for smooth transitions
+  - **ADD:** Cheese and spaghetti cave carving (3D noise-based)
+  - **ADD:** Tree placement using hardcoded stamps
+  - **ADD:** Biome-appropriate surface block replacement
+
+**Chunk.hpp**
+- **ADD:** `BiomeData` struct (6 noise values + BiomeType)
+- **ADD:** `BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y]` member
+- **ADD:** `TreeStamp` struct for hardcoded tree patterns
+
+**GameCommon.hpp**
+- **ADD:** Biome noise scale constants (Continentalness, Erosion, Weirdness, PV)
+- **ADD:** Density formula parameters (scale, octaves, default height, bias)
+- **ADD:** Cave parameters (cheese/spaghetti scales and thresholds)
+- **ADD:** Tree placement parameters
+- **ADD:** Carver parameters (ravines, rivers)
+- **ADD:** `BiomeType` enum
+
+### Technical Approach
+
+**Minecraft-Inspired Pipeline:**
+1. **Biomes** - Sample 6 noise layers, determine biome via lookup table
+2. **3D Density** - Use density formula with curves/splines for terrain shaping
+3. **Surface** - Replace surface blocks based on biome type
+4. **Trees** - Place biome-specific tree stamps
+5. **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves
+6. **Carvers** - Add ravines and rivers for dramatic features
+
+**Key Resources:**
+- [Development Plan](../../../.claude/plan/development.md) - Complete technical specifications
+- [Task Pointer](../../../.claude/plan/task-pointer.md) - Implementation steps
+- [Henrik Kniberg Analysis](../../../Docs/CLAUDE.md) - Minecraft world generation explanation
+- [Professor's Blog](../../../Docs/CLAUDE.md) - October 2025 implementation timeline
+
+---
 
 ## Module Responsibilities
 
@@ -54,9 +120,10 @@ class Block {
 ```
 
 #### BlockDefinition System
-- **XML Configuration**: `Run/Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml`
+- **XML Configuration**: See [Runtime Assets](../../../Run/CLAUDE.md) - `Run/Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml`
 - **Properties**: visibility, solidity, opacity, texture coordinates, lighting
-- **Performance**: Block instances reference shared definitions for memory efficiency
+- **Performance**: Block instances reference shared [definitions](../Definition/CLAUDE.md) for memory efficiency
+- **Assignment 4**: New sprite sheet will add biome-specific blocks (trees, leaves, surface variants)
 
 ### Chunk System Architecture
 
@@ -167,21 +234,36 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 ### Core Framework Files
 - `App.hpp/cpp` - Application lifecycle and main loop
 - `Main_Windows.cpp` - Windows platform entry point
-- `GameCommon.hpp/cpp` - Shared utilities and globals
+- `GameCommon.hpp/cpp` - Shared utilities and globals (**Assignment 4: Add constants here**)
 - `Block.hpp/cpp` - Ultra-lightweight block flyweight
-- `Chunk.hpp/cpp` - Chunk storage and mesh generation
+- `Chunk.hpp/cpp` - Chunk storage and mesh generation (**Assignment 4: PRIMARY FILE TO MODIFY**)
 
 ### Dependencies
-- `../Definition/BlockDefinition.hpp/cpp` - Block type definitions
+- [Definition/BlockDefinition.hpp/cpp](../Definition/CLAUDE.md) - Block type definitions
+- [Gameplay/World.hpp/cpp](../Gameplay/CLAUDE.md) - World and chunk coordination
 - `../EngineBuildPreferences.hpp` - Build configuration
 - Engine headers for math, rendering, and core systems
 
 ### Configuration Files
-- `../../Run/Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml` - Block properties
-- `../../Run/Data/GameConfig.xml` - Window and display settings
+- [Run/Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml](../../../Run/CLAUDE.md) - Block properties (**Assignment 4: REPLACE with new file**)
+- [Run/Data/GameConfig.xml](../../../Run/CLAUDE.md) - Window and display settings
+
+### Related Modules
+- **[Game Module](../CLAUDE.md)** - Entry points and build configuration
+- **[Gameplay Module](../Gameplay/CLAUDE.md)** - World management and chunk activation
+- **[Definition Module](../Definition/CLAUDE.md)** - Block configuration system
+- **[Runtime Assets](../../../Run/CLAUDE.md)** - Asset files and executables
+- **[Development Plan](../../../.claude/plan/development.md)** - Assignment 4 implementation guide
 
 ## Changelog
 
+- **2025-10-26**: Updated documentation for Assignment 4: World Generation
+  - Added comprehensive Assignment 4 section detailing GenerateTerrain() modifications
+  - Added navigation breadcrumbs and quick navigation
+  - Enhanced inline cross-references to Gameplay, Definition, and Run modules
+  - Documented specific code line numbers for implementation (Pass 1: lines 132-217, Pass 2: lines 220-320)
+  - Added technical approach section with Minecraft-inspired pipeline
+  - Linked to development planning resources and Henrik Kniberg analysis
 - **2025-09-13**: Initial Framework module documentation created
 - **Recent**: Chunk rendering system now properly handles face culling and mesh optimization
 - **Recent**: Fixed DirectX 11 memory leaks in vertex/index buffer management

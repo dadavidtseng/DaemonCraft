@@ -1,37 +1,69 @@
-[Root Directory](../../CLAUDE.md) > [Code](../) > **Game**
+[🏠 Root](../../CLAUDE.md) > [📂 Code](../) > **[📂 Game]**
+
+**Navigation:** [Framework](Framework/CLAUDE.md) | [Gameplay](Gameplay/CLAUDE.md) | [Definition](Definition/CLAUDE.md) | [Back to Root](../../CLAUDE.md)
+
+---
 
 # Game Module - Core Game Logic and Entry Points
+
+## Quick Navigation
+- **[Framework Module](Framework/CLAUDE.md)** - App, Block, Chunk systems
+- **[Gameplay Module](Gameplay/CLAUDE.md)** - World, Player, Entity systems
+- **[Definition Module](Definition/CLAUDE.md)** - BlockDefinition XML configuration
+- **[Runtime Assets](../../Run/CLAUDE.md)** - Shaders, models, configurations
+- **[Development Plan](../../.claude/plan/development.md)** - Assignment 4: World Generation
+
+---
+
+## Assignment 4 Context: World Generation
+
+**Status:** Phase 0 - Prerequisites (Upcoming)
+
+This module will be indirectly affected by Assignment 4 as the [Framework module](Framework/CLAUDE.md) and [Gameplay module](Gameplay/CLAUDE.md) undergo significant changes for procedural world generation. The [App class](Framework/CLAUDE.md) manages the JobSystem that will execute new world generation jobs.
+
+**Key Changes Coming:**
+- New block types from updated sprite sheets ([Definition module](Definition/CLAUDE.md))
+- Enhanced chunk generation jobs in [Framework](Framework/CLAUDE.md)
+- Biome system integration affecting [World class](Gameplay/CLAUDE.md)
+
+**Resources:**
+- [Development Plan](../../.claude/plan/development.md) - Complete implementation guide
+- [Task Pointer](../../.claude/plan/task-pointer.md) - Quick task reference
+
+---
 
 ## Module Responsibilities
 
 The Game module serves as the primary entry point and core logic container for SimpleMiner. It manages the application lifecycle, game state, and coordinates between the custom engine and game-specific functionality. This module defines build preferences, handles Windows platform initialization, and orchestrates the main game systems.
 
+See [Framework module](Framework/CLAUDE.md) for core systems implementation and [Gameplay module](Gameplay/CLAUDE.md) for game-specific logic.
+
 ## Entry and Startup
 
 ### Primary Entry Point
-- **File**: `Framework/Main_Windows.cpp`
+- **File**: [Framework/Main_Windows.cpp](Framework/CLAUDE.md)
 - **Function**: `WinMain()` - Windows application entry point
 - **Process**:
-  1. Creates App instance (`g_app = new App()`)
+  1. Creates [App](Framework/CLAUDE.md) instance (`g_app = new App()`)
   2. Calls `App::Startup()` for initialization
   3. Runs main game loop via `App::RunMainLoop()`
   4. Handles shutdown and cleanup
 
 ### Application Architecture
-- **App Class** (`Framework/App.hpp/cpp`): Main application controller
+- **[App Class](Framework/CLAUDE.md)** (`Framework/App.hpp/cpp`): Main application controller
   - Manages game lifecycle (startup, main loop, shutdown)
   - Initializes JobSystem with specialized worker threads
-    - 1 dedicated I/O worker thread (for ChunkLoadJob, ChunkSaveJob)
-    - (N-2) generic worker threads (for ChunkGenerateJob)
+    - 1 dedicated I/O worker thread (for [ChunkLoadJob, ChunkSaveJob](Gameplay/CLAUDE.md))
+    - (N-2) generic worker threads (for [ChunkGenerateJob](Gameplay/CLAUDE.md))
     - Thread count based on `std::thread::hardware_concurrency()`
   - Handles window events and cursor management
   - Coordinates with DevConsole camera system
   - Provides quit request handling
 
 ### Game State Management
-- **Game Class** (`Gameplay/Game.hpp/cpp`): Core game logic controller
+- **[Game Class](Gameplay/CLAUDE.md)** (`Gameplay/Game.hpp/cpp`): Core game logic controller
   - **States**: `ATTRACT` (menu) and `GAME` (active play)
-  - **Update Pipeline**: Input → Entities → World updates
+  - **Update Pipeline**: Input → Entities → [World](Gameplay/CLAUDE.md) updates
   - **Rendering**: Separate attract mode and gameplay rendering paths
 
 ## External Interfaces
@@ -86,13 +118,14 @@ Code/Game/
 ## Data Models
 
 ### Block System Architecture
-- **Block Class**: Ultra-lightweight 1-byte flyweight pattern
+- **[Block Class](Framework/CLAUDE.md)**: Ultra-lightweight 1-byte flyweight pattern
   - Single `uint8_t m_typeIndex` member
-  - References global `BlockDefinition` table
-- **BlockDefinition**: Data-driven block properties from XML
+  - References global [BlockDefinition](Definition/CLAUDE.md) table
+- **[BlockDefinition](Definition/CLAUDE.md)**: Data-driven block properties from XML
   - Visual properties (sprites, visibility, opacity)
   - Physical properties (solid, collision)
   - Lighting properties (emission values)
+  - See [Definition module](Definition/CLAUDE.md) for details
 
 ### World Coordinate System
 - **World Units**: 1 meter per block (1.0 x 1.0 x 1.0)
@@ -142,26 +175,39 @@ A: Chunk mesh rebuilding occurs when `m_needsRebuild` flag is set, typically aft
 ## Related File List
 
 ### Core Framework
-- `Framework/App.hpp/cpp` - Application lifecycle management
-- `Framework/Main_Windows.cpp` - Windows entry point
-- `Framework/GameCommon.hpp/cpp` - Shared game utilities
-- `Framework/Block.hpp/cpp` - Block flyweight implementation
-- `Framework/Chunk.hpp/cpp` - Chunk storage and rendering
+- [Framework/App.hpp/cpp](Framework/CLAUDE.md) - Application lifecycle management
+- [Framework/Main_Windows.cpp](Framework/CLAUDE.md) - Windows entry point
+- [Framework/GameCommon.hpp/cpp](Framework/CLAUDE.md) - Shared game utilities
+- [Framework/Block.hpp/cpp](Framework/CLAUDE.md) - Block flyweight implementation
+- [Framework/Chunk.hpp/cpp](Framework/CLAUDE.md) - Chunk storage and rendering
 
-### Gameplay Systems  
-- `Gameplay/Game.hpp/cpp` - Main game state machine
-- `Gameplay/World.hpp/cpp` - World and chunk management
-- `Gameplay/Player.hpp/cpp` - Player character controller
-- `Gameplay/Entity.hpp/cpp` - Base entity system
-- `Gameplay/Prop.hpp/cpp` - Static/dynamic world objects
+### Gameplay Systems
+- [Gameplay/Game.hpp/cpp](Gameplay/CLAUDE.md) - Main game state machine
+- [Gameplay/World.hpp/cpp](Gameplay/CLAUDE.md) - World and chunk management
+- [Gameplay/Player.hpp/cpp](Gameplay/CLAUDE.md) - Player character controller
+- [Gameplay/Entity.hpp/cpp](Gameplay/CLAUDE.md) - Base entity system
+- [Gameplay/Prop.hpp/cpp](Gameplay/CLAUDE.md) - Static/dynamic world objects
 
 ### Data and Configuration
-- `Definition/BlockDefinition.hpp/cpp` - Block type definitions
+- [Definition/BlockDefinition.hpp/cpp](Definition/CLAUDE.md) - Block type definitions
 - `EngineBuildPreferences.hpp` - Engine build configuration
 - `Game.vcxproj` - Visual Studio project file
 
+### Related Modules
+- **[Framework Module](Framework/CLAUDE.md)** - Core systems implementation
+- **[Gameplay Module](Gameplay/CLAUDE.md)** - Game logic and world management
+- **[Definition Module](Definition/CLAUDE.md)** - Data-driven block configuration
+- **[Runtime Assets](../../Run/CLAUDE.md)** - Assets and executables
+- **[Development Plan](../../.claude/plan/development.md)** - Assignment 4: World Generation
+
 ## Changelog
 
+- **2025-10-26**: Updated documentation structure with comprehensive linking and Assignment 4 context
+  - Added navigation breadcrumbs and quick navigation section
+  - Added Assignment 4 context explaining upcoming world generation changes
+  - Enhanced inline cross-references to Framework, Gameplay, and Definition modules
+  - Added links to development planning resources
+  - Reorganized Related File List with hyperlinks to module documentation
 - **2025-09-13**: Initial module documentation created
 - **Recent**: Fixed relative paths in Game.vcxproj for better portability
 - **Recent**: Resolved all compiler warnings and DirectX 11 memory leaks
