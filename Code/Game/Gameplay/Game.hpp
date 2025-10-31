@@ -32,6 +32,9 @@ public:
     void Render() const;
     bool IsAttractMode() const;
     Vec3 GetPlayerCameraPosition() const;
+    void ShowSimpleDemoWindow();
+    void ShowInspectorWindow();
+    void ShowDebugLogWindow();
 
 private:
     void UpdateFromInput();
@@ -57,4 +60,9 @@ private:
 
     // Debug display toggle
     bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)
+
+    // ImGui window visibility toggles
+    bool m_showDemoWindow = false;
+    bool m_showInspectorWindow = false;
+    bool m_showConsoleWindow = false;
 };
