@@ -19,6 +19,7 @@
 #include "Engine/Renderer/DebugRenderSystem.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
+#include "Engine/UI/ImGuiSubsystem.hpp"
 
 
 //----------------------------------------------------------------------------------------------------
@@ -105,9 +106,12 @@ void App::BeginFrame() const
     g_eventSystem->BeginFrame();
     g_window->BeginFrame();
     g_renderer->BeginFrame();
+
+    // Input system processes input for IMGUI
+    g_input->BeginFrame();
+
     DebugRenderBeginFrame();
     g_devConsole->BeginFrame();
-    g_input->BeginFrame();
     g_audio->BeginFrame();
 }
 
@@ -116,6 +120,13 @@ void App::Update()
 {
     Clock::TickSystemClock();
     UpdateCursorMode();
+
+    // Start ImGui frame via subsystem
+    if (g_imgui)
+    {
+        g_imgui->Update();
+    }
+
     g_game->Update();
 }
 
@@ -136,6 +147,12 @@ void App::Render() const
     AABB2 const box = AABB2(Vec2::ZERO, Vec2(1600.f, 30.f));
 
     g_devConsole->Render(box);
+
+    // Render ImGui UI last via subsystem
+    if (g_imgui)
+    {
+        g_imgui->Render();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
