@@ -12,6 +12,22 @@
 #define GAME_DEBUG_MODE
 
 //----------------------------------------------------------------------------------------------------
+// Debug Visualization Modes (Phase 0, Task 0.4)
+//----------------------------------------------------------------------------------------------------
+enum class DebugVisualizationMode : uint8_t
+{
+    NORMAL_TERRAIN,     // Default terrain rendering
+    TEMPERATURE,        // Visualize temperature noise layer (hot=red, cold=blue)
+    HUMIDITY,           // Visualize humidity noise layer (wet=blue, dry=yellow)
+    CONTINENTALNESS,    // Visualize continentalness (ocean=blue, inland=green)
+    EROSION,            // Visualize erosion (flat=green, mountainous=brown)
+    WEIRDNESS,          // Visualize weirdness/ridges (normal=gray, weird=purple)
+    PEAKS_VALLEYS,      // Visualize peaks and valleys (valleys=dark, peaks=white)
+
+    COUNT               // Total number of modes
+};
+
+//----------------------------------------------------------------------------------------------------
 // Terrain Generation Constants (Perlin Noise Based)
 //----------------------------------------------------------------------------------------------------
 
@@ -23,7 +39,9 @@ float constexpr DEFAULT_OCTAVE_PERSISTANCE = 0.5f;
 float constexpr DEFAULT_NOISE_OCTAVE_SCALE = 2.f;
 
 // Terrain Height Configuration
-float constexpr        DEFAULT_TERRAIN_HEIGHT = 64.f;
+// Phase 0, Task 0.5: Updated for larger chunks (256 blocks tall)
+// Assignment 4 official spec: Sea Level = Y = 80 (NOT 64!)
+float constexpr        DEFAULT_TERRAIN_HEIGHT = 80.f;  // Align with sea level for Assignment 4
 float constexpr        RIVER_DEPTH            = 8.f;
 float constexpr        TERRAIN_NOISE_SCALE    = 200.f;
 unsigned int constexpr TERRAIN_NOISE_OCTAVES  = 5u;
@@ -48,12 +66,24 @@ float constexpr        OCEAN_DEPTH            = 30.f;
 float constexpr        OCEANESS_NOISE_SCALE   = 600.f;
 unsigned int constexpr OCEANESS_NOISE_OCTAVES = 3u;
 
+// Debug Visualization Noise Parameters (Phase 0, Task 0.4)
+// These mirror the Assignment 4 parameters but are simplified for debug visualization
+float constexpr        CONTINENTALNESS_NOISE_SCALE = 600.f;
+unsigned int constexpr CONTINENTALNESS_NOISE_OCTAVES = 4u;
+float constexpr        EROSION_NOISE_SCALE = 250.f;
+unsigned int constexpr EROSION_NOISE_OCTAVES = 4u;
+float constexpr        WEIRDNESS_NOISE_SCALE = 300.f;
+unsigned int constexpr WEIRDNESS_NOISE_OCTAVES = 3u;
+float constexpr        PEAKS_VALLEYS_NOISE_SCALE = 400.f;
+unsigned int constexpr PEAKS_VALLEYS_NOISE_OCTAVES = 4u;
+
 // Soil Layer Configuration
 int constexpr   MIN_DIRT_OFFSET_Z = 3;
 int constexpr   MAX_DIRT_OFFSET_Z = 4;
 float constexpr MIN_SAND_HUMIDITY = 0.4f;
 float constexpr MAX_SAND_HUMIDITY = 0.7f;
-int constexpr   SEA_LEVEL_Z       = 64; // CHUNK_SIZE_Z / 2 = 128 / 2
+// Phase 0, Task 0.5: Updated for Assignment 4 (Official spec: Sea Level = Y = 80, NOT CHUNK_SIZE_Z/2)
+int constexpr   SEA_LEVEL_Z       = 80; // Official Assignment 4 specification
 
 // Ice Formation Parameters
 float constexpr ICE_TEMPERATURE_MAX = 0.37f;

@@ -10,6 +10,8 @@
 #include <set>
 #include <mutex>
 
+#include "Game/Framework/GameCommon.hpp"  // For DebugVisualizationMode
+
 struct IntVec2;
 struct IntVec3;
 struct Vec3;
@@ -17,6 +19,7 @@ class Camera;
 class Chunk;
 class ChunkGenerateJob;
 class ChunkLoadJob;
+class ChunkMeshJob;
 class ChunkSaveJob;
 
 //----------------------------------------------------------------------------------------------------
@@ -41,10 +44,34 @@ constexpr int CHUNK_ACTIVATION_RADIUS_Y = 1 + (CHUNK_ACTIVATION_RANGE / 16); // 
 // NOTE: MAX_ACTIVE_CHUNKS removed - deactivation at CHUNK_DEACTIVATION_RANGE provides natural memory limit
 
 //----------------------------------------------------------------------------------------------------
+// Chunk Preloading Constants (Phase 0, Task 0.7) - Smart directional preloading
+//----------------------------------------------------------------------------------------------------
+constexpr float PRELOAD_VELOCITY_THRESHOLD = 1.0f;    // Minimum velocity (m/s) to trigger directional preloading
+constexpr int   PRELOAD_LOOKAHEAD_CHUNKS   = 3;       // Number of chunks to preload ahead of movement direction
+constexpr float PRELOAD_PRIORITY_BOOST     = 100.0f;  // Priority boost for chunks in movement direction
+
+//----------------------------------------------------------------------------------------------------
+// Fixed World Bounds (Phase 0, Task 0.6) - For predictable testing and experimentation
+//----------------------------------------------------------------------------------------------------
+// World extends from MIN_CHUNK_COORD to MAX_CHUNK_COORD (inclusive) in both X and Y
+// Example: [-8, 7] creates a 16x16 chunk world (256x256 blocks with CHUNK_SIZE_X=16)
+// With CHUNK_SIZE_X/Y=32, this creates 512x512 blocks (16x16 chunks)
+constexpr int WORLD_MIN_CHUNK_X = -8;   // Minimum chunk X coordinate (inclusive)
+constexpr int WORLD_MAX_CHUNK_X = 7;    // Maximum chunk X coordinate (inclusive)
+constexpr int WORLD_MIN_CHUNK_Y = -8;   // Minimum chunk Y coordinate (inclusive)
+constexpr int WORLD_MAX_CHUNK_Y = 7;    // Maximum chunk Y coordinate (inclusive)
+
+// Calculated world dimensions
+constexpr int WORLD_SIZE_CHUNKS_X = (WORLD_MAX_CHUNK_X - WORLD_MIN_CHUNK_X + 1); // 16 chunks wide
+constexpr int WORLD_SIZE_CHUNKS_Y = (WORLD_MAX_CHUNK_Y - WORLD_MIN_CHUNK_Y + 1); // 16 chunks deep
+constexpr int TOTAL_WORLD_CHUNKS  = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y;   // 256 chunks total
+
+//----------------------------------------------------------------------------------------------------
 // Job Queue Limiting - Prevent overwhelming the worker threads
 //----------------------------------------------------------------------------------------------------
 constexpr int MAX_PENDING_GENERATE_JOBS = 128;  // Maximum chunk generation jobs in flight (increased from 16)
 constexpr int MAX_PENDING_LOAD_JOBS     = 16;   // Maximum chunk load jobs in flight (increased from 4)
+constexpr int MAX_PENDING_MESH_JOBS     = 16;   // Maximum chunk mesh jobs in flight
 constexpr int MAX_PENDING_SAVE_JOBS     = 4;    // Maximum chunk save jobs in flight
 
 //----------------------------------------------------------------------------------------------------
@@ -62,9 +89,14 @@ public:
     void Render() const;
 
     void    ActivateChunk(IntVec2 const& chunkCoords);
-    void    DeactivateChunk(IntVec2 const& chunkCoords);
-    void    DeactivateAllChunks(); // For debug F8 and shutdown
+    void    DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSave = false);
+    void    DeactivateAllChunks(bool forceSynchronousSave = false); // For debug F8 and shutdown
+    void    RegenerateAllChunks(); // For ImGui "Regenerate Chunks" - forces fresh terrain generation
     void    ToggleGlobalChunkDebugDraw(); // For debug F2 key
+
+    // Debug Visualization (Phase 0, Task 0.4)
+    void    SetDebugVisualizationMode(DebugVisualizationMode mode);
+    DebugVisualizationMode GetDebugVisualizationMode() const { return m_debugVisualizationMode; }
     bool    SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
     Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
@@ -84,6 +116,7 @@ public:
 
     // Chunk management helper methods
     Vec3    GetCameraPosition() const;
+    Vec3    GetPlayerVelocity() const;  // For directional preloading (Task 0.7)
     float   GetDistanceToChunkCenter(IntVec2 const& chunkCoords, Vec3 const& cameraPos) const;
     IntVec2 FindNearestMissingChunkInRange(Vec3 const& cameraPos) const;
     IntVec2 FindFarthestActiveChunkOutsideDeactivationRange(Vec3 const& cameraPos) const;
@@ -93,6 +126,7 @@ public:
     void ProcessCompletedJobs();  // Consolidated processor for all job types
     void ProcessDirtyChunkMeshes();
     void SubmitChunkForGeneration(Chunk* chunk);
+    void SubmitChunkForMeshGeneration(Chunk* chunk);
     void SubmitChunkForLoading(Chunk* chunk);
     void SubmitChunkForSaving(Chunk* chunk);
 
@@ -122,6 +156,7 @@ private:
     //----------------------------------------------------------------------------------------------------
     std::vector<ChunkGenerateJob*> m_chunkGenerationJobs;
     std::vector<ChunkLoadJob*>     m_chunkLoadJobs;
+    std::vector<ChunkMeshJob*>     m_chunkMeshJobs;
     std::vector<ChunkSaveJob*>     m_chunkSaveJobs;
     mutable std::mutex m_jobListsMutex;  // Protects all job vectors from concurrent access
 
@@ -135,6 +170,9 @@ private:
     //----------------------------------------------------------------------------------------------------
     // Global debug state for all chunks
     bool m_globalChunkDebugDraw = false;
+
+    // Debug visualization mode (Phase 0, Task 0.4)
+    DebugVisualizationMode m_debugVisualizationMode = DebugVisualizationMode::NORMAL_TERRAIN;
 
     // Chunk management helper methods
     bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;

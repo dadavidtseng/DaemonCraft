@@ -23,19 +23,25 @@ class VertexBuffer;
 class BlockIterator;
 
 //----------------------------------------------------------------------------------------------------
-int constexpr CHUNK_BITS_X     = 4;                                                 // X coordinates need 4 bits (can represent 0-15)
-int constexpr CHUNK_BITS_Y     = 4;                                                 // Y coordinates need 4 bits (can represent 0-15)
-int constexpr CHUNK_BITS_Z     = 7;                                                 // Z coordinates need 7 bits (can represent 0-127)
-int constexpr CHUNK_SIZE_X     = 1 << CHUNK_BITS_X;                                 // 1 shifted left 4 positions = 2^4 = 16 blocks wide (east-west)
-int constexpr CHUNK_SIZE_Y     = 1 << CHUNK_BITS_Y;                                 // 1 shifted left 4 positions = 2^4 = 16 blocks deep (north-south)
-int constexpr CHUNK_SIZE_Z     = 1 << CHUNK_BITS_Z;                                 // 1 shifted left 7 positions = 2^7 = 128 blocks tall (vertical)
-int constexpr CHUNK_MAX_X      = CHUNK_SIZE_X - 1;                                  // Maximum valid X index (15) for bounds checking
-int constexpr CHUNK_MAX_Y      = CHUNK_SIZE_Y - 1;                                  // Maximum valid Y index (15) for bounds checking
-int constexpr CHUNK_MAX_Z      = CHUNK_SIZE_Z - 1;                                  // Maximum valid Z index (127) for bounds checking
-int constexpr CHUNK_MASK_X     = CHUNK_MAX_X;                                       // Bit mask (0x000F) to extract X bits from block index
-int constexpr CHUNK_MASK_Y     = CHUNK_MAX_Y << CHUNK_BITS_X;                       // Bit mask (0x00F0) to extract Y bits from block index
-int constexpr CHUNK_MASK_Z     = CHUNK_MAX_Z << (CHUNK_BITS_X + CHUNK_BITS_Y);      // Bit mask (0x7F00) to extract Z bits from block index
-int constexpr BLOCKS_PER_CHUNK = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;        // Total blocks per chunk (16×16×128 = 32,768)
+// Phase 0, Task 0.5: Larger chunk sizes for Assignment 4 (World Generation)
+// Increased from 16x16x128 to 32x32x256 for:
+//  - Better support for 3D density terrain with vertical variety
+//  - Stress testing system limits (8x more blocks per chunk)
+//  - Support for caves, mountains, and overhangs
+//----------------------------------------------------------------------------------------------------
+int constexpr CHUNK_BITS_X     = 5;                                                 // X coordinates need 5 bits (can represent 0-31)
+int constexpr CHUNK_BITS_Y     = 5;                                                 // Y coordinates need 5 bits (can represent 0-31)
+int constexpr CHUNK_BITS_Z     = 8;                                                 // Z coordinates need 8 bits (can represent 0-255)
+int constexpr CHUNK_SIZE_X     = 1 << CHUNK_BITS_X;                                 // 1 shifted left 5 positions = 2^5 = 32 blocks wide (east-west)
+int constexpr CHUNK_SIZE_Y     = 1 << CHUNK_BITS_Y;                                 // 1 shifted left 5 positions = 2^5 = 32 blocks deep (north-south)
+int constexpr CHUNK_SIZE_Z     = 1 << CHUNK_BITS_Z;                                 // 1 shifted left 8 positions = 2^8 = 256 blocks tall (vertical)
+int constexpr CHUNK_MAX_X      = CHUNK_SIZE_X - 1;                                  // Maximum valid X index (31) for bounds checking
+int constexpr CHUNK_MAX_Y      = CHUNK_SIZE_Y - 1;                                  // Maximum valid Y index (31) for bounds checking
+int constexpr CHUNK_MAX_Z      = CHUNK_SIZE_Z - 1;                                  // Maximum valid Z index (255) for bounds checking
+int constexpr CHUNK_MASK_X     = CHUNK_MAX_X;                                       // Bit mask (0x001F) to extract X bits from block index
+int constexpr CHUNK_MASK_Y     = CHUNK_MAX_Y << CHUNK_BITS_X;                       // Bit mask (0x03E0) to extract Y bits from block index
+int constexpr CHUNK_MASK_Z     = CHUNK_MAX_Z << (CHUNK_BITS_X + CHUNK_BITS_Y);      // Bit mask (0xFFC00) to extract Z bits from block index
+int constexpr BLOCKS_PER_CHUNK = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;        // Total blocks per chunk (32×32×256 = 262,144)
 
 //----------------------------------------------------------------------------------------------------
 // ChunkState - Thread-safe chunk lifecycle management
@@ -94,6 +100,16 @@ public:
     // Core methods
     void GenerateTerrain();
     void RebuildMesh();
+
+    // Thread-safe mesh data operations for ChunkMeshJob
+    void SetMeshData(VertexList_PCU const& vertices, IndexList const& indices,
+                     VertexList_PCU const& debugVertices, IndexList const& debugIndices);
+    void UpdateVertexBuffer();
+    void SetMeshClean();
+
+
+    // Make ChunkMeshJob a friend class so it can access private mesh generation methods
+    friend class ChunkMeshJob;
 
     Block* GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
     void   SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex);
@@ -182,9 +198,12 @@ private:
     // Helper methods
     void AddBlockFacesIfVisible(Vec3 const& blockCenter, sBlockDefinition* def, IntVec3 const& coords);
     void AddBlockFace(Vec3 const& blockCenter, Vec3 const& faceNormal, Vec2 const& uvs, Rgba8 const& tint);
-    void UpdateVertexBuffer();
 
-    // Advanced mesh generation with hidden surface removal
+
+    // Advanced mesh generation with hidden surface removal (accessible to ChunkMeshJob)
     void AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter, sBlockDefinition* def);
     bool IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDirection) const;
+
+    // Make BlockIterator constructor accessible for ChunkMeshJob
+    friend class BlockIterator;
 };

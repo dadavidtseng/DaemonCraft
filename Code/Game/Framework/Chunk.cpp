@@ -24,6 +24,7 @@
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Framework/BlockIterator.hpp"
+#include "Game/Gameplay/Game.hpp"  // For g_game and visualization mode access
 #include "ThirdParty/Noise/RawNoise.hpp"
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
@@ -109,11 +110,233 @@ void Chunk::Render()
 }
 
 //----------------------------------------------------------------------------------------------------
+// Helper function for Phase 0, Task 0.4: Debug Visualization
+// Converts noise value [-1, 1] to a colored block type for visualization
+//----------------------------------------------------------------------------------------------------
+static uint8_t GetDebugVisualizationBlock(float noiseValue, DebugVisualizationMode mode)
+{
+    // Clamp noise value to [-1, 1] range using Engine's GetClamped() template function
+    float clampedValue = GetClamped(noiseValue, -1.f, 1.f);
+
+    // Map to [0, 1] range for easier color mapping
+    float normalizedValue = (clampedValue + 1.f) * 0.5f;
+
+    // Different color schemes for different noise layers
+    switch (mode)
+    {
+        case DebugVisualizationMode::TEMPERATURE:
+            // Hot (red/yellow) to Cold (blue/white)
+            if (normalizedValue > 0.75f)      return BLOCK_LAVA;          // Very hot - red
+            if (normalizedValue > 0.5f)       return BLOCK_GOLD;          // Hot - yellow/gold
+            if (normalizedValue > 0.25f)      return BLOCK_STONE;         // Cool - gray
+            if (normalizedValue > 0.1f)       return BLOCK_COBBLESTONE;   // Cold - dark gray
+            return BLOCK_ICE;  // Very cold - blue/white
+
+        case DebugVisualizationMode::HUMIDITY:
+            // Wet (blue) to Dry (yellow/brown)
+            if (normalizedValue > 0.75f)      return BLOCK_ICE;           // Very wet - blue
+            if (normalizedValue > 0.5f)       return BLOCK_COBBLESTONE;   // Wet - dark
+            if (normalizedValue > 0.25f)      return BLOCK_DIRT;          // Medium - brown
+            if (normalizedValue > 0.1f)       return BLOCK_SAND;          // Dry - tan
+            return BLOCK_GOLD;  // Very dry - yellow
+
+        case DebugVisualizationMode::CONTINENTALNESS:
+            // Ocean (blue) to Inland (green/brown)
+            if (normalizedValue > 0.75f)      return BLOCK_GRASS;         // Far inland - green
+            if (normalizedValue > 0.5f)       return BLOCK_DIRT;          // Mid inland - brown
+            if (normalizedValue > 0.25f)      return BLOCK_SAND;          // Coast - tan
+            if (normalizedValue > 0.1f)       return BLOCK_COBBLESTONE;   // Near ocean - gray
+            return BLOCK_ICE;  // Ocean - blue
+
+        case DebugVisualizationMode::EROSION:
+            // Flat (green) to Mountainous (brown/gray)
+            if (normalizedValue > 0.75f)      return BLOCK_STONE;         // Very eroded/mountainous - gray
+            if (normalizedValue > 0.5f)       return BLOCK_COBBLESTONE;   // Eroded - dark gray
+            if (normalizedValue > 0.25f)      return BLOCK_DIRT;          // Medium - brown
+            if (normalizedValue > 0.1f)       return BLOCK_GRASS;         // Flat - green
+            return BLOCK_SAND;  // Very flat - smooth tan
+
+        case DebugVisualizationMode::WEIRDNESS:
+            // Normal (gray) to Weird (colorful)
+            if (normalizedValue > 0.75f)      return BLOCK_DIAMOND;       // Very weird - cyan
+            if (normalizedValue > 0.5f)       return BLOCK_GOLD;          // Weird - yellow
+            if (normalizedValue > 0.25f)      return BLOCK_STONE;         // Normal - gray
+            if (normalizedValue > 0.1f)       return BLOCK_COBBLESTONE;   // Slightly weird - dark gray
+            return BLOCK_IRON;  // Normal - iron gray
+
+        case DebugVisualizationMode::PEAKS_VALLEYS:
+            // Valleys (dark) to Peaks (white/bright)
+            if (normalizedValue > 0.75f)      return BLOCK_ICE;           // Peaks - white/bright
+            if (normalizedValue > 0.5f)       return BLOCK_STONE;         // High - light gray
+            if (normalizedValue > 0.25f)      return BLOCK_COBBLESTONE;   // Mid - gray
+            if (normalizedValue > 0.1f)       return BLOCK_DIRT;          // Low - brown
+            return BLOCK_COAL;  // Valleys - black/dark
+
+        default:
+            return BLOCK_STONE;  // Should never reach here
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
 void Chunk::GenerateTerrain()
 {
     // Establish world-space position and bounds of this chunk
     Vec3 chunkPosition((float)(m_chunkCoords.x) * CHUNK_SIZE_X, (float)(m_chunkCoords.y) * CHUNK_SIZE_Y, 0.f);
     Vec3 chunkBounds = chunkPosition + Vec3((float)CHUNK_SIZE_X, (float)CHUNK_SIZE_Y, (float)CHUNK_SIZE_Z);
+
+    // Phase 0, Task 0.4: Check for debug visualization mode
+    // If in visualization mode, generate simple flat terrain showing noise values as colored blocks
+    DebugVisualizationMode vizMode = DebugVisualizationMode::NORMAL_TERRAIN;
+    if (g_game && g_game->GetWorld())
+    {
+        vizMode = g_game->GetWorld()->GetDebugVisualizationMode();
+    }
+
+    if (vizMode != DebugVisualizationMode::NORMAL_TERRAIN)
+    {
+        // Generate debug visualization terrain
+        // Create a flat layer at Y=80 (sea level) showing the selected noise layer as colored blocks
+
+        // Derive seed for the noise layer being visualized
+        unsigned int visualizationSeed = GAME_SEED;
+        switch (vizMode)
+        {
+            case DebugVisualizationMode::TEMPERATURE:    visualizationSeed = GAME_SEED + 2; break;
+            case DebugVisualizationMode::HUMIDITY:       visualizationSeed = GAME_SEED + 1; break;
+            case DebugVisualizationMode::CONTINENTALNESS: visualizationSeed = GAME_SEED + 5; break;
+            case DebugVisualizationMode::EROSION:        visualizationSeed = GAME_SEED + 6; break;
+            case DebugVisualizationMode::WEIRDNESS:      visualizationSeed = GAME_SEED + 7; break;
+            case DebugVisualizationMode::PEAKS_VALLEYS:  visualizationSeed = GAME_SEED + 8; break;
+            default: break;
+        }
+
+        // Fill blocks with visualization data
+        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        {
+            for (int x = 0; x < CHUNK_SIZE_X; x++)
+            {
+                int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
+                int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
+
+                // Sample the appropriate noise layer based on visualization mode
+                float noiseValue = 0.f;
+                switch (vizMode)
+                {
+                    case DebugVisualizationMode::TEMPERATURE:
+                    {
+                        float rawTemp = Get2dNoiseNegOneToOne(globalX, globalY, visualizationSeed) * TEMPERATURE_RAW_NOISE_SCALE;
+                        noiseValue = rawTemp + 0.5f + 0.5f * Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            TEMPERATURE_NOISE_SCALE,
+                            TEMPERATURE_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        // Remap from [0,1] to [-1,1]
+                        noiseValue = (noiseValue * 2.f) - 1.f;
+                        break;
+                    }
+
+                    case DebugVisualizationMode::HUMIDITY:
+                        noiseValue = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            HUMIDITY_NOISE_SCALE,
+                            HUMIDITY_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        break;
+
+                    case DebugVisualizationMode::CONTINENTALNESS:
+                        noiseValue = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            CONTINENTALNESS_NOISE_SCALE,
+                            CONTINENTALNESS_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        break;
+
+                    case DebugVisualizationMode::EROSION:
+                        noiseValue = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            EROSION_NOISE_SCALE,
+                            EROSION_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        break;
+
+                    case DebugVisualizationMode::WEIRDNESS:
+                        noiseValue = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            WEIRDNESS_NOISE_SCALE,
+                            WEIRDNESS_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        break;
+
+                    case DebugVisualizationMode::PEAKS_VALLEYS:
+                    {
+                        // PV is derived from weirdness: PV = 1 - |( 3 * abs(W) ) - 2|
+                        float weirdness = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            PEAKS_VALLEYS_NOISE_SCALE,
+                            PEAKS_VALLEYS_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            visualizationSeed
+                        );
+                        noiseValue = 1.f - fabsf((3.f * fabsf(weirdness)) - 2.f);
+                        break;
+                    }
+
+                    default: break;
+                }
+
+                // Get the appropriate colored block for this noise value
+                uint8_t visualizationBlock = GetDebugVisualizationBlock(noiseValue, vizMode);
+
+                // Create a flat visualization surface at Y=80 (sea level)
+                // Phase 0, Task 0.5: Updated to match new sea level (was Y=64 for 128-block chunks)
+                constexpr int VISUALIZATION_HEIGHT = 80;
+
+                // Fill bottom with stone (foundation)
+                for (int z = 0; z < VISUALIZATION_HEIGHT; z++)
+                {
+                    SetBlock(x, y, z, BLOCK_STONE);
+                }
+
+                // Place the visualization block on top
+                SetBlock(x, y, VISUALIZATION_HEIGHT, visualizationBlock);
+
+                // Leave everything above as air
+                for (int z = VISUALIZATION_HEIGHT + 1; z < CHUNK_SIZE_Z; z++)
+                {
+                    SetBlock(x, y, z, BLOCK_AIR);
+                }
+            }
+        }
+
+        // Mark chunk as needing mesh rebuild and dirty save
+        SetIsMeshDirty(true);
+        SetNeedsSaving(true);
+        return;  // Skip normal terrain generation
+    }
+
+    // Normal terrain generation continues below...
 
     // Derive deterministic seeds for each noise channel
     unsigned int terrainSeed     = GAME_SEED;
@@ -491,6 +714,27 @@ void Chunk::UpdateVertexBuffer()
                                  (unsigned int)(m_debugVertices.size() * sizeof(Vertex_PCU)),
                                  m_debugVertexBuffer);
     }
+}
+
+void Chunk::SetMeshClean()
+{
+    m_isMeshDirty = false;
+}
+
+//----------------------------------------------------------------------------------------------------
+void Chunk::SetMeshData(VertexList_PCU const& vertices, IndexList const& indices,
+                        VertexList_PCU const& debugVertices, IndexList const& debugIndices)
+{
+    // This method is called by ChunkMeshJob on the main thread to apply
+    // mesh data that was generated on worker threads
+    m_vertices = vertices;
+    m_indices = indices;
+    m_debugVertices = debugVertices;
+    m_debugIndices = debugIndices;
+
+    // The chunk mesh is now dirty and needs GPU buffer updates
+    // This will be handled by the main thread calling UpdateVertexBuffer()
+    m_isMeshDirty = true;
 }
 
 //----------------------------------------------------------------------------------------------------
