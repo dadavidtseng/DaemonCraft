@@ -106,12 +106,9 @@ void App::BeginFrame() const
     g_eventSystem->BeginFrame();
     g_window->BeginFrame();
     g_renderer->BeginFrame();
-
-    // Input system processes input for IMGUI
-    g_input->BeginFrame();
-
     DebugRenderBeginFrame();
     g_devConsole->BeginFrame();
+    g_input->BeginFrame();
     g_audio->BeginFrame();
 }
 
@@ -128,6 +125,15 @@ void App::Update()
     }
 
     g_game->Update();
+
+    // CRITICAL: Check if game requested restart (F8 or Xbox START button)
+    // Must check AFTER Update() completes to avoid use-after-delete crash
+    if (g_game && g_game->RequestedNewGame())
+    {
+        DeleteAndCreateNewGame();
+        // Do not continue processing this frame - new game will update next frame
+        return;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
