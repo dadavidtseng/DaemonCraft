@@ -182,3 +182,8 @@ Camera* Player::GetCamera() const
 {
     return m_worldCamera;
 }
+
+Vec3 const& Player::GetVelocity()
+{
+    return m_velocity;
+}

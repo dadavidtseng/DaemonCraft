@@ -33,6 +33,7 @@ public:
     void UpdateFromController(float deltaSeconds);
 
     Camera* GetCamera() const;
+    Vec3 const& GetVelocity();
 
 private:
     Camera*           m_worldCamera   = nullptr;

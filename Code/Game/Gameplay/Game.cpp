@@ -23,6 +23,7 @@
 //----------------------------------------------------------------------------------------------------
 #include "ThirdParty/imgui/imgui.h"
 #include <algorithm>
+#include <cmath>
 #include <vector>
 #include <string>
 //----------------------------------------------------------------------------------------------------
@@ -128,6 +129,16 @@ void Game::Update()
     UpdateWorld(gameDeltaSeconds);
     UpdateFromInput();
 
+    // CRITICAL: Check if F8 was pressed requesting game restart
+    // If true, stop executing immediately to prevent use-after-delete crash
+    // App will check RequestedNewGame() and call DeleteAndCreateNewGame() safely
+    if (m_requestNewGame)
+    {
+        return;  // Do NOT execute any more code on this Game instance
+    }
+
+
+
     // ImGui Debug Window (Phase 0, Task 0.1: IMGUI Integration Test) - Direct Integration
     ImGui::Begin("SimpleMiner Debug", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -175,6 +186,11 @@ void Game::Update()
         m_showConsoleWindow = !m_showConsoleWindow;
     }
 
+    if (ImGui::Button(m_showTerrainDebugWindow ? "Hide Terrain Debug" : "Show Terrain Debug"))
+    {
+        m_showTerrainDebugWindow = !m_showTerrainDebugWindow;
+    }
+
     // Show windows based on toggles
     if (m_showDemoWindow)
     {
@@ -189,6 +205,11 @@ void Game::Update()
     if (m_showConsoleWindow)
     {
         ShowDebugLogWindow();
+    }
+
+    if (m_showTerrainDebugWindow)
+    {
+        ShowTerrainDebugWindow();
     }
 
     ImGui::End();
@@ -373,8 +394,10 @@ void Game::UpdateFromKeyBoard()
 
         if (g_input->WasKeyJustPressed(KEYCODE_F8))
         {
-            g_app->DeleteAndCreateNewGame();
-            return;
+            // Request game restart - flag will be checked by App after Update() completes
+            // This prevents use-after-delete crash from calling DeleteAndCreateNewGame() mid-update
+            m_requestNewGame = true;
+            return;  // Stop processing input to avoid accessing deleted object
         }
 
 #if defined GAME_DEBUG_MODE
@@ -470,7 +493,9 @@ void Game::UpdateFromController()
 
         if (controller.WasButtonJustReleased(XBOX_BUTTON_START))
         {
-            g_app->DeleteAndCreateNewGame();
+            // Request game restart - same as F8 keyboard handler
+            m_requestNewGame = true;
+            return;  // Stop processing input
         }
     }
 }
@@ -545,6 +570,17 @@ Vec3 Game::GetPlayerCameraPosition() const
     if (m_player && m_player->GetCamera())
     {
         return m_player->GetCamera()->GetPosition();
+    }
+
+    return Vec3::ZERO;
+}
+
+//----------------------------------------------------------------------------------------------------
+Vec3 Game::GetPlayerVelocity() const
+{
+    if (m_player)
+    {
+        return m_player->GetVelocity();
     }
 
     return Vec3::ZERO;
@@ -1155,5 +1191,597 @@ void Game::ShowDebugLogWindow()
         ImGui::SetScrollHereY(1.0f);
 
     ImGui::EndChild();
+    ImGui::End();
+}
+
+//----------------------------------------------------------------------------------------------------
+void Game::ShowTerrainDebugWindow()
+{
+    if (!ImGui::Begin("Terrain Generation Debug", &m_showTerrainDebugWindow, ImGuiWindowFlags_MenuBar))
+    {
+        ImGui::End();
+        return;
+    }
+
+    // Menu bar
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Reset to Defaults"))
+            {
+                // Reset all terrain parameters to defaults
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Preset"))
+            {
+                // Save current parameters as preset
+            }
+            if (ImGui::MenuItem("Load Preset"))
+            {
+                // Load parameters from preset
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("View"))
+        {
+            if (ImGui::MenuItem("Regenerate Chunks"))
+            {
+                // Trigger chunk regeneration - forces fresh procedural terrain generation
+                // This is critical for rapid iteration when tuning world generation parameters
+                if (m_world != nullptr)
+                {
+                    m_world->RegenerateAllChunks();
+                }
+            }
+
+            ImGui::Separator();
+
+            // Phase 0, Task 0.4: Debug Visualization Mode Selection
+            if (ImGui::BeginMenu("Debug Visualization"))
+            {
+                if (m_world != nullptr)
+                {
+                    DebugVisualizationMode currentMode = m_world->GetDebugVisualizationMode();
+
+                    if (ImGui::MenuItem("Normal Terrain", nullptr, currentMode == DebugVisualizationMode::NORMAL_TERRAIN))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::NORMAL_TERRAIN);
+                    }
+
+                    ImGui::Separator();
+                    ImGui::Text("Noise Layers:");
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Temperature", nullptr, currentMode == DebugVisualizationMode::TEMPERATURE))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::TEMPERATURE);
+                    }
+
+                    if (ImGui::MenuItem("Humidity", nullptr, currentMode == DebugVisualizationMode::HUMIDITY))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::HUMIDITY);
+                    }
+
+                    if (ImGui::MenuItem("Continentalness", nullptr, currentMode == DebugVisualizationMode::CONTINENTALNESS))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::CONTINENTALNESS);
+                    }
+
+                    if (ImGui::MenuItem("Erosion", nullptr, currentMode == DebugVisualizationMode::EROSION))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::EROSION);
+                    }
+
+                    if (ImGui::MenuItem("Weirdness", nullptr, currentMode == DebugVisualizationMode::WEIRDNESS))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::WEIRDNESS);
+                    }
+
+                    if (ImGui::MenuItem("Peaks & Valleys", nullptr, currentMode == DebugVisualizationMode::PEAKS_VALLEYS))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::PEAKS_VALLEYS);
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    // Tab system for different debug categories
+    if (ImGui::BeginTabBar("TerrainDebugTabs"))
+    {
+        // Tab 1: Curve Editor (CRITICAL)
+        if (ImGui::BeginTabItem("Curves"))
+        {
+            ImGui::Text("Terrain Density Curves");
+            ImGui::Separator();
+
+            // Curve editor for terrain shaping
+            ImGui::Text("Continentalness Curve:");
+
+            // Curve editor state (static to persist between frames)
+            static std::vector<ImVec2> continentalnessCurve = {
+                ImVec2(0.0f, 0.5f),
+                ImVec2(0.3f, 0.4f),
+                ImVec2(0.7f, 0.8f),
+                ImVec2(1.0f, 0.6f)
+            };
+            static int selectedPoint = -1;
+            static int hoveredPoint = -1;
+            static bool isDragging = false;
+
+            // Interactive curve editor
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImVec2(400, 200); // Fixed size for consistent interaction
+            ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+
+            // Handle mouse interaction
+            ImGui::InvisibleButton("curve_canvas", canvas_sz);
+            const bool isHovered = ImGui::IsItemHovered();
+            const ImVec2 mousePos = ImGui::GetIO().MousePos;
+
+            // Convert mouse position to curve coordinates
+            auto screenToCurve = [&](const ImVec2& screenPos) -> ImVec2 {
+                return ImVec2(
+                    (screenPos.x - canvas_p0.x) / canvas_sz.x,
+                    1.0f - (screenPos.y - canvas_p0.y) / canvas_sz.y
+                );
+            };
+
+            auto curveToScreen = [&](const ImVec2& curvePos) -> ImVec2 {
+                return ImVec2(
+                    canvas_p0.x + curvePos.x * canvas_sz.x,
+                    canvas_p0.y + (1.0f - curvePos.y) * canvas_sz.y
+                );
+            };
+
+            // Find hovered point
+            hoveredPoint = -1;
+            if (isHovered && !isDragging)
+            {
+                ImVec2 mouseCurve = screenToCurve(mousePos);
+                for (size_t i = 0; i < continentalnessCurve.size(); ++i)
+                {
+                    ImVec2 pointScreen = curveToScreen(continentalnessCurve[i]);
+                    float distance = std::sqrt(std::pow(mousePos.x - pointScreen.x, 2) + std::pow(mousePos.y - pointScreen.y, 2));
+                    if (distance < 8.0f) // 8 pixel hover radius
+                    {
+                        hoveredPoint = static_cast<int>(i);
+                        break;
+                    }
+                }
+            }
+
+            // Handle mouse input
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && hoveredPoint >= 0)
+            {
+                selectedPoint = hoveredPoint;
+                isDragging = true;
+            }
+
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                isDragging = false;
+                selectedPoint = -1;
+            }
+
+            // Update point position while dragging
+            if (isDragging && selectedPoint >= 0)
+            {
+                ImVec2 mouseCurve = screenToCurve(mousePos);
+
+                // Clamp to canvas bounds
+                mouseCurve.x = (std::max)(0.0f, (std::min)(1.0f, mouseCurve.x));
+                mouseCurve.y = (std::max)(0.0f, (std::min)(1.0f, mouseCurve.y));
+
+                // Update point position
+                continentalnessCurve[selectedPoint] = mouseCurve;
+
+                // Sort points by X coordinate to maintain curve order
+                std::sort(continentalnessCurve.begin(), continentalnessCurve.end(),
+                    [](const ImVec2& a, const ImVec2& b) { return a.x < b.x; });
+            }
+
+            // Double-click to add point
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && isHovered && hoveredPoint < 0)
+            {
+                ImVec2 mouseCurve = screenToCurve(mousePos);
+                if (mouseCurve.x >= 0.0f && mouseCurve.x <= 1.0f && mouseCurve.y >= 0.0f && mouseCurve.y <= 1.0f)
+                {
+                    // Insert point maintaining sorted order
+                    continentalnessCurve.push_back(mouseCurve);
+                    std::sort(continentalnessCurve.begin(), continentalnessCurve.end(),
+                        [](const ImVec2& a, const ImVec2& b) { return a.x < b.x; });
+                }
+            }
+
+            // Right-click to delete point (if more than 2 points)
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && hoveredPoint >= 0 && continentalnessCurve.size() > 2)
+            {
+                continentalnessCurve.erase(continentalnessCurve.begin() + hoveredPoint);
+                if (selectedPoint == hoveredPoint) selectedPoint = -1;
+                if (hoveredPoint == selectedPoint) hoveredPoint = -1;
+            }
+
+            // Draw canvas background
+            drawList->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(40, 40, 40, 255));
+            drawList->AddRect(canvas_p0, canvas_p1, IM_COL32(100, 100, 100, 255));
+
+            // Draw grid
+            const int gridSize = 10;
+            for (int i = 0; i <= gridSize; ++i)
+            {
+                float x = canvas_p0.x + (float)i / gridSize * canvas_sz.x;
+                float y = canvas_p0.y + (float)i / gridSize * canvas_sz.y;
+
+                drawList->AddLine(
+                    ImVec2(x, canvas_p0.y), ImVec2(x, canvas_p1.y),
+                    IM_COL32(60, 60, 60, 255), 1.0f
+                );
+                drawList->AddLine(
+                    ImVec2(canvas_p0.x, y), ImVec2(canvas_p1.x, y),
+                    IM_COL32(60, 60, 60, 255), 1.0f
+                );
+            }
+
+            // Draw smooth curve using simple line segments for now
+            ImVec2 prevPoint = curveToScreen(continentalnessCurve[0]);
+            for (size_t i = 1; i < continentalnessCurve.size(); ++i)
+            {
+                ImVec2 currentPoint = curveToScreen(continentalnessCurve[i]);
+                drawList->AddLine(prevPoint, currentPoint, IM_COL32(0, 255, 0, 255), 2.0f);
+                prevPoint = currentPoint;
+            }
+
+            // Draw control points with hover/highlight feedback
+            for (size_t i = 0; i < continentalnessCurve.size(); ++i)
+            {
+                ImVec2 p = curveToScreen(continentalnessCurve[i]);
+                ImU32 color = IM_COL32(255, 0, 0, 255); // Red by default
+
+                if (i == selectedPoint)
+                {
+                    color = IM_COL32(255, 255, 0, 255); // Yellow when selected
+                    drawList->AddCircle(p, 8.0f, color); // Larger when selected
+                }
+                else if (i == hoveredPoint)
+                {
+                    color = IM_COL32(255, 128, 0, 255); // Orange when hovered
+                    drawList->AddCircle(p, 7.0f, color); // Medium when hovered
+                }
+                else
+                {
+                    drawList->AddCircle(p, 6.0f, color); // Normal size
+                }
+
+                // Draw point border for better visibility
+                drawList->AddCircle(p, 6.0f, IM_COL32(255, 255, 255, 255));
+            }
+
+            // Instructions
+            ImGui::Text("Instructions:");
+            ImGui::BulletText("Left-click + drag: Move control points");
+            ImGui::BulletText("Double-click: Add new point");
+            ImGui::BulletText("Right-click: Delete point (min 2 points)");
+            ImGui::BulletText("Points auto-sort by X position");
+
+            // Curve controls
+            ImGui::Separator();
+            if (ImGui::Button("Reset Curve"))
+            {
+                continentalnessCurve = {
+                    ImVec2(0.0f, 0.5f),
+                    ImVec2(0.3f, 0.4f),
+                    ImVec2(0.7f, 0.8f),
+                    ImVec2(1.0f, 0.6f)
+                };
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Linear"))
+            {
+                continentalnessCurve = {
+                    ImVec2(0.0f, 0.0f),
+                    ImVec2(1.0f, 1.0f)
+                };
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Flat"))
+            {
+                continentalnessCurve = {
+                    ImVec2(0.0f, 0.5f),
+                    ImVec2(1.0f, 0.5f)
+                };
+            }
+
+            // Display current curve data
+            ImGui::Text("Curve Points (%zu):", continentalnessCurve.size());
+            for (size_t i = 0; i < continentalnessCurve.size(); ++i)
+            {
+                ImGui::Text("  [%zu] X: %.3f, Y: %.3f", i, continentalnessCurve[i].x, continentalnessCurve[i].y);
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // Tab 2: Noise Parameters
+        if (ImGui::BeginTabItem("Noise"))
+        {
+            ImGui::Text("Noise Generation Parameters");
+            ImGui::Separator();
+
+            // Temperature Noise
+            if (ImGui::CollapsingHeader("Temperature"))
+            {
+                static float tempScale = 8192.0f;
+                static int tempOctaves = 4;
+                static float tempPersistence = 0.5f;
+
+                ImGui::SliderFloat("Scale", &tempScale, 100.0f, 16384.0f, "%.1f");
+                ImGui::SliderInt("Octaves", &tempOctaves, 1, 8);
+                ImGui::SliderFloat("Persistence", &tempPersistence, 0.1f, 1.0f, "%.2f");
+
+                if (ImGui::Button("Apply Temperature Changes"))
+                {
+                    // Apply temperature noise parameters
+                }
+            }
+
+            // Humidity Noise
+            if (ImGui::CollapsingHeader("Humidity"))
+            {
+                static float humidityScale = 8192.0f;
+                static int humidityOctaves = 4;
+                static float humidityPersistence = 0.5f;
+
+                ImGui::SliderFloat("Scale", &humidityScale, 100.0f, 16384.0f, "%.1f");
+                ImGui::SliderInt("Octaves", &humidityOctaves, 1, 8);
+                ImGui::SliderFloat("Persistence", &humidityPersistence, 0.1f, 1.0f, "%.2f");
+
+                if (ImGui::Button("Apply Humidity Changes"))
+                {
+                    // Apply humidity noise parameters
+                }
+            }
+
+            // Continentalness Noise
+            if (ImGui::CollapsingHeader("Continentalness"))
+            {
+                static float continentalnessScale = 2048.0f;
+                static int continentalnessOctaves = 4;
+                static float continentalnessPersistence = 0.5f;
+
+                ImGui::SliderFloat("Scale", &continentalnessScale, 100.0f, 8192.0f, "%.1f");
+                ImGui::SliderInt("Octaves", &continentalnessOctaves, 1, 8);
+                ImGui::SliderFloat("Persistence", &continentalnessPersistence, 0.1f, 1.0f, "%.2f");
+
+                if (ImGui::Button("Apply Continentalness Changes"))
+                {
+                    // Apply continentalness noise parameters
+                }
+            }
+
+            // Erosion Noise
+            if (ImGui::CollapsingHeader("Erosion"))
+            {
+                static float erosionScale = 1024.0f;
+                static int erosionOctaves = 4;
+                static float erosionPersistence = 0.5f;
+
+                ImGui::SliderFloat("Scale", &erosionScale, 100.0f, 4096.0f, "%.1f");
+                ImGui::SliderInt("Octaves", &erosionOctaves, 1, 8);
+                ImGui::SliderFloat("Persistence", &erosionPersistence, 0.1f, 1.0f, "%.2f");
+
+                if (ImGui::Button("Apply Erosion Changes"))
+                {
+                    // Apply erosion noise parameters
+                }
+            }
+
+            // Weirdness Noise
+            if (ImGui::CollapsingHeader("Weirdness"))
+            {
+                static float weirdnessScale = 1024.0f;
+                static int weirdnessOctaves = 3;
+                static float weirdnessPersistence = 0.5f;
+
+                ImGui::SliderFloat("Scale", &weirdnessScale, 100.0f, 4096.0f, "%.1f");
+                ImGui::SliderInt("Octaves", &weirdnessOctaves, 1, 8);
+                ImGui::SliderFloat("Persistence", &weirdnessPersistence, 0.1f, 1.0f, "%.2f");
+
+                if (ImGui::Button("Apply Weirdness Changes"))
+                {
+                    // Apply weirdness noise parameters
+                }
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // Tab 3: Terrain Parameters
+        if (ImGui::BeginTabItem("Terrain"))
+        {
+            ImGui::Text("3D Density Terrain Parameters");
+            ImGui::Separator();
+
+            // Basic terrain settings
+            static float seaLevel = 80.0f;
+            static float densityScale = 200.0f;
+            static float densityThreshold = 0.0f;
+            static float verticalBias = 0.02f;
+            static float heightOffset = 0.0f;
+            static float squashingFactor = 1.0f;
+
+            ImGui::SliderFloat("Sea Level", &seaLevel, 0.0f, 127.0f, "%.1f");
+            ImGui::SliderFloat("Density Scale", &densityScale, 50.0f, 500.0f, "%.1f");
+            ImGui::SliderFloat("Density Threshold", &densityThreshold, -1.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Vertical Bias", &verticalBias, 0.0f, 0.1f, "%.3f");
+            ImGui::SliderFloat("Height Offset", &heightOffset, -50.0f, 50.0f, "%.1f");
+            ImGui::SliderFloat("Squashing Factor", &squashingFactor, 0.1f, 2.0f, "%.2f");
+
+            ImGui::Separator();
+
+            // Top and bottom slides
+            static int topSlideStart = 100;
+            static int topSlideEnd = 120;
+            static int bottomSlideStart = 0;
+            static int bottomSlideEnd = 20;
+
+            ImGui::Text("Top Slide (Surface Smoothing):");
+            ImGui::SliderInt("Start Z", &topSlideStart, 80, 127);
+            ImGui::SliderInt("End Z", &topSlideEnd, 80, 127);
+
+            ImGui::Text("Bottom Slide (Base Flattening):");
+            ImGui::SliderInt("Start Z", &bottomSlideStart, 0, 40);
+            ImGui::SliderInt("End Z", &bottomSlideEnd, 0, 40);
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Apply Terrain Parameters"))
+            {
+                // Apply terrain parameters
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Reset to Defaults"))
+            {
+                // Reset terrain parameters to defaults
+                seaLevel = 80.0f;
+                densityScale = 200.0f;
+                densityThreshold = 0.0f;
+                verticalBias = 0.02f;
+                heightOffset = 0.0f;
+                squashingFactor = 1.0f;
+                topSlideStart = 100;
+                topSlideEnd = 120;
+                bottomSlideStart = 0;
+                bottomSlideEnd = 20;
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // Tab 4: Cave Parameters
+        if (ImGui::BeginTabItem("Caves"))
+        {
+            ImGui::Text("Cave Generation Parameters");
+            ImGui::Separator();
+
+            // Cheese caves
+            if (ImGui::CollapsingHeader("Cheese Caves"))
+            {
+                static float cheeseCaveScale = 128.0f;
+                static float cheeseCaveThreshold = 0.575f;
+                static int cheeseCaveOctaves = 3;
+                static int minCaveDepth = 10;
+
+                ImGui::SliderFloat("Scale", &cheeseCaveScale, 50.0f, 500.0f, "%.1f");
+                ImGui::SliderFloat("Threshold", &cheeseCaveThreshold, 0.3f, 0.8f, "%.3f");
+                ImGui::SliderInt("Octaves", &cheeseCaveOctaves, 1, 5);
+                ImGui::SliderInt("Min Cave Depth", &minCaveDepth, 5, 30);
+
+                if (ImGui::Button("Apply Cheese Cave Settings"))
+                {
+                    // Apply cheese cave parameters
+                }
+            }
+
+            // Spaghetti caves
+            if (ImGui::CollapsingHeader("Spaghetti Caves"))
+            {
+                static float spaghettiCaveScale = 64.0f;
+                static float spaghettiHollowness = 0.083f;
+                static float spaghettiThickness = 0.666f;
+                static float spaghettiThreshold = 0.7f;
+
+                ImGui::SliderFloat("Scale", &spaghettiCaveScale, 25.0f, 250.0f, "%.1f");
+                ImGui::SliderFloat("Hollowness", &spaghettiHollowness, 0.01f, 0.2f, "%.3f");
+                ImGui::SliderFloat("Thickness", &spaghettiThickness, 0.3f, 0.9f, "%.3f");
+                ImGui::SliderFloat("Threshold", &spaghettiThreshold, 0.5f, 0.9f, "%.3f");
+
+                if (ImGui::Button("Apply Spaghetti Cave Settings"))
+                {
+                    // Apply spaghetti cave parameters
+                }
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // Tab 5: Visualization
+        if (ImGui::BeginTabItem("Visualization"))
+        {
+            ImGui::Text("Noise Layer Visualization");
+            ImGui::Separator();
+
+            // Toggle individual noise layers
+            static bool showTemperature = true;
+            static bool showHumidity = true;
+            static bool showContinentalness = true;
+            static bool showErosion = true;
+            static bool showWeirdness = true;
+            static bool showPeaksValleys = true;
+
+            ImGui::Text("Toggle Noise Layers:");
+            ImGui::Checkbox("Temperature", &showTemperature);
+            ImGui::SameLine();
+            ImGui::Checkbox("Humidity", &showHumidity);
+            ImGui::SameLine();
+            ImGui::Checkbox("Continentalness", &showContinentalness);
+
+            ImGui::Checkbox("Erosion", &showErosion);
+            ImGui::SameLine();
+            ImGui::Checkbox("Weirdness", &showWeirdness);
+            ImGui::SameLine();
+            ImGui::Checkbox("Peaks & Valleys", &showPeaksValleys);
+
+            ImGui::Separator();
+
+            // Visualization options
+            static bool showBiomeOverlay = true;
+            static bool showChunkBoundaries = false;
+            static bool showHeatmapColors = true;
+            static float visualizationScale = 1.0f;
+
+            ImGui::Text("Visualization Options:");
+            ImGui::Checkbox("Biome Overlay", &showBiomeOverlay);
+            ImGui::Checkbox("Chunk Boundaries", &showChunkBoundaries);
+            ImGui::Checkbox("Heatmap Colors", &showHeatmapColors);
+            ImGui::SliderFloat("Display Scale", &visualizationScale, 0.1f, 2.0f, "%.1fx");
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Generate Visualization"))
+            {
+                // Generate noise layer visualization
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Clear Visualization"))
+            {
+                // Clear visualization
+            }
+
+            // Simple visualization area placeholder
+            ImGui::Text("");
+            ImGui::Text("Visualization will appear here:");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[Heatmap/Noise visualization placeholder]");
+
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
+
     ImGui::End();
 }

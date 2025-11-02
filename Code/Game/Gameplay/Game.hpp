@@ -31,10 +31,16 @@ public:
     void Update();
     void Render() const;
     bool IsAttractMode() const;
+    bool RequestedNewGame() const { return m_requestNewGame; }  // Check if F8 was pressed
     Vec3 GetPlayerCameraPosition() const;
+    Vec3 GetPlayerVelocity() const;  // For directional chunk preloading (Task 0.7)
     void ShowSimpleDemoWindow();
     void ShowInspectorWindow();
     void ShowDebugLogWindow();
+    void ShowTerrainDebugWindow();
+
+    // Accessors for debug visualization (Phase 0, Task 0.4)
+    World* GetWorld() const { return m_world; }
 
 private:
     void UpdateFromInput();
@@ -65,4 +71,8 @@ private:
     bool m_showDemoWindow = false;
     bool m_showInspectorWindow = false;
     bool m_showConsoleWindow = false;
+    bool m_showTerrainDebugWindow = false;
+
+    // Game restart request (F8 key)
+    bool m_requestNewGame = false;  // Set to true when F8 is pressed, prevents use-after-delete crash
 };

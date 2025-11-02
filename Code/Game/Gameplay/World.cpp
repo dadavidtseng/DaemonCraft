@@ -20,6 +20,7 @@
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/ChunkGenerateJob.hpp"
 #include "Game/Framework/ChunkLoadJob.hpp"
+#include "Game/Framework/ChunkMeshJob.hpp"
 #include "Game/Framework/ChunkSaveJob.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Game.hpp"
@@ -40,8 +41,47 @@ World::World()
 //----------------------------------------------------------------------------------------------------
 World::~World()
 {
-    // Deactivate all chunks when world is destroyed (saves modified chunks)
-    DeactivateAllChunks();
+    // CRITICAL: Cancel all pending save jobs BEFORE deactivating chunks
+    // During shutdown, async save jobs will never complete, causing memory leaks
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+        for (ChunkSaveJob* saveJob : m_chunkSaveJobs)
+        {
+            if (saveJob != nullptr)
+            {
+                Chunk* chunk = saveJob->GetChunk();
+                if (chunk != nullptr)
+                {
+                    // Force synchronous save before deleting job
+                    chunk->SaveToDisk();
+                    delete chunk;
+                }
+                delete saveJob;
+            }
+        }
+        m_chunkSaveJobs.clear();
+    }
+
+    // Clean up orphaned chunks in m_nonActiveChunks (being processed by workers)
+    {
+        std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+        for (Chunk* chunk : m_nonActiveChunks)
+        {
+            if (chunk != nullptr)
+            {
+                // Save if needed, then delete
+                if (chunk->GetNeedsSaving())
+                {
+                    chunk->SaveToDisk();
+                }
+                delete chunk;  // Releases DirectX resources in ~Chunk() destructor
+            }
+        }
+        m_nonActiveChunks.clear();
+    }
+
+    // Deactivate all active chunks (saves modified chunks synchronously during shutdown)
+    DeactivateAllChunks(true);  // forceSynchronousSave=true prevents async jobs during shutdown
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -134,12 +174,6 @@ void World::Update(float const deltaSeconds)
     {
         DeactivateChunk(farthestChunk);
     }
-
-    // Debug key F8 - force deactivate all chunks
-    if (g_input && g_input->WasKeyJustPressed(KEYCODE_F8))
-    {
-        DeactivateAllChunks(); // Note: This breaks the one-action-per-frame rule for testing
-    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -196,7 +230,7 @@ void World::ActivateChunk(IntVec2 const& chunkCoords)
 }
 
 //----------------------------------------------------------------------------------------------------
-void World::DeactivateChunk(IntVec2 const& chunkCoords)
+void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSave)
 {
     Chunk* chunk = nullptr;
     {
@@ -225,10 +259,20 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords)
     // Update neighbors to remove references to this chunk
     ClearNeighborReferences(chunkCoords);
 
-    // Save to disk if needed using asynchronous I/O job
+    // Save to disk if needed
     if (chunk->GetNeedsSaving())
     {
-        SubmitChunkForSaving(chunk);
+        if (forceSynchronousSave)
+        {
+            // Synchronous save during shutdown - don't use async jobs
+            chunk->SaveToDisk();
+            delete chunk;
+        }
+        else
+        {
+            // Normal async save using I/O worker thread
+            SubmitChunkForSaving(chunk);
+        }
     }
     else
     {
@@ -238,15 +282,106 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords)
 }
 
 //----------------------------------------------------------------------------------------------------
-void World::DeactivateAllChunks()
+void World::DeactivateAllChunks(bool forceSynchronousSave)
 {
     // Save all modified chunks before deactivating
     while (!m_activeChunks.empty())
     {
         auto const it = m_activeChunks.begin();
 
-        DeactivateChunk(it->first);
+        DeactivateChunk(it->first, forceSynchronousSave);
     }
+}
+
+//----------------------------------------------------------------------------------------------------
+void World::RegenerateAllChunks()
+{
+    // Purpose: Force all active chunks to regenerate with fresh procedural terrain
+    // This is critical for rapid iteration when tuning world generation parameters via ImGui
+    //
+    // Strategy:
+    // 1. Cancel all pending mesh jobs (prevents dangling pointers when chunks are deleted)
+    // 2. Mark all active chunks as NOT needing save (prevents old terrain from being written to disk)
+    // 3. Deactivate all chunks (which will skip saving since needsSaving=false)
+    // 4. Natural chunk activation system will regenerate chunks with current generation parameters
+
+    // CRITICAL: Cancel all pending mesh jobs BEFORE deleting chunks
+    // Otherwise ProcessCompletedJobs() will crash accessing deleted chunk pointers
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+        for (ChunkMeshJob* meshJob : m_chunkMeshJobs)
+        {
+            if (meshJob != nullptr)
+            {
+                delete meshJob;
+            }
+        }
+        m_chunkMeshJobs.clear();
+    }
+
+    // Also cancel pending generation and load jobs (they reference chunks too)
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+
+        // Cancel generation jobs
+        for (ChunkGenerateJob* genJob : m_chunkGenerationJobs)
+        {
+            if (genJob != nullptr)
+            {
+                delete genJob;
+            }
+        }
+        m_chunkGenerationJobs.clear();
+
+        // Cancel load jobs
+        for (ChunkLoadJob* loadJob : m_chunkLoadJobs)
+        {
+            if (loadJob != nullptr)
+            {
+                delete loadJob;
+            }
+        }
+        m_chunkLoadJobs.clear();
+    }
+
+    // Clear the queued chunks tracking set
+    {
+        std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+        m_queuedGenerateChunks.clear();
+    }
+
+    // CRITICAL: Clean up orphaned chunks in m_nonActiveChunks
+    // These chunks were being processed by jobs we just deleted
+    // They have allocated DirectX resources (vertex/index buffers) that must be released
+    {
+        std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+        for (Chunk* chunk : m_nonActiveChunks)
+        {
+            if (chunk != nullptr)
+            {
+                delete chunk;  // Releases DirectX resources in ~Chunk() destructor
+            }
+        }
+        m_nonActiveChunks.clear();
+    }
+
+    // Mark all chunks as not needing save
+    {
+        std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+        for (auto& chunkPair : m_activeChunks)
+        {
+            if (chunkPair.second != nullptr)
+            {
+                chunkPair.second->SetNeedsSaving(false);
+            }
+        }
+    }
+
+    // Deactivate all chunks (they won't be saved due to SetNeedsSaving(false))
+    DeactivateAllChunks();
+
+    // Note: Chunks will automatically reactivate and regenerate during the next Update()
+    // when the activation system detects missing chunks around the player
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -264,7 +399,24 @@ void World::ToggleGlobalChunkDebugDraw()
 }
 
 //----------------------------------------------------------------------------------------------------
-bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex)
+void World::SetDebugVisualizationMode(DebugVisualizationMode mode)
+{
+    // Only regenerate if mode actually changed
+    if (m_debugVisualizationMode == mode)
+    {
+        return;
+    }
+
+    m_debugVisualizationMode = mode;
+
+    // Regenerate all chunks to apply new visualization
+    // This ensures chunks display the selected noise layer
+    RegenerateAllChunks();
+}
+
+//----------------------------------------------------------------------------------------------------
+bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords,
+                                   uint8_t const  blockTypeIndex)
 {
     // Get the chunk that contains this global coordinate
     IntVec2 chunkCoords = Chunk::GetChunkCoords(globalCoords);
@@ -325,8 +477,8 @@ uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
 //----------------------------------------------------------------------------------------------------
 Chunk* World::GetChunk(IntVec2 const& chunkCoords) const
 {
-    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    auto const                  it = m_activeChunks.find(chunkCoords);
+    std::lock_guard lock(m_activeChunksMutex);
+    auto const      it = m_activeChunks.find(chunkCoords);
 
     if (it != m_activeChunks.end())
     {
@@ -338,15 +490,15 @@ Chunk* World::GetChunk(IntVec2 const& chunkCoords) const
 //----------------------------------------------------------------------------------------------------
 int World::GetActiveChunkCount() const
 {
-    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+    std::lock_guard lock(m_activeChunksMutex);
     return (int)m_activeChunks.size();
 }
 
 //----------------------------------------------------------------------------------------------------
 int World::GetTotalVertexCount() const
 {
-    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    int                         totalVertices = 0;
+    std::lock_guard lock(m_activeChunksMutex);
+    int             totalVertices = 0;
     for (const auto& pair : m_activeChunks)
     {
         if (pair.second)
@@ -360,8 +512,8 @@ int World::GetTotalVertexCount() const
 //----------------------------------------------------------------------------------------------------
 int World::GetTotalIndexCount() const
 {
-    std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-    int                         totalIndices = 0;
+    std::lock_guard lock(m_activeChunksMutex);
+    int             totalIndices = 0;
     for (const auto& pair : m_activeChunks)
     {
         if (pair.second)
@@ -375,21 +527,21 @@ int World::GetTotalIndexCount() const
 //----------------------------------------------------------------------------------------------------
 int World::GetPendingGenerateJobCount() const
 {
-    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    std::lock_guard lock(m_jobListsMutex);
     return (int)m_chunkGenerationJobs.size();
 }
 
 //----------------------------------------------------------------------------------------------------
 int World::GetPendingLoadJobCount() const
 {
-    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    std::lock_guard lock(m_jobListsMutex);
     return (int)m_chunkLoadJobs.size();
 }
 
 //----------------------------------------------------------------------------------------------------
 int World::GetPendingSaveJobCount() const
 {
-    std::lock_guard<std::mutex> lock(m_jobListsMutex);
+    std::lock_guard lock(m_jobListsMutex);
     return (int)m_chunkSaveJobs.size();
 }
 
@@ -399,6 +551,16 @@ Vec3 World::GetCameraPosition() const
     if (g_game != nullptr)
     {
         return g_game->GetPlayerCameraPosition();
+    }
+    return Vec3::ZERO; // Fallback if no game instance
+}
+
+//----------------------------------------------------------------------------------------------------
+Vec3 World::GetPlayerVelocity() const
+{
+    if (g_game != nullptr)
+    {
+        return g_game->GetPlayerVelocity();
     }
     return Vec3::ZERO; // Fallback if no game instance
 }
@@ -422,6 +584,18 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
 
     int maxRadius = (CHUNK_ACTIVATION_RANGE / 16) + 2; // CHUNK_SIZE_X is 16
 
+    // Phase 0, Task 0.7: Get player velocity for directional preloading
+    Vec3  playerVelocity        = GetPlayerVelocity();
+    float velocityMagnitude     = playerVelocity.GetLength();
+    bool  useDirectionalPreload = velocityMagnitude > PRELOAD_VELOCITY_THRESHOLD;
+
+    // Calculate movement direction (normalized)
+    Vec3 movementDirection = Vec3::ZERO;
+    if (useDirectionalPreload)
+    {
+        movementDirection = playerVelocity.GetNormalized();
+    }
+
     // OPTIMIZATION: Build lookup sets ONCE with single mutex lock per set
     // This reduces mutex locks from ~1,936 per call to just 2 total
     std::unordered_set<IntVec2> activeSet;
@@ -440,6 +614,59 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
         queuedSet = m_queuedGenerateChunks; // Copy the set
     }
 
+    // Phase 0, Task 0.7: Smart directional preloading
+    // If player is moving, prioritize chunks ahead of movement direction
+    if (useDirectionalPreload)
+    {
+        // Calculate lookahead position (3 chunks ahead in movement direction)
+        float   lookaheadDistance = PRELOAD_LOOKAHEAD_CHUNKS * CHUNK_SIZE_X;
+        Vec3    lookaheadPos      = cameraPos + (movementDirection * lookaheadDistance);
+        IntVec2 lookaheadChunk    = Chunk::GetChunkCoords(IntVec3(static_cast<int>(lookaheadPos.x), static_cast<int>(lookaheadPos.y), 0));
+
+        // Search in expanding rings around lookahead position
+        for (int radius = 0; radius <= 2; radius++) // Only check nearby chunks around lookahead
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    // Only check perimeter of current ring
+                    if (abs(dx) != radius && abs(dy) != radius)
+                    {
+                        continue;
+                    }
+
+                    IntVec2 testChunk(lookaheadChunk.x + dx, lookaheadChunk.y + dy);
+
+                    // Phase 0, Task 0.6: Enforce fixed world bounds
+                    if (testChunk.x < WORLD_MIN_CHUNK_X || testChunk.x > WORLD_MAX_CHUNK_X ||
+                        testChunk.y < WORLD_MIN_CHUNK_Y || testChunk.y > WORLD_MAX_CHUNK_Y)
+                    {
+                        continue;
+                    }
+
+                    // Fast O(1) lookups without mutex locks
+                    if (activeSet.find(testChunk) != activeSet.end())
+                    {
+                        continue;
+                    }
+                    if (queuedSet.find(testChunk) != queuedSet.end())
+                    {
+                        continue;
+                    }
+
+                    // Check if within activation range
+                    float distance = GetDistanceToChunkCenter(testChunk, cameraPos);
+                    if (distance <= CHUNK_ACTIVATION_RANGE)
+                    {
+                        return testChunk; // Found chunk in movement direction! Prioritize this
+                    }
+                }
+            }
+        }
+    }
+
+    // Standard spiral search from camera position (fallback or when not moving)
     // OPTIMIZATION: Spiral search outward from camera (nearest-first)
     // Returns immediately when first valid chunk found, avoiding distance sorting
     for (int radius = 0; radius <= maxRadius; radius++)
@@ -456,6 +683,14 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
                 }
 
                 IntVec2 testChunk(cameraChunkCoords.x + dx, cameraChunkCoords.y + dy);
+
+                // Phase 0, Task 0.6: Enforce fixed world bounds
+                // Skip chunks outside the defined world limits
+                if (testChunk.x < WORLD_MIN_CHUNK_X || testChunk.x > WORLD_MAX_CHUNK_X ||
+                    testChunk.y < WORLD_MIN_CHUNK_Y || testChunk.y > WORLD_MAX_CHUNK_Y)
+                {
+                    continue;
+                }
 
                 // Fast O(1) lookups without mutex locks
                 if (activeSet.find(testChunk) != activeSet.end())
@@ -874,57 +1109,107 @@ void World::ProcessCompletedJobs()
         // If not a generation job, check if it's a load job
         if (job == nullptr)
         {
-            std::lock_guard<std::mutex> lock(m_jobListsMutex);
-            for (int i = 0; i < (int)m_chunkLoadJobs.size(); ++i)
+            // BUGFIX: Store chunk pointer before releasing mutex to prevent deadlock
+            // when calling SubmitChunkForGeneration() which also needs m_jobListsMutex
+            Chunk*        chunkToGenerate = nullptr;
+            ChunkLoadJob* loadJobToDelete = nullptr;
+
             {
-                if (m_chunkLoadJobs[i] == completedJob)
+                std::lock_guard<std::mutex> lock(m_jobListsMutex);
+                for (int i = 0; i < (int)m_chunkLoadJobs.size(); ++i)
                 {
-                    ChunkLoadJob* loadJob = m_chunkLoadJobs[i];
-                    Chunk*        chunk   = loadJob->GetChunk();
-
-                    if (chunk)
+                    if (m_chunkLoadJobs[i] == completedJob)
                     {
-                        IntVec2 chunkCoords = chunk->GetChunkCoords();
+                        ChunkLoadJob* loadJob = m_chunkLoadJobs[i];
+                        Chunk*        chunk   = loadJob->GetChunk();
 
-                        if (loadJob->WasSuccessful() && chunk->GetState() == ChunkState::LOAD_COMPLETE)
+                        if (chunk)
                         {
-                            chunk->SetState(ChunkState::COMPLETE);
-                            chunk->SetDebugDraw(m_globalChunkDebugDraw); // Inherit global debug state
+                            IntVec2 chunkCoords = chunk->GetChunkCoords();
 
+                            if (loadJob->WasSuccessful() && chunk->GetState() == ChunkState::LOAD_COMPLETE)
                             {
-                                std::lock_guard<std::mutex> nonActiveLock(m_nonActiveChunksMutex);
-                                m_nonActiveChunks.erase(chunk);
-                            }
+                                chunk->SetState(ChunkState::COMPLETE);
+                                chunk->SetDebugDraw(m_globalChunkDebugDraw); // Inherit global debug state
 
+                                {
+                                    std::lock_guard<std::mutex> nonActiveLock(m_nonActiveChunksMutex);
+                                    m_nonActiveChunks.erase(chunk);
+                                }
+
+                                {
+                                    std::lock_guard<std::mutex> activeLock(m_activeChunksMutex);
+                                    m_activeChunks[chunkCoords] = chunk;
+                                }
+
+                                UpdateNeighborPointers(chunkCoords);
+                                chunk->SetIsMeshDirty(true);
+                            }
+                            else
                             {
-                                std::lock_guard<std::mutex> activeLock(m_activeChunksMutex);
-                                m_activeChunks[chunkCoords] = chunk;
-                            }
+                                {
+                                    std::lock_guard<std::mutex> nonActiveLock(m_nonActiveChunksMutex);
+                                    m_nonActiveChunks.erase(chunk);
+                                }
 
-                            UpdateNeighborPointers(chunkCoords);
-                            chunk->SetIsMeshDirty(true);
+                                chunk->SetState(ChunkState::ACTIVATING);
+                                // Store chunk for generation AFTER releasing mutex
+                                chunkToGenerate = chunk;
+                            }
                         }
-                        else
-                        {
-                            {
-                                std::lock_guard<std::mutex> nonActiveLock(m_nonActiveChunksMutex);
-                                m_nonActiveChunks.erase(chunk);
-                            }
 
-                            chunk->SetState(ChunkState::ACTIVATING);
-                            SubmitChunkForGeneration(chunk);
-                        }
+                        m_chunkLoadJobs.erase(m_chunkLoadJobs.begin() + i);
+                        loadJobToDelete = loadJob;
+                        job = reinterpret_cast<ChunkGenerateJob*>(1); // Mark as processed
+                        break;
+                    }
+                }
+            } // Release m_jobListsMutex here
+
+            // BUGFIX: Call SubmitChunkForGeneration AFTER releasing mutex
+            // to prevent deadlock (SubmitChunkForGeneration also locks m_jobListsMutex)
+            if (chunkToGenerate != nullptr)
+            {
+                SubmitChunkForGeneration(chunkToGenerate);
+            }
+
+            // Clean up after mutex is released
+            if (loadJobToDelete != nullptr)
+            {
+                delete loadJobToDelete;
+            }
+        }
+
+        // If not a load job either, check if it's a mesh job
+        if (job == nullptr)
+        {
+            std::lock_guard<std::mutex> lock(m_jobListsMutex);
+            for (int i = 0; i < (int)m_chunkMeshJobs.size(); ++i)
+            {
+                if (m_chunkMeshJobs[i] == completedJob)
+                {
+                    ChunkMeshJob* meshJob = m_chunkMeshJobs[i];
+                    Chunk*        chunk   = meshJob->GetChunk();
+
+                    if (meshJob->WasSuccessful())
+                    {
+                        // Apply mesh data on main thread (CPU data only)
+                        meshJob->ApplyMeshDataToChunk();
+
+                        // Now perform DirectX operations on main thread
+                        chunk->UpdateVertexBuffer();
+                        chunk->SetMeshClean();
                     }
 
-                    m_chunkLoadJobs.erase(m_chunkLoadJobs.begin() + i);
-                    delete loadJob;
+                    m_chunkMeshJobs.erase(m_chunkMeshJobs.begin() + i);
+                    delete meshJob;
                     job = reinterpret_cast<ChunkGenerateJob*>(1); // Mark as processed
                     break;
                 }
             }
         }
 
-        // If not a load job either, check if it's a save job
+        // If not a mesh job either, check if it's a save job
         if (job == nullptr)
         {
             std::lock_guard<std::mutex> lock(m_jobListsMutex);
@@ -1075,8 +1360,9 @@ void World::ProcessDirtyChunkMeshes()
         }
 
         Chunk* chunk = pair.second;
-        chunk->RebuildMesh();
-        chunk->SetIsMeshDirty(false);
+
+        // Submit mesh generation job instead of rebuilding on main thread
+        SubmitChunkForMeshGeneration(chunk);
         ++meshesRebuilt;
     }
 }
@@ -1220,6 +1506,37 @@ void World::SubmitChunkForSaving(Chunk* chunk)
     {
         std::lock_guard<std::mutex> lock(m_jobListsMutex);
         m_chunkSaveJobs.push_back(job);
+    }
+
+    g_jobSystem->SubmitJob(job);
+}
+
+//----------------------------------------------------------------------------------------------------
+void World::SubmitChunkForMeshGeneration(Chunk* chunk)
+{
+    if (!chunk)
+    {
+        return;
+    }
+
+    if (g_jobSystem == nullptr) return;
+
+    // Check if we've reached the maximum number of pending mesh jobs
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+        if ((int)m_chunkMeshJobs.size() >= MAX_PENDING_MESH_JOBS)
+        {
+            return; // Too many jobs in flight, try again next frame
+        }
+    }
+
+    // Create and submit mesh generation job
+    ChunkMeshJob* job = new ChunkMeshJob(chunk);
+
+    // Add job to tracking lists
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+        m_chunkMeshJobs.push_back(job);
     }
 
     g_jobSystem->SubmitJob(job);
