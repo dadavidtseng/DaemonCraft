@@ -21,6 +21,16 @@
 ---
 
 ## Changelog
+- **2025-11-03**: Completed Phase 1: Foundation (Tasks 1.1-1.4) for Assignment 4: World Generation
+  - ✅ Task 1.1: Asset integration (new sprite sheets and BlockDefinitions.xml)
+  - ✅ Task 1.2: BiomeData structure with 6 noise layers (T, H, C, E, W, PV)
+  - ✅ Task 1.3: Biome noise implementation with lookup table selection
+  - ✅ Task 1.4: Biome visualization with distinct block types per biome
+  - Fixed biome color mapping (FOREST→OAK_LEAVES, JUNGLE→JUNGLE_LEAVES, TAIGA→SPRUCE_LEAVES)
+  - Fixed SelectBiome() logic bug for DESERT/SAVANNA selection
+  - Reduced biome noise scales to (400, 300, 350) for visible variation
+  - Confirmed diverse biome patches (oceans, beaches, forests, savanna)
+  - Ready to begin Phase 2: 3D Density Terrain
 - **2025-11-01**: Completed Phase 0 prerequisites (Tasks 0.1-0.7) for Assignment 4: World Generation
   - ✅ Task 0.1: Chunk preloading system with configurable radius
   - ✅ Task 0.2: Chunk activation burst mode optimization (5 chunks/frame)
@@ -50,7 +60,8 @@ SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engin
 
 ## Current Assignment: World Generation (Assignment 4)
 
-**Status:** Phase 0 - Prerequisites ✅ COMPLETED (2025-11-01)
+**Status:** Phase 1 - Foundation ✅ COMPLETED (2025-11-03)
+**Next:** Phase 2 - 3D Density Terrain (Task 2.1: Density Formula Implementation)
 
 SimpleMiner is preparing for Assignment 4, which will upgrade the procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline with:
 - **6D Biome System** - Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys

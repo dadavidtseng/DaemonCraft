@@ -6,7 +6,9 @@
 #include "Game/Gameplay/World.hpp"
 
 #include <algorithm>
+#include <chrono>      // For std::chrono::milliseconds
 #include <filesystem>
+#include <thread>      // For std::this_thread::sleep_for
 
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Core/ErrorWarningAssert.hpp"
@@ -305,10 +307,41 @@ void World::RegenerateAllChunks()
     // 3. Deactivate all chunks (which will skip saving since needsSaving=false)
     // 4. Natural chunk activation system will regenerate chunks with current generation parameters
 
-    // CRITICAL: Cancel all pending mesh jobs BEFORE deleting chunks
-    // Otherwise ProcessCompletedJobs() will crash accessing deleted chunk pointers
+    // Clear the queued chunks tracking set FIRST to stop new jobs from being submitted
+    {
+        std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+        m_queuedGenerateChunks.clear();
+    }
+
+    // CRITICAL FIX: Wait for ALL currently executing jobs to complete BEFORE deleting any jobs
+    // Problem: Deleting jobs/chunks while worker threads are still executing causes crashes
+    // - Worker threads access freed chunk memory → 0x01010101 crash pattern
+    // - SetBlock() writes to freed memory → corrupted chunks saved to disk
+    //
+    // Solution: Poll until all workers finish their current Execute() calls
+    // This ensures no worker thread is accessing chunk memory before we delete it
+    //
+    // Why this works:
+    // 1. We cleared m_queuedGenerateChunks - no new jobs will be submitted
+    // 2. Workers will finish their current job and find no more queued jobs
+    // 3. GetExecutingJobCount() will drop to 0 when all jobs complete
+    // 4. Only THEN is it safe to delete job objects and chunks
+    //
+    // IMPORTANT: Must wait BEFORE deleting any jobs (including mesh jobs)
+    // Deleting a job while it's executing causes orphaned threads and infinite hang
+    while (g_jobSystem->GetExecutingJobCount() > 0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // Give worker threads time to finish GenerateTerrain(), LoadFromDisk(), RebuildMesh(), etc.
+        // This prevents accessing freed memory (chunk coordinates, block array)
+    }
+
+    // NOW it's safe to delete ALL pending jobs (mesh, generation, and load jobs)
+    // All workers have finished executing - no dangling pointers or orphaned threads
     {
         std::lock_guard<std::mutex> lock(m_jobListsMutex);
+
+        // Delete mesh jobs (workers no longer executing these)
         for (ChunkMeshJob* meshJob : m_chunkMeshJobs)
         {
             if (meshJob != nullptr)
@@ -317,13 +350,8 @@ void World::RegenerateAllChunks()
             }
         }
         m_chunkMeshJobs.clear();
-    }
 
-    // Also cancel pending generation and load jobs (they reference chunks too)
-    {
-        std::lock_guard<std::mutex> lock(m_jobListsMutex);
-
-        // Cancel generation jobs
+        // Delete generation jobs (workers no longer executing these)
         for (ChunkGenerateJob* genJob : m_chunkGenerationJobs)
         {
             if (genJob != nullptr)
@@ -333,7 +361,7 @@ void World::RegenerateAllChunks()
         }
         m_chunkGenerationJobs.clear();
 
-        // Cancel load jobs
+        // Delete load jobs (workers no longer executing these)
         for (ChunkLoadJob* loadJob : m_chunkLoadJobs)
         {
             if (loadJob != nullptr)
@@ -344,28 +372,22 @@ void World::RegenerateAllChunks()
         m_chunkLoadJobs.clear();
     }
 
-    // Clear the queued chunks tracking set
-    {
-        std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
-        m_queuedGenerateChunks.clear();
-    }
-
-    // CRITICAL: Clean up orphaned chunks in m_nonActiveChunks
-    // These chunks were being processed by jobs we just deleted
-    // They have allocated DirectX resources (vertex/index buffers) that must be released
+    // NOW it's safe to delete orphaned chunks in m_nonActiveChunks
+    // No worker thread is accessing this memory anymore
     {
         std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
         for (Chunk* chunk : m_nonActiveChunks)
         {
             if (chunk != nullptr)
             {
-                delete chunk;  // Releases DirectX resources in ~Chunk() destructor
+                delete chunk;  // Safe now - releases DirectX resources in ~Chunk() destructor
             }
         }
         m_nonActiveChunks.clear();
     }
 
     // Mark all chunks as not needing save
+    // CRITICAL: This prevents RegenerateAllChunks() from writing old terrain to disk
     {
         std::lock_guard<std::mutex> lock(m_activeChunksMutex);
         for (auto& chunkPair : m_activeChunks)
@@ -375,6 +397,38 @@ void World::RegenerateAllChunks()
                 chunkPair.second->SetNeedsSaving(false);
             }
         }
+    }
+
+    // CRITICAL FIX: Delete ALL saved chunk files to force fresh terrain generation
+    // This ensures chunks regenerate with NEW terrain instead of loading old saves
+    // Bug: Without this, ActivateChunk() finds saved files and loads old terrain!
+    try
+    {
+        std::string saveDir = "Saves/";
+        if (std::filesystem::exists(saveDir))
+        {
+            // Iterate through all .chunk files in Saves/ directory
+            for (auto const& entry : std::filesystem::directory_iterator(saveDir))
+            {
+                if (entry.is_regular_file() && entry.path().extension() == ".chunk")
+                {
+                    try
+                    {
+                        std::filesystem::remove(entry.path());
+                        DebuggerPrintf("Deleted chunk file: %s\n", entry.path().string().c_str());
+                    }
+                    catch (std::filesystem::filesystem_error const& e)
+                    {
+                        DebuggerPrintf("Failed to delete chunk file %s: %s\n",
+                                       entry.path().string().c_str(), e.what());
+                    }
+                }
+            }
+        }
+    }
+    catch (std::filesystem::filesystem_error const& e)
+    {
+        DebuggerPrintf("Failed to iterate Saves/ directory: %s\n", e.what());
     }
 
     // Deactivate all chunks (they won't be saved due to SetNeedsSaving(false))
@@ -438,6 +492,46 @@ bool World::SetBlockAtGlobalCoords(IntVec3 const& globalCoords,
 
     // Set the block using the chunk's SetBlock method (which handles save/mesh dirty flags)
     chunk->SetBlock(localCoords.x, localCoords.y, localCoords.z, blockTypeIndex);
+
+    // Mark neighboring chunks as dirty if the modified block is on a chunk boundary
+    // This ensures proper face culling updates across chunk edges
+    if (localCoords.x == 0) // West boundary
+    {
+        IntVec2 westChunkCoords = IntVec2(chunkCoords.x - 1, chunkCoords.y);
+        Chunk*  westChunk       = GetChunk(westChunkCoords);
+        if (westChunk != nullptr)
+        {
+            westChunk->SetIsMeshDirty(true);
+        }
+    }
+    else if (localCoords.x == CHUNK_MAX_X) // East boundary
+    {
+        IntVec2 eastChunkCoords = IntVec2(chunkCoords.x + 1, chunkCoords.y);
+        Chunk*  eastChunk       = GetChunk(eastChunkCoords);
+        if (eastChunk != nullptr)
+        {
+            eastChunk->SetIsMeshDirty(true);
+        }
+    }
+
+    if (localCoords.y == 0) // South boundary
+    {
+        IntVec2 southChunkCoords = IntVec2(chunkCoords.x, chunkCoords.y - 1);
+        Chunk*  southChunk       = GetChunk(southChunkCoords);
+        if (southChunk != nullptr)
+        {
+            southChunk->SetIsMeshDirty(true);
+        }
+    }
+    else if (localCoords.y == CHUNK_MAX_Y) // North boundary
+    {
+        IntVec2 northChunkCoords = IntVec2(chunkCoords.x, chunkCoords.y + 1);
+        Chunk*  northChunk       = GetChunk(northChunkCoords);
+        if (northChunk != nullptr)
+        {
+            northChunk->SetIsMeshDirty(true);
+        }
+    }
 
     return true;
 }
@@ -1509,6 +1603,7 @@ void World::SubmitChunkForSaving(Chunk* chunk)
     }
 
     g_jobSystem->SubmitJob(job);
+    chunk->SetIsMeshDirty(false);
 }
 
 //----------------------------------------------------------------------------------------------------

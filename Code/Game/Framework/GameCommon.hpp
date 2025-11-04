@@ -23,8 +23,33 @@ enum class DebugVisualizationMode : uint8_t
     EROSION,            // Visualize erosion (flat=green, mountainous=brown)
     WEIRDNESS,          // Visualize weirdness/ridges (normal=gray, weird=purple)
     PEAKS_VALLEYS,      // Visualize peaks and valleys (valleys=dark, peaks=white)
+    BIOME_TYPE,         // Visualize final biome type (Phase 1, Task 1.4)
 
     COUNT               // Total number of modes
+};
+
+//----------------------------------------------------------------------------------------------------
+// Biome Types (Phase 1, Task 1.2 - Assignment 4)
+//----------------------------------------------------------------------------------------------------
+enum class BiomeType : uint8_t
+{
+    OCEAN,           // Non-inland, T1-4
+    DEEP_OCEAN,      // Non-inland, low continentalness
+    FROZEN_OCEAN,    // Non-inland, T0
+    BEACH,           // Coast/inland valleys, T1-3
+    SNOWY_BEACH,     // Coast/inland valleys, T0
+    DESERT,          // Badland biomes, H0-2
+    SAVANNA,         // Badland biomes, H3-4
+    PLAINS,          // Middle biomes
+    SNOWY_PLAINS,    // Middle biomes, T0, H0
+    FOREST,          // Middle biomes, T1, H2-3
+    JUNGLE,          // Middle biomes, T3-4, H3-4
+    TAIGA,           // Middle biomes, T0, H3-4
+    SNOWY_TAIGA,     // Middle biomes, T0, H1-2
+    STONY_PEAKS,     // High/Peaks with T>2
+    SNOWY_PEAKS,     // High/Peaks with T<=2
+
+    COUNT            // Total number of biomes
 };
 
 //----------------------------------------------------------------------------------------------------
@@ -47,12 +72,14 @@ float constexpr        TERRAIN_NOISE_SCALE    = 200.f;
 unsigned int constexpr TERRAIN_NOISE_OCTAVES  = 5u;
 
 // Humidity (Biome) Parameters
-float constexpr        HUMIDITY_NOISE_SCALE   = 800.f;
+// Assignment 4: Updated to match official Minecraft frequencies (FREQ_H = 1.0 / 8192.0)
+float constexpr        HUMIDITY_NOISE_SCALE   = 8192.f;
 unsigned int constexpr HUMIDITY_NOISE_OCTAVES = 4u;
 
 // Temperature Parameters
+// Assignment 4: Updated to match official Minecraft frequencies (FREQ_T = 1.0 / 8192.0)
 float constexpr        TEMPERATURE_RAW_NOISE_SCALE = 0.0075f;
-float constexpr        TEMPERATURE_NOISE_SCALE     = 400.f;
+float constexpr        TEMPERATURE_NOISE_SCALE     = 8192.f;
 unsigned int constexpr TEMPERATURE_NOISE_OCTAVES   = 4u;
 
 // Hill/Mountain Parameters
@@ -66,16 +93,55 @@ float constexpr        OCEAN_DEPTH            = 30.f;
 float constexpr        OCEANESS_NOISE_SCALE   = 600.f;
 unsigned int constexpr OCEANESS_NOISE_OCTAVES = 3u;
 
-// Debug Visualization Noise Parameters (Phase 0, Task 0.4)
-// These mirror the Assignment 4 parameters but are simplified for debug visualization
-float constexpr        CONTINENTALNESS_NOISE_SCALE = 600.f;
+// Assignment 4: Official Biome Noise Parameters (Phase 1, Task 1.2)
+// Based on Minecraft 1.18+ overworld.json frequencies
+// Denominators map to Perlin noise scale parameters: FREQ = 1.0 / SCALE
+//
+// CRITICAL FIX: Original Minecraft scales (2048, 1024) were too large for our world
+// At those scales, biomes vary too slowly - entire visible area shows same biome
+// Reduced to 300-400 range to match TERRAIN_NOISE_SCALE = 200.f for visible variety
+
+// Continentalness - Ocean to inland gradient (7 categories)
+// Original: FREQ_C = 1.0 / 2048.0 (too slow for our world size)
+// Fixed: Reduced to 400.f for visible ocean/inland transitions
+float constexpr        CONTINENTALNESS_NOISE_SCALE = 400.f;
 unsigned int constexpr CONTINENTALNESS_NOISE_OCTAVES = 4u;
-float constexpr        EROSION_NOISE_SCALE = 250.f;
+
+// Erosion - Flat to mountainous (7 levels: E0-E6)
+// Original: FREQ_E = 1.0 / 1024.0 (too slow for our world size)
+// Fixed: Reduced to 300.f for visible erosion patterns
+float constexpr        EROSION_NOISE_SCALE = 300.f;
 unsigned int constexpr EROSION_NOISE_OCTAVES = 4u;
-float constexpr        WEIRDNESS_NOISE_SCALE = 300.f;
+
+// Weirdness - Normal to strange terrain (used to calculate PV)
+// Original: FREQ_W = 1.0 / 1024.0 (too slow for our world size)
+// Fixed: Reduced to 350.f for visible weirdness/peaks & valleys variation
+float constexpr        WEIRDNESS_NOISE_SCALE = 350.f;
 unsigned int constexpr WEIRDNESS_NOISE_OCTAVES = 3u;
-float constexpr        PEAKS_VALLEYS_NOISE_SCALE = 400.f;
-unsigned int constexpr PEAKS_VALLEYS_NOISE_OCTAVES = 4u;
+
+// Peaks and Valleys - Height variation within biome (5 levels: Valleys to Peaks)
+// Calculated from Weirdness: PV = 1 - |( 3 * abs(W) ) - 2|
+// No separate noise layer needed, derived from Weirdness
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 4: 3D Density Terrain Parameters (Phase 2, Task 2.1)
+//----------------------------------------------------------------------------------------------------
+// Based on professor's simplified density formula (October 15, 2025 blog)
+// D(x, y, z) = N(x, y, z, s) + B(z)
+// where N = 3D Perlin noise, B = vertical bias based on height from default terrain
+// CRITICAL: Negative density = MORE dense (solid blocks), positive = air
+
+// 3D Density Noise Parameters
+float constexpr        DENSITY_NOISE_SCALE = 200.f;       // Official: FREQ_3D = 1.0 / 200.0
+unsigned int constexpr DENSITY_NOISE_OCTAVES = 3u;        // Balance detail vs performance
+
+// Density Bias Calculation: B(z) = b × (z − t)
+// Controls terrain tendency to be solid vs air based on vertical position
+// Uses DEFAULT_TERRAIN_HEIGHT = 80.f (defined above at line 69)
+float constexpr DENSITY_BIAS_PER_BLOCK = 0.02f;           // Typical range: 0.01-0.05
+
+// Note: Top/bottom slides and terrain shaping curves will be added in Tasks 2.2 and 2.3
+// Note: Cave carving parameters (cheese/spaghetti) will be added in Phase 4
 
 // Soil Layer Configuration
 int constexpr   MIN_DIRT_OFFSET_Z = 3;

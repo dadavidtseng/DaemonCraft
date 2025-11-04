@@ -126,7 +126,9 @@ void Game::Update()
 
     UpdateEntities(gameDeltaSeconds, systemDeltaSeconds);
     DebugAddScreenText(Stringf("Time: %.2f\nFPS: %.2f\nScale: %.1f", m_gameClock->GetTotalSeconds(), 1.f / m_gameClock->GetDeltaSeconds(), m_gameClock->GetTimeScale()), m_screenCamera->GetOrthographicTopRight() - Vec2(250.f, 60.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-    UpdateWorld(gameDeltaSeconds);
+
+    // CRITICAL FIX: Process input BEFORE world update to ensure dirty chunks are processed same frame
+    // This fixes the flashing bug by eliminating the 2-3 frame delay between block modification and mesh rebuild
     UpdateFromInput();
 
     // CRITICAL: Check if F8 was pressed requesting game restart
@@ -136,6 +138,9 @@ void Game::Update()
     {
         return;  // Do NOT execute any more code on this Game instance
     }
+
+    // Update world AFTER input processing so block modifications trigger mesh rebuilds this frame
+    UpdateWorld(gameDeltaSeconds);
 
 
 
@@ -370,24 +375,25 @@ void Game::UpdateFromKeyBoard()
         }
 
         // Block type cycling - Use number keys to cycle through the three block types
+        // Phase 1, Task 1.1: Updated block indices to match new Assignment 4 XML
         if (g_input->WasKeyJustPressed(NUMCODE_1) || g_input->WasKeyJustPressed(KEYCODE_UPARROW))
         {
-            // Cycle to next block type: Glowstone(9) -> Cobblestone(10) -> ChiseledBrick(11) -> Glowstone(9)
+            // Cycle to next block type: Glowstone(13) -> Cobblestone(14) -> ChiseledBrick(15) -> Glowstone(13)
             m_currentBlockType++;
-            if (m_currentBlockType > 11) // BLOCK_CHISELED_BRICK
+            if (m_currentBlockType > 15) // BLOCK_CHISELED_BRICK
             {
-                m_currentBlockType = 9; // Back to BLOCK_GLOWSTONE
+                m_currentBlockType = 13; // Back to BLOCK_GLOWSTONE
             }
             DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
         }
 
         if (g_input->WasKeyJustPressed(NUMCODE_2) || g_input->WasKeyJustPressed(KEYCODE_DOWNARROW))
         {
-            // Cycle to previous block type: ChiseledBrick(11) -> Cobblestone(10) -> Glowstone(9) -> ChiseledBrick(11)
+            // Cycle to previous block type: ChiseledBrick(15) -> Cobblestone(14) -> Glowstone(13) -> ChiseledBrick(15)
             m_currentBlockType--;
-            if (m_currentBlockType < 9) // BLOCK_GLOWSTONE
+            if (m_currentBlockType < 13) // BLOCK_GLOWSTONE
             {
-                m_currentBlockType = 11; // Back to BLOCK_CHISELED_BRICK
+                m_currentBlockType = 15; // Back to BLOCK_CHISELED_BRICK
             }
             DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
         }
@@ -406,7 +412,8 @@ void Game::UpdateFromKeyBoard()
             DebugAddScreenText(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), Vec2(0.f, 120.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
 
             // Add debug info for current block type and coordinates
-            DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[9] Cobblestone[10] ChiseledBrick[11]", m_currentBlockType), Vec2(0.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
+            // Phase 1, Task 1.1: Updated block type names and indices for Assignment 4
+            DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[13] Cobblestone[14] ChiseledBrick[15]", m_currentBlockType), Vec2(0.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
 
             // Calculate chunk and local coordinates for player position
             IntVec3 playerGlobalCoords = IntVec3((int)m_player->m_position.x, (int)m_player->m_position.y, (int)m_player->m_position.z);
@@ -1281,6 +1288,11 @@ void Game::ShowTerrainDebugWindow()
                     if (ImGui::MenuItem("Peaks & Valleys", nullptr, currentMode == DebugVisualizationMode::PEAKS_VALLEYS))
                     {
                         m_world->SetDebugVisualizationMode(DebugVisualizationMode::PEAKS_VALLEYS);
+                    }
+
+                    if (ImGui::MenuItem("Biome Type", nullptr, currentMode == DebugVisualizationMode::BIOME_TYPE))
+                    {
+                        m_world->SetDebugVisualizationMode(DebugVisualizationMode::BIOME_TYPE);
                     }
                 }
                 ImGui::EndMenu();

@@ -62,7 +62,7 @@ private:
     eGameState m_gameState    = eGameState::GAME;
 
     // Block placing system
-    uint8_t m_currentBlockType = 9; // Start with BLOCK_GLOWSTONE (index 9 in XML)
+    uint8_t m_currentBlockType = 13; // Start with BLOCK_GLOWSTONE (index 13 in Assignment 4 XML)
 
     // Debug display toggle
     bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)

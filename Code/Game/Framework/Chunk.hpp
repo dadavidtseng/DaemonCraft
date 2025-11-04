@@ -7,11 +7,13 @@
 #include <vector>
 #include <atomic>
 
+#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Math/AABB3.hpp"
 #include "Engine/Math/IntVec2.hpp"
 #include "Engine/Math/IntVec3.hpp"
 #include "Engine/Renderer/VertexUtils.hpp"
 #include "Game/Framework/Block.hpp"
+#include "Game/Framework/GameCommon.hpp"  // For BiomeType enum
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 struct Rgba8;
@@ -78,6 +80,27 @@ enum class ChunkState : uint8_t
     SAVE_COMPLETE,          // Save finished, main thread can delete chunk
 
     DECONSTRUCTING          // Final cleanup before deletion (main thread)
+};
+
+//----------------------------------------------------------------------------------------------------
+// BiomeData - Per-column biome information (Phase 1, Task 1.2 - Assignment 4)
+//----------------------------------------------------------------------------------------------------
+// Stores biome noise parameters for each (x,y) column in a chunk.
+// According to task-pointer.md: "6 noise values only - no depth, no river"
+// - Temperature, Humidity, Continentalness, Erosion, Weirdness are sampled from noise
+// - Peaks & Valleys (PV) is calculated from Weirdness: PV = 1 - |(3 * abs(W)) - 2|
+// - BiomeType is determined via lookup tables based on these 6 parameters
+//----------------------------------------------------------------------------------------------------
+struct BiomeData
+{
+    float     temperature;      // T: [-1, 1] range (5 levels: T0-T4)
+    float     humidity;         // H: [-1, 1] range (5 levels: H0-H4)
+    float     continentalness;  // C: [-1.2, 1.0] range (7 categories)
+    float     erosion;          // E: [-1, 1] range (7 levels: E0-E6)
+    float     weirdness;        // W: [-1, 1] range (used to calculate PV)
+    float     peaksValleys;     // PV: [-1, 1] range (5 levels: Valleys to Peaks)
+                                // PV = 1 - |(3 * abs(W)) - 2|
+    BiomeType biomeType;        // Determined biome (via lookup tables)
 };
 
 //----------------------------------------------------------------------------------------------------
@@ -170,6 +193,10 @@ private:
     /// @brief
     AABB3 m_worldBounds = AABB3::ZERO;
     Block m_blocks[BLOCKS_PER_CHUNK]; // 1D array for cache efficiency
+
+    // Assignment 4: Biome data per (x,y) column (Phase 1, Task 1.2)
+    // Stores 6 noise parameters and biome type for each horizontal column
+    BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y];
 
     // Rendering
     VertexList_PCU m_vertices;

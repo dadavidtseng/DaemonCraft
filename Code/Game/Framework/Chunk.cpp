@@ -12,7 +12,6 @@
 #include "Engine/Core/FileUtils.hpp"
 #include "Engine/Core/Rgba8.hpp"
 #include "Engine/Input/InputSystem.hpp"
-#include "Engine/Math/RandomNumberGenerator.hpp"
 #include "Engine/Math/Vec2.hpp"
 #include "Engine/Math/Vec3.hpp"
 #include "Engine/Math/MathUtils.hpp"
@@ -30,23 +29,44 @@
 
 //----------------------------------------------------------------------------------------------------
 // Block Type Constants - Must match BlockSpriteSheet_BlockDefinitions.xml exactly (0-indexed)
-const uint8_t BLOCK_AIR            = 0;   // Air
-const uint8_t BLOCK_GRASS          = 1;   // Grass
-const uint8_t BLOCK_DIRT           = 2;   // Dirt
-const uint8_t BLOCK_STONE          = 3;   // Stone
-const uint8_t BLOCK_COAL           = 4;   // Coal
-const uint8_t BLOCK_IRON           = 5;   // Iron
-const uint8_t BLOCK_GOLD           = 6;   // Gold
-const uint8_t BLOCK_DIAMOND        = 7;   // Diamond
-const uint8_t BLOCK_WATER          = 8;   // Water
-const uint8_t BLOCK_GLOWSTONE      = 9;   // Glowstone (index 9 in XML)
-const uint8_t BLOCK_COBBLESTONE    = 10;  // Cobblestone (index 10 in XML)
-const uint8_t BLOCK_CHISELED_BRICK = 11;  // ChiseledBrick (index 11 in XML)
-const uint8_t BLOCK_SAND           = 12;  // Sand (index 12 in XML)
-const uint8_t BLOCK_SNOW           = 13;  // Snow (index 13 in XML)
-const uint8_t BLOCK_ICE            = 14;  // Ice (index 14 in XML)
-const uint8_t BLOCK_OBSIDIAN       = 15;  // Obsidian (index 15 in XML)
-const uint8_t BLOCK_LAVA           = 26;  // Lava (index 26 in XML)
+// Phase 1, Task 1.1: Updated to match professor's new XML (Assignment 4)
+const uint8_t BLOCK_AIR                 = 0;   // Air
+const uint8_t BLOCK_WATER               = 1;   // Water
+const uint8_t BLOCK_SAND                = 2;   // Sand
+const uint8_t BLOCK_SNOW                = 3;   // Snow
+const uint8_t BLOCK_ICE                 = 4;   // Ice
+const uint8_t BLOCK_DIRT                = 5;   // Dirt
+const uint8_t BLOCK_STONE               = 6;   // Stone
+const uint8_t BLOCK_COAL                = 7;   // Coal
+const uint8_t BLOCK_IRON                = 8;   // Iron
+const uint8_t BLOCK_GOLD                = 9;   // Gold
+const uint8_t BLOCK_DIAMOND             = 10;  // Diamond
+const uint8_t BLOCK_OBSIDIAN            = 11;  // Obsidian
+const uint8_t BLOCK_LAVA                = 12;  // Lava
+const uint8_t BLOCK_GLOWSTONE           = 13;  // Glowstone
+const uint8_t BLOCK_COBBLESTONE         = 14;  // Cobblestone
+const uint8_t BLOCK_CHISELED_BRICK      = 15;  // ChiseledBrick
+const uint8_t BLOCK_GRASS               = 16;  // Grass (standard)
+const uint8_t BLOCK_GRASS_LIGHT         = 17;  // GrassLight
+const uint8_t BLOCK_GRASS_DARK          = 18;  // GrassDark
+const uint8_t BLOCK_GRASS_YELLOW        = 19;  // GrassYellow
+const uint8_t BLOCK_ACACIA_LOG          = 20;  // AcaciaLog
+const uint8_t BLOCK_ACACIA_PLANKS       = 21;  // AcaciaPlanks
+const uint8_t BLOCK_ACACIA_LEAVES       = 22;  // AcaciaLeaves
+const uint8_t BLOCK_CACTUS_LOG          = 23;  // CactusLog
+const uint8_t BLOCK_OAK_LOG             = 24;  // OakLog
+const uint8_t BLOCK_OAK_PLANKS          = 25;  // OakPlanks
+const uint8_t BLOCK_OAK_LEAVES          = 26;  // OakLeaves
+const uint8_t BLOCK_BIRCH_LOG           = 27;  // BirchLog
+const uint8_t BLOCK_BIRCH_PLANKS        = 28;  // BirchPlanks
+const uint8_t BLOCK_BIRCH_LEAVES        = 29;  // BirchLeaves
+const uint8_t BLOCK_JUNGLE_LOG          = 30;  // JungleLog
+const uint8_t BLOCK_JUNGLE_PLANKS       = 31;  // JunglePlanks
+const uint8_t BLOCK_JUNGLE_LEAVES       = 32;  // JungleLeaves
+const uint8_t BLOCK_SPRUCE_LOG          = 33;  // SpruceLog
+const uint8_t BLOCK_SPRUCE_PLANKS       = 34;  // SprucePlanks
+const uint8_t BLOCK_SPRUCE_LEAVES       = 35;  // SpruceLeaves
+const uint8_t BLOCK_SPRUCE_LEAVES_SNOW  = 36;  // SpruceLeavesSnow
 
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
@@ -89,24 +109,51 @@ void Chunk::Update(float const deltaSeconds)
 //----------------------------------------------------------------------------------------------------
 void Chunk::Render()
 {
-    if (m_vertexBuffer && m_indexBuffer && !m_vertices.empty())
+    // CRITICAL FIX: Don't render dirty chunks - they have stale buffer data
+    // When a neighbor chunk is modified, this chunk gets marked dirty but buffers
+    // still contain old mesh data, causing a flash when rendered with stale data
+    if (m_isMeshDirty)
+    {
+        return;  // Skip rendering - mesh is being rebuilt or needs rebuild
+    }
+
+    // CRITICAL FIX: Only check buffers, not m_vertices
+    // m_vertices can be inconsistent during SetMeshData() causing false negatives
+    // Buffers are the source of truth for whether chunk can be rendered
+    if (m_vertexBuffer && m_indexBuffer)
     {
         g_renderer->SetBlendMode(eBlendMode::OPAQUE);
         g_renderer->SetRasterizerMode(eRasterizerMode::SOLID_CULL_BACK);
         g_renderer->SetSamplerMode(eSamplerMode::POINT_CLAMP);
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
-        // g_renderer->BindTexture(g_renderer->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
-        g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/BlockSpriteSheet_Dokucraft_32px.png"));
 
-        // Use m_indices.size() instead of m_indexBuffer->GetSize()
-        g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, (int)m_indices.size());
+        // Phase 1, Task 1.1: Use Assignment 4 Dokucraft High 32px sprite sheet (matches new XML layout)
+        g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/SpriteSheet_Dokucraft_High_32px.png"));
+
+        // CRITICAL FIX: Use buffer's internal size to avoid race condition during RebuildMesh()
+        // RebuildMesh() clears m_indices at line 579, causing m_indices.size() to return 0
+        // This results in bright flashing when rendering with 0 indices
+        // Buffer's size is stable and represents the actual GPU data
+        int indexCount = m_indexBuffer->GetSize() / m_indexBuffer->GetStride();
+
+        // DEBUG: Log rendering info when chunk is dirty (being rebuilt)
+        if (m_isMeshDirty)
+        {
+            DebuggerPrintf("RENDER DURING DIRTY: Chunk(%d,%d) - indexCount=%d, m_indices.size()=%zu, bufferSize=%u, bufferStride=%u\n",
+                m_chunkCoords.x, m_chunkCoords.y,
+                indexCount, m_indices.size(),
+                m_indexBuffer->GetSize(), m_indexBuffer->GetStride());
+        }
+
+        g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, indexCount);
     }
 
     if (!m_drawDebug || !m_debugVertexBuffer) return;
 
     g_renderer->BindTexture(nullptr);
-    // Use m_debugVertices.size() instead of m_debugVertexBuffer->GetSize()
-    g_renderer->DrawVertexBuffer(m_debugVertexBuffer, (int)m_debugVertices.size());
+    // Use buffer's internal size for consistency (same fix as main rendering)
+    int debugVertexCount = m_debugVertexBuffer->GetSize() / m_debugVertexBuffer->GetStride();
+    g_renderer->DrawVertexBuffer(m_debugVertexBuffer, debugVertexCount);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -172,9 +219,144 @@ static uint8_t GetDebugVisualizationBlock(float noiseValue, DebugVisualizationMo
             if (normalizedValue > 0.1f)       return BLOCK_DIRT;          // Low - brown
             return BLOCK_COAL;  // Valleys - black/dark
 
+        case DebugVisualizationMode::BIOME_TYPE:
+        {
+            // Special case: noiseValue is actually BiomeType enum cast to float
+            // No need to normalize - directly cast back to BiomeType
+            BiomeType biome = static_cast<BiomeType>(static_cast<int>(noiseValue));
+
+            // Map each biome to a distinctive colored block
+            // CRITICAL FIX: Use different colored blocks for each biome to show variety
+            // Previous issue: PLAINS/FOREST/JUNGLE/TAIGA all mapped to BLOCK_GRASS (green)
+            switch (biome)
+            {
+                case BiomeType::OCEAN:          return BLOCK_DIAMOND;       // Cyan (water)
+                case BiomeType::DEEP_OCEAN:     return BLOCK_COBBLESTONE;   // Dark blue/gray
+                case BiomeType::FROZEN_OCEAN:   return BLOCK_ICE;           // White/blue (ice)
+                case BiomeType::BEACH:          return BLOCK_SAND;          // Tan (sand)
+                case BiomeType::SNOWY_BEACH:    return BLOCK_SNOW;          // White (snow)
+                case BiomeType::DESERT:         return BLOCK_GOLD;          // Yellow/gold (sand)
+                case BiomeType::SAVANNA:        return BLOCK_DIRT;          // Brown (dirt)
+                case BiomeType::PLAINS:         return BLOCK_GRASS;         // Light green (grass)
+                case BiomeType::SNOWY_PLAINS:   return BLOCK_SNOW;          // White (snow)
+                case BiomeType::FOREST:         return BLOCK_OAK_LEAVES;    // Green (distinct from plains)
+                case BiomeType::JUNGLE:         return BLOCK_JUNGLE_LEAVES; // Dark green (dense forest)
+                case BiomeType::TAIGA:          return BLOCK_SPRUCE_LEAVES; // Blue-green (conifer forest)
+                case BiomeType::SNOWY_TAIGA:    return BLOCK_SPRUCE_LEAVES_SNOW; // White/green (snow + trees)
+                case BiomeType::STONY_PEAKS:    return BLOCK_STONE;         // Gray (rocky mountains)
+                case BiomeType::SNOWY_PEAKS:    return BLOCK_ICE;           // White (snowy mountains)
+                default:                        return BLOCK_STONE;         // Fallback
+            }
+        }
+
         default:
             return BLOCK_STONE;  // Should never reach here
     }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 4: Biome Selection Helper Function (Phase 1, Task 1.3)
+//----------------------------------------------------------------------------------------------------
+// Determines biome type based on 6 noise parameters using lookup table approach
+// Based on Minecraft 1.18+ biome selection system
+// Reference: Docs/Biomes.txt for complete lookup tables
+//----------------------------------------------------------------------------------------------------
+static BiomeType SelectBiome(float temperature, float humidity, float continentalness,
+                             float erosion, float peaksValleys)
+{
+    // Discretize temperature into 5 levels (T0-T4)
+    // T0: [-1.00, -0.45) Frozen, T1: [-0.45, -0.15) Cool, T2: [-0.15, 0.20) Neutral
+    // T3: [0.20, 0.55) Warm, T4: [0.55, 1.00] Hot
+    int tempLevel = 2;  // Default: T2 (Neutral)
+    if (temperature < -0.45f)      tempLevel = 0;  // T0 (Frozen)
+    else if (temperature < -0.15f) tempLevel = 1;  // T1 (Cool)
+    else if (temperature < 0.20f)  tempLevel = 2;  // T2 (Neutral)
+    else if (temperature < 0.55f)  tempLevel = 3;  // T3 (Warm)
+    else                           tempLevel = 4;  // T4 (Hot)
+
+    // Discretize humidity into 5 levels (H0-H4)
+    // H0: [-1.00, -0.35) Very Dry, H1: [-0.35, -0.10) Dry, H2: [-0.10, 0.10) Medium
+    // H3: [0.10, 0.30) Wet, H4: [0.30, 1.00] Very Wet
+    int humidLevel = 2;  // Default: H2 (Medium)
+    if (humidity < -0.35f)      humidLevel = 0;  // H0 (Very Dry)
+    else if (humidity < -0.10f) humidLevel = 1;  // H1 (Dry)
+    else if (humidity < 0.10f)  humidLevel = 2;  // H2 (Medium)
+    else if (humidity < 0.30f)  humidLevel = 3;  // H3 (Wet)
+    else                        humidLevel = 4;  // H4 (Very Wet)
+
+    // Hierarchical biome selection (simplified from Minecraft's lookup tables)
+
+    // Step 1: Check continentalness for ocean biomes
+    if (continentalness < -0.19f)  // Ocean/Deep Ocean range
+    {
+        if (tempLevel == 0)  // T0 = Frozen
+            return BiomeType::FROZEN_OCEAN;
+        else if (continentalness < -1.05f)  // Deep ocean threshold
+            return BiomeType::DEEP_OCEAN;
+        else
+            return BiomeType::OCEAN;
+    }
+
+    // Step 2: Beach biomes (coast areas)
+    if (continentalness < -0.11f)  // Coast range
+    {
+        if (tempLevel == 0)  // T0 = Frozen
+            return BiomeType::SNOWY_BEACH;
+        else
+            return BiomeType::BEACH;
+    }
+
+    // Step 3: Inland biomes - Use Peaks & Valleys and Erosion for categorization
+
+    // Peaks biomes (high PV values)
+    if (peaksValleys > 0.7f)
+    {
+        if (tempLevel <= 2)  // T0-T2 = Cold/neutral
+            return BiomeType::SNOWY_PEAKS;
+        else
+            return BiomeType::STONY_PEAKS;
+    }
+
+    // Badland biomes (low erosion + dry/medium humidity)
+    // CRITICAL FIX: Outer condition checks humidLevel <= 2, so inner condition was redundant
+    // Now properly distinguishes between DESERT (very dry) and SAVANNA (dry to medium)
+    if (erosion < -0.2225f && humidLevel <= 2)
+    {
+        if (humidLevel <= 1)  // H0-H1 = Very Dry to Dry
+            return BiomeType::DESERT;
+        else  // H2 = Medium
+            return BiomeType::SAVANNA;
+    }
+
+    // Middle biomes (most common) - Use temperature and humidity
+    if (tempLevel == 0)  // T0 = Frozen
+    {
+        if (humidLevel <= 1)
+            return BiomeType::SNOWY_PLAINS;
+        else if (humidLevel <= 2)
+            return BiomeType::SNOWY_TAIGA;
+        else
+            return BiomeType::TAIGA;
+    }
+    else if (tempLevel == 1)  // T1 = Cool
+    {
+        if (humidLevel >= 2)
+            return BiomeType::FOREST;
+        else
+            return BiomeType::PLAINS;
+    }
+    else if (tempLevel >= 3)  // T3-T4 = Warm/Hot
+    {
+        if (humidLevel >= 3)
+            return BiomeType::JUNGLE;
+        else if (humidLevel <= 2)
+            return BiomeType::SAVANNA;
+        else
+            return BiomeType::PLAINS;
+    }
+
+    // Default: Plains (T2 Neutral temperature, medium conditions)
+    return BiomeType::PLAINS;
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -207,6 +389,7 @@ void Chunk::GenerateTerrain()
             case DebugVisualizationMode::EROSION:        visualizationSeed = GAME_SEED + 6; break;
             case DebugVisualizationMode::WEIRDNESS:      visualizationSeed = GAME_SEED + 7; break;
             case DebugVisualizationMode::PEAKS_VALLEYS:  visualizationSeed = GAME_SEED + 8; break;
+            case DebugVisualizationMode::BIOME_TYPE:     visualizationSeed = GAME_SEED + 9; break;  // Phase 1, Task 1.4
             default: break;
         }
 
@@ -292,14 +475,99 @@ void Chunk::GenerateTerrain()
                         // PV is derived from weirdness: PV = 1 - |( 3 * abs(W) ) - 2|
                         float weirdness = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            PEAKS_VALLEYS_NOISE_SCALE,
-                            PEAKS_VALLEYS_NOISE_OCTAVES,
+                            WEIRDNESS_NOISE_SCALE,
+                            WEIRDNESS_NOISE_OCTAVES,
                             DEFAULT_OCTAVE_PERSISTANCE,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
                         );
                         noiseValue = 1.f - fabsf((3.f * fabsf(weirdness)) - 2.f);
+                        break;
+                    }
+
+                    case DebugVisualizationMode::BIOME_TYPE:
+                    {
+                        // Phase 1, Task 1.4: Sample all 6 biome noise layers and determine biome type
+                        // CRITICAL FIX: Use the SAME seeds as normal terrain generation (lines 599-610)
+                        // Otherwise visualization shows different biomes than actual terrain!
+
+                        // Derive seeds matching normal terrain generation
+                        unsigned int humiditySeed = GAME_SEED + 1;
+                        unsigned int temperatureSeed = GAME_SEED + 2;
+                        unsigned int continentalnessSeed = GAME_SEED + 6;
+                        unsigned int erosionSeed = GAME_SEED + 7;
+                        unsigned int weirdnessSeed = GAME_SEED + 8;
+
+                        // Sample Temperature (matches Pass 1 lines 638-647)
+                        float rawTemp = Get2dNoiseNegOneToOne(globalX, globalY, temperatureSeed) * TEMPERATURE_RAW_NOISE_SCALE;
+                        float temperature = rawTemp + 0.5f + 0.5f * Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            TEMPERATURE_NOISE_SCALE,
+                            TEMPERATURE_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            temperatureSeed
+                        );
+                        // Normalize temperature from [0,1] to [-1,1] for biome selection
+                        float temperatureNormalized = RangeMap(temperature, 0.f, 1.f, -1.f, 1.f);
+
+                        // Sample Humidity (matches Pass 1 lines 627-635)
+                        float humidity = 0.5f + 0.5f * Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            HUMIDITY_NOISE_SCALE,
+                            HUMIDITY_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            humiditySeed
+                        );
+                        // Normalize humidity from [0,1] to [-1,1] for biome selection
+                        float humidityNormalized = RangeMap(humidity, 0.f, 1.f, -1.f, 1.f);
+
+                        // Sample Continentalness (matches Pass 1 lines 653-661)
+                        float continentalness = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            CONTINENTALNESS_NOISE_SCALE,
+                            CONTINENTALNESS_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            continentalnessSeed
+                        );
+
+                        // Sample Erosion (matches Pass 1 lines 664-672)
+                        float erosion = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            EROSION_NOISE_SCALE,
+                            EROSION_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            erosionSeed
+                        );
+
+                        // Sample Weirdness (matches Pass 1 lines 675-683)
+                        float weirdness = Compute2dPerlinNoise(
+                            (float)globalX, (float)globalY,
+                            WEIRDNESS_NOISE_SCALE,
+                            WEIRDNESS_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            weirdnessSeed
+                        );
+
+                        // Calculate Peaks & Valleys from Weirdness (matches Pass 1 line 687)
+                        float peaksValleys = 1.f - fabsf((3.f * fabsf(weirdness)) - 2.f);
+
+                        // Determine biome type using lookup table (from Task 1.3)
+                        BiomeType biome = SelectBiome(temperatureNormalized, humidityNormalized,
+                                                       continentalness, erosion, peaksValleys);
+
+                        // Cast biome enum to float for color mapping
+                        noiseValue = static_cast<float>(static_cast<int>(biome));
                         break;
                     }
 
@@ -346,6 +614,11 @@ void Chunk::GenerateTerrain()
     unsigned int oceanSeed       = hillSeed + 1;
     unsigned int dirtSeed        = oceanSeed + 1;
 
+    // Assignment 4: Biome noise seeds (Phase 1, Task 1.3)
+    unsigned int continentalnessSeed = dirtSeed + 1;
+    unsigned int erosionSeed         = continentalnessSeed + 1;
+    unsigned int weirdnessSeed       = erosionSeed + 1;
+
     // Allocate per-(x,y) maps
     int   heightMapXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
     int   dirtDepthXY[CHUNK_SIZE_X * CHUNK_SIZE_Y];
@@ -382,6 +655,46 @@ void Chunk::GenerateTerrain()
                 true,  // renormalize
                 temperatureSeed
             );
+
+            // Assignment 4: Biome noise sampling (Phase 1, Task 1.3)
+            // Sample 4 additional noise layers for biome determination
+
+            // Continentalness - Ocean to inland distance (C: [-1.2, 1.0])
+            float continentalness = Compute2dPerlinNoise(
+                (float)globalX, (float)globalY,
+                CONTINENTALNESS_NOISE_SCALE,
+                CONTINENTALNESS_NOISE_OCTAVES,
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to [-1, 1]
+                continentalnessSeed
+            );
+
+            // Erosion - Flat to mountainous (E: [-1, 1])
+            float erosion = Compute2dPerlinNoise(
+                (float)globalX, (float)globalY,
+                EROSION_NOISE_SCALE,
+                EROSION_NOISE_OCTAVES,
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to [-1, 1]
+                erosionSeed
+            );
+
+            // Weirdness - Terrain variation (W: [-1, 1])
+            float weirdness = Compute2dPerlinNoise(
+                (float)globalX, (float)globalY,
+                WEIRDNESS_NOISE_SCALE,
+                WEIRDNESS_NOISE_OCTAVES,
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to [-1, 1]
+                weirdnessSeed
+            );
+
+            // Peaks & Valleys - Calculated from Weirdness (PV: [-1, 1])
+            // Formula: PV = 1 - |(3 * abs(W)) - 2|
+            float peaksValleys = 1.f - fabsf((3.f * fabsf(weirdness)) - 2.f);
 
             // Hilliness calculation
             float rawHill = Compute2dPerlinNoise(
@@ -436,10 +749,34 @@ void Chunk::GenerateTerrain()
             temperatureMapXY[idxXY] = temperature;
             heightMapXY[idxXY]      = (int)floorf(terrainHeightF);
             dirtDepthXY[idxXY]      = dirtDepth;
+
+            // Assignment 4: Store biome data for this column (Phase 1, Task 1.3)
+            // Note: Temperature and Humidity ranges need adjustment from [0,1] to [-1,1]
+            // Current calculation produces [0,1], but biome selection expects [-1,1]
+            float temperatureNormalized = RangeMap(temperature, 0.f, 1.f, -1.f, 1.f);
+            float humidityNormalized    = RangeMap(humidity, 0.f, 1.f, -1.f, 1.f);
+
+            // Select biome type using lookup table approach
+            BiomeType biomeType = SelectBiome(temperatureNormalized, humidityNormalized,
+                                             continentalness, erosion, peaksValleys);
+
+            // Store all biome data
+            m_biomeData[idxXY].temperature     = temperatureNormalized;
+            m_biomeData[idxXY].humidity        = humidityNormalized;
+            m_biomeData[idxXY].continentalness = continentalness;
+            m_biomeData[idxXY].erosion         = erosion;
+            m_biomeData[idxXY].weirdness       = weirdness;
+            m_biomeData[idxXY].peaksValleys    = peaksValleys;
+            m_biomeData[idxXY].biomeType       = biomeType;
         }
     }
 
-    // --- Pass 2: assign block types for every (x,y,z) using cache-coherent iteration ---
+    // --- Pass 2: assign block types for every (x,y,z) using 3D density formula ---
+    // Assignment 4: Phase 2, Task 2.1 - Replace heightmap with 3D density terrain
+    // Formula: D(x,y,z) = N(x,y,z,s) + B(z)
+    // where N = 3D Perlin noise, B = vertical bias
+    // CRITICAL: Negative density = MORE dense (solid blocks), positive = air
+
     for (int z = 0; z < CHUNK_SIZE_Z; z++)
     {
         for (int y = 0; y < CHUNK_SIZE_Y; y++)
@@ -451,58 +788,40 @@ void Chunk::GenerateTerrain()
                 int     idx          = LocalCoordsToIndex(localCoords);
                 int     idxXY        = y * CHUNK_SIZE_X + x;
 
-                int   terrainHeight = heightMapXY[idxXY];
+                // Retrieve cached per-column data from Pass 1
                 int   dirtDepth     = dirtDepthXY[idxXY];
                 float humidity      = humidityMapXY[idxXY];
                 float temperature   = temperatureMapXY[idxXY];
 
-                // Temperature-driven ice ceiling depth
-                float iceDepth = DEFAULT_TERRAIN_HEIGHT - floorf(RangeMapClamped(temperature,
-                                                                                 ICE_TEMPERATURE_MAX, ICE_TEMPERATURE_MIN, ICE_DEPTH_MIN, ICE_DEPTH_MAX));
+                // --- Assignment 4: 3D Density Formula (Phase 2, Task 2.1) ---
+
+                // Sample 3D noise at this global position
+                // CRITICAL: Use global coordinates for cross-chunk consistency
+                // Get3dNoiseZeroToOne returns [0, 1], need to convert to [-1, 1]
+                unsigned int densitySeed = GAME_SEED + 10; // Separate seed for density noise
+                float noiseZeroToOne = Get3dNoiseZeroToOne(globalCoords.x, globalCoords.y, globalCoords.z, densitySeed);
+                float noise = RangeMap(noiseZeroToOne, 0.f, 1.f, -1.f, 1.f); // N(x,y,z,s) in [-1, 1]
+
+                // Calculate vertical bias: B(z) = b × (z − t)
+                // Higher blocks (z > DEFAULT_TERRAIN_HEIGHT) get positive bias (more air)
+                // Lower blocks (z < DEFAULT_TERRAIN_HEIGHT) get negative bias (more solid)
+                float bias = DENSITY_BIAS_PER_BLOCK * (float)(globalCoords.z - (int)DEFAULT_TERRAIN_HEIGHT);
+
+                // Combine noise and bias to get final density
+                float density = noise + bias; // D(x,y,z)
+
+                // Density threshold: negative = solid, positive = air
+                bool isSolid = (density < 0.0f);
+
+                // --- Block Type Assignment ---
 
                 uint8_t blockType = BLOCK_AIR; // Default to air
 
-                // Water and ice between surface and sea level
-                if (globalCoords.z > terrainHeight && globalCoords.z < SEA_LEVEL_Z)
+                if (isSolid)
                 {
-                    blockType = BLOCK_WATER;
-                    if (temperature < 0.38f && globalCoords.z > iceDepth)
-                    {
-                        blockType = BLOCK_ICE;
-                    }
-                }
+                    // --- Solid terrain blocks ---
 
-                // Surface block (grass vs sand by humidity and elevation)
-                if (globalCoords.z == terrainHeight)
-                {
-                    blockType = BLOCK_GRASS;
-                    if (humidity < MIN_SAND_HUMIDITY)
-                    {
-                        blockType = BLOCK_SAND;
-                    }
-                    if (humidity < MAX_SAND_HUMIDITY && terrainHeight <= (int)DEFAULT_TERRAIN_HEIGHT)
-                    {
-                        blockType = BLOCK_SAND;
-                    }
-                }
-
-                // Subsurface: dirt or sand cap above stone/ores
-                int dirtTopZ = terrainHeight - dirtDepth;
-                int sandTopZ = terrainHeight - (int)floorf(RangeMapClamped(humidity,
-                                                                           MIN_SAND_DEPTH_HUMIDITY, MAX_SAND_DEPTH_HUMIDITY, SAND_DEPTH_MIN, SAND_DEPTH_MAX));
-
-                if (globalCoords.z < terrainHeight && globalCoords.z >= dirtTopZ)
-                {
-                    blockType = BLOCK_DIRT;
-                    if (globalCoords.z >= sandTopZ)
-                    {
-                        blockType = BLOCK_SAND;
-                    }
-                }
-
-                // Deep underground: special layers, lava/obsidian, ores, stone
-                if (globalCoords.z < dirtTopZ)
-                {
+                    // Special bottom layers (always placed regardless of density)
                     if (globalCoords.z == OBSIDIAN_Z)
                     {
                         blockType = BLOCK_OBSIDIAN;
@@ -513,6 +832,7 @@ void Chunk::GenerateTerrain()
                     }
                     else
                     {
+                        // Default solid block is stone, with ore generation
                         float oreNoise = Get3dNoiseZeroToOne(globalCoords.x, globalCoords.y, globalCoords.z, GAME_SEED);
                         if (oreNoise < DIAMOND_CHANCE)
                         {
@@ -534,7 +854,30 @@ void Chunk::GenerateTerrain()
                         {
                             blockType = BLOCK_STONE;
                         }
+
+                        // TODO (Phase 2, Task 2.4): Replace surface stone with dirt/grass/sand
+                        // TODO (Phase 3): Add biome-specific surface blocks
                     }
+                }
+                else
+                {
+                    // --- Air/fluid blocks ---
+
+                    // Fill below sea level with water
+                    if (globalCoords.z < SEA_LEVEL_Z)
+                    {
+                        blockType = BLOCK_WATER;
+
+                        // Temperature-driven ice ceiling
+                        float iceDepth = DEFAULT_TERRAIN_HEIGHT - floorf(RangeMapClamped(temperature,
+                                                                                         ICE_TEMPERATURE_MAX, ICE_TEMPERATURE_MIN,
+                                                                                         ICE_DEPTH_MIN, ICE_DEPTH_MAX));
+                        if (temperature < 0.38f && globalCoords.z > iceDepth)
+                        {
+                            blockType = BLOCK_ICE;
+                        }
+                    }
+                    // else: remains BLOCK_AIR
                 }
 
                 m_blocks[idx].m_typeIndex = blockType;
@@ -600,6 +943,16 @@ Block* Chunk::GetBlock(int const localBlockIndexX,
 //----------------------------------------------------------------------------------------------------
 void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex)
 {
+    // SAFETY CHECK: Validate chunk is in a valid state before modification
+    // This prevents writing to chunks being deleted/deactivated during RegenerateAllChunks()
+    ChunkState currentState = m_state.load();
+    if (currentState != ChunkState::COMPLETE &&
+        currentState != ChunkState::TERRAIN_GENERATING)
+    {
+        // Chunk is being deleted or not fully initialized - do not modify
+        return;
+    }
+
     // Validate coordinates
     if (localBlockIndexX < 0 || localBlockIndexX > CHUNK_MAX_X ||
         localBlockIndexY < 0 || localBlockIndexY > CHUNK_MAX_Y ||
@@ -614,12 +967,6 @@ void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockI
     // Check if block type is actually changing
     if (m_blocks[index].m_typeIndex != blockTypeIndex)
     {
-        // Debug output to help diagnose modification
-        DebuggerPrintf("Block modified at (%d,%d,%d) in chunk (%d,%d): %d -> %d\n",
-                       localBlockIndexX, localBlockIndexY, localBlockIndexZ,
-                       m_chunkCoords.x, m_chunkCoords.y,
-                       m_blocks[index].m_typeIndex, blockTypeIndex);
-
         // Set the new block type
         m_blocks[index].m_typeIndex = blockTypeIndex;
 
@@ -680,40 +1027,56 @@ void Chunk::UpdateVertexBuffer()
 {
     if (m_vertices.empty()) return;
 
-    // Delete old buffers
-    GAME_SAFE_RELEASE(m_vertexBuffer);
-    GAME_SAFE_RELEASE(m_indexBuffer);
-    GAME_SAFE_RELEASE(m_debugVertexBuffer);
+    // CRITICAL FIX: Use atomic buffer swapping to prevent rendering race condition
+    // Create new buffers FIRST, then swap atomically to prevent flashing during buffer updates
 
-    // Create main vertex buffer with correct total size
-    m_vertexBuffer = g_renderer->CreateVertexBuffer(
+    // Create new main vertex buffer
+    VertexBuffer* newVertexBuffer = g_renderer->CreateVertexBuffer(
         (int)m_vertices.size() * sizeof(Vertex_PCU),  // Total buffer size in bytes
         sizeof(Vertex_PCU)                       // Size of each vertex
     );
     g_renderer->CopyCPUToGPU(m_vertices.data(),
                              (unsigned int)(m_vertices.size() * sizeof(Vertex_PCU)),
-                             m_vertexBuffer);
+                             newVertexBuffer);
 
-    // Create index buffer with correct total size
-    m_indexBuffer = g_renderer->CreateIndexBuffer(
+    // Create new index buffer
+    IndexBuffer* newIndexBuffer = g_renderer->CreateIndexBuffer(
         (int)m_indices.size() * sizeof(unsigned int),  // Total buffer size in bytes
         sizeof(unsigned int)                      // Size of each index
     );
     g_renderer->CopyCPUToGPU(m_indices.data(),
                              (unsigned int)(m_indices.size() * sizeof(unsigned int)),
-                             m_indexBuffer);
+                             newIndexBuffer);
 
-    // Only create debug buffer if we have debug vertices
+    // Create new debug buffer if needed
+    VertexBuffer* newDebugVertexBuffer = nullptr;
     if (!m_debugVertices.empty())
     {
-        m_debugVertexBuffer = g_renderer->CreateVertexBuffer(
+        newDebugVertexBuffer = g_renderer->CreateVertexBuffer(
             (int)m_debugVertices.size() * sizeof(Vertex_PCU),  // Total buffer size
             sizeof(Vertex_PCU)                            // Size of each vertex
         );
         g_renderer->CopyCPUToGPU(m_debugVertices.data(),
                                  (unsigned int)(m_debugVertices.size() * sizeof(Vertex_PCU)),
-                                 m_debugVertexBuffer);
+                                 newDebugVertexBuffer);
     }
+
+    // Store old buffers for deletion
+    VertexBuffer* oldVertexBuffer = m_vertexBuffer;
+    IndexBuffer*  oldIndexBuffer  = m_indexBuffer;
+    VertexBuffer* oldDebugBuffer  = m_debugVertexBuffer;
+
+    // ATOMIC SWAP: Replace all buffer pointers simultaneously
+    // This prevents Render() from seeing inconsistent buffer state
+    m_vertexBuffer      = newVertexBuffer;
+    m_indexBuffer       = newIndexBuffer;
+    m_debugVertexBuffer = newDebugVertexBuffer;
+
+    // Delete old buffers AFTER the swap
+    // Render() now uses new buffers, safe to delete old ones
+    GAME_SAFE_RELEASE(oldVertexBuffer);
+    GAME_SAFE_RELEASE(oldIndexBuffer);
+    GAME_SAFE_RELEASE(oldDebugBuffer);
 }
 
 void Chunk::SetMeshClean()
