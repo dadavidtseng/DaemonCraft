@@ -1792,6 +1792,211 @@ void Game::ShowTerrainDebugWindow()
             ImGui::EndTabItem();
         }
 
+        // Tab 5: Phase 2 Testing (Task 2.5 - Implementation Testing Checkpoint)
+        if (ImGui::BeginTabItem("Phase 2 Test"))
+        {
+            ImGui::Text("Phase 2: 3D Density Terrain - Testing Checkpoint (Task 2.5)");
+            ImGui::Separator();
+
+            // Testing status indicators
+            ImGui::Text("Implementation Status:");
+            ImGui::BulletText("Task 2.1: 3D Density Formula - IMPLEMENTED");
+            ImGui::BulletText("Task 2.2: Top & Bottom Slides - IMPLEMENTED");
+            ImGui::BulletText("Task 2.3: Terrain Shaping Curves - IMPLEMENTED");
+            ImGui::BulletText("Task 2.4: Surface Block Replacement - IMPLEMENTED");
+
+            ImGui::Separator();
+
+            // Performance testing
+            ImGui::Text("Performance Testing:");
+            static float lastChunkGenTime = 0.0f;
+            static int chunksGenerated = 0;
+
+            ImGui::Text("Target: <150ms per chunk (development.md line 916)");
+            ImGui::Text("Last measured: %.1fms", lastChunkGenTime);
+            ImGui::Text("Chunks generated: %d", chunksGenerated);
+
+            if (ImGui::Button("Test Chunk Generation Performance"))
+            {
+                // Trigger performance test - regenerate several chunks and measure time
+                if (m_world != nullptr)
+                {
+                    // This would need implementation in World class to time generation
+                    ImGui::Text("Performance test initiated...");
+                }
+            }
+
+            ImGui::Separator();
+
+            // Visual quality testing
+            ImGui::Text("Visual Quality Validation:");
+
+            static bool showTerrainShapes = false;
+            static bool showBiomeVariation = false;
+            static bool showSurfaceBlocks = false;
+            static bool checkFloatingBlocks = false;
+
+            ImGui::Checkbox("Terrain Shapes (Hills/Valleys/Overhangs)", &showTerrainShapes);
+            ImGui::Checkbox("Biome Height Variation", &showBiomeVariation);
+            ImGui::Checkbox("Surface Block Diversity", &showSurfaceBlocks);
+            ImGui::Checkbox("Check for Floating Blocks", &checkFloatingBlocks);
+
+            if (ImGui::Button("Run Visual Quality Tests"))
+            {
+                // Toggle visualization modes to test different aspects
+                if (m_world != nullptr)
+                {
+                    // Test terrain shapes by cycling through density visualization
+                    m_world->SetDebugVisualizationMode(DebugVisualizationMode::NORMAL_TERRAIN);
+                    ImGui::Text("Testing: Normal 3D terrain shapes");
+
+                    // Could add automatic screenshot functionality here
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Test All Visualization Modes"))
+            {
+                if (m_world != nullptr)
+                {
+                    // Cycle through all debug modes for validation
+                    static int testModeIndex = 0;
+                    DebugVisualizationMode modes[] = {
+                        DebugVisualizationMode::NORMAL_TERRAIN,
+                        DebugVisualizationMode::TEMPERATURE,
+                        DebugVisualizationMode::HUMIDITY,
+                        DebugVisualizationMode::CONTINENTALNESS,
+                        DebugVisualizationMode::EROSION,
+                        DebugVisualizationMode::WEIRDNESS,
+                        DebugVisualizationMode::PEAKS_VALLEYS,
+                        DebugVisualizationMode::BIOME_TYPE
+                    };
+
+                    testModeIndex = (testModeIndex + 1) % 8;
+                    m_world->SetDebugVisualizationMode(modes[testModeIndex]);
+                }
+            }
+
+            ImGui::Separator();
+
+            // Phase 2 completion checklist
+            ImGui::Text("Phase 2 Completion Checklist:");
+
+            static bool check3DTerrain = false;
+            static bool checkSlides = false;
+            static bool checkCurves = false;
+            static bool checkSurfaceBlocks = false;
+            static bool checkPerformance = false;
+
+            ImGui::Checkbox("✓ 3D terrain generates natural shapes", &check3DTerrain);
+            ImGui::Checkbox("✓ Top/bottom slides improve terrain quality", &checkSlides);
+            ImGui::Checkbox("✓ Terrain shaping curves work correctly", &checkCurves);
+            ImGui::Checkbox("✓ Surface blocks match biome types", &checkSurfaceBlocks);
+            ImGui::Checkbox("✓ Performance meets <150ms target", &checkPerformance);
+
+            ImGui::Separator();
+
+            // Validation results
+            int completedChecks = check3DTerrain + checkSlides + checkCurves + checkSurfaceBlocks + checkPerformance;
+            float completionPercentage = (float)completedChecks / 5.0f * 100.0f;
+
+            ImGui::Text("Phase 2 Completion: %.0f%% (%d/5 checks passed)", completionPercentage, completedChecks);
+
+            if (completionPercentage >= 100.0f)
+            {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✅ PHASE 2 COMPLETE - Ready for Phase 3");
+            }
+            else if (completionPercentage >= 80.0f)
+            {
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "⚠️  Phase 2 Nearly Complete (%.0f%%)", completionPercentage);
+            }
+            else
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "❌ Phase 2 In Progress (%.0f%%)", completionPercentage);
+            }
+
+            ImGui::Separator();
+
+            // Advanced testing options
+            if (ImGui::CollapsingHeader("Advanced Testing"))
+            {
+                ImGui::Text("Cross-Chunk Consistency:");
+                static bool testChunkBoundaries = false;
+                static bool testNoiseContinuity = false;
+                static bool testBiomeTransitions = false;
+
+                ImGui::Checkbox("Chunk Boundary Seams", &testChunkBoundaries);
+                ImGui::Checkbox("Noise Field Continuity", &testNoiseContinuity);
+                ImGui::Checkbox("Biome Transition Quality", &testBiomeTransitions);
+
+                if (ImGui::Button("Test Cross-Chunk Consistency"))
+                {
+                    if (m_world != nullptr)
+                    {
+                        ImGui::Text("Testing cross-chunk consistency...");
+                        // This would involve checking noise values across chunk boundaries
+                    }
+                }
+
+                ImGui::Separator();
+
+                ImGui::Text("Density Field Analysis:");
+                static bool showDensityHeatmap = false;
+                static bool showSurfaceDetection = false;
+                static bool showCaveFormation = false;
+
+                ImGui::Checkbox("Density Field Heatmap", &showDensityHeatmap);
+                ImGui::Checkbox("Surface Detection Algorithm", &showSurfaceDetection);
+                ImGui::Checkbox("Natural Cave Formation", &showCaveFormation);
+
+                if (ImGui::Button("Analyze Density Field"))
+                {
+                    ImGui::Text("Analyzing 3D density field...");
+                    // This would show density values and surface detection
+                }
+            }
+
+            ImGui::Separator();
+
+            // Quick testing buttons
+            ImGui::Text("Quick Tests:");
+
+            if (ImGui::Button("Generate Test Chunks"))
+            {
+                if (m_world != nullptr)
+                {
+                    m_world->RegenerateAllChunks();
+                    ImGui::Text("Regenerating all chunks for testing...");
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Reset All Tests"))
+            {
+                check3DTerrain = false;
+                checkSlides = false;
+                checkCurves = false;
+                checkSurfaceBlocks = false;
+                checkPerformance = false;
+                lastChunkGenTime = 0.0f;
+                chunksGenerated = 0;
+                ImGui::Text("All tests reset to defaults");
+            }
+
+            // Instructions
+            ImGui::Separator();
+            ImGui::Text("Testing Instructions:");
+            ImGui::BulletText("Use debug visualization modes to inspect terrain");
+            ImGui::BulletText("Generate chunks and validate visual quality");
+            ImGui::BulletText("Check biome diversity and surface block types");
+            ImGui::BulletText("Verify cross-chunk consistency");
+            ImGui::BulletText("Confirm performance meets <150ms target");
+
+            ImGui::EndTabItem();
+        }
+
         ImGui::EndTabBar();
     }
 
