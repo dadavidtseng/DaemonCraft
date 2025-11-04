@@ -69,6 +69,335 @@ const uint8_t BLOCK_SPRUCE_LEAVES       = 35;  // SpruceLeaves
 const uint8_t BLOCK_SPRUCE_LEAVES_SNOW  = 36;  // SpruceLeavesSnow
 
 //----------------------------------------------------------------------------------------------------
+// Tree Stamp Definitions (Phase 3, Task 3B.1 - Assignment 4)
+//----------------------------------------------------------------------------------------------------
+// Pre-defined tree patterns based on Minecraft wiki structures, simplified for our available assets.
+// Each stamp is a 3D grid: blocks[x + y*sizeX + z*sizeX*sizeY]
+// Air (0) means skip that position during placement.
+//
+// Based on Minecraft wiki:
+// - Oak (small): 4-5 logs, 25 leaves (simplified to 5x5x6)
+// - Spruce (small): 7+ logs, 10+ leaves (matchstick variant, simplified to 5x5x8)
+// - Jungle (bush): 1 log, 25-34 leaves (simplified to 5x5x4)
+// - Acacia: 9+ logs, 84 leaves (complex angled trunk, simplified to 7x7x8)
+//
+// Note: Only using tree types with available sprites in BlockSpriteSheet_BlockDefinitions.xml
+
+// Helper macro for cleaner tree stamp data
+#define A BLOCK_AIR
+#define L BLOCK_OAK_LEAVES
+#define W BLOCK_OAK_LOG
+
+// Oak Tree (Small Variant) - 5x5x6 (width x depth x height)
+// Based on Minecraft small oak: 4-5 trunk logs, ~25 leaf blocks
+// Cross-section at z=0-4 (trunk), z=5 (leaves only)
+static TreeStamp g_oakTreeSmall = {
+    5, 5, 6,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY (trunk at center)
+    {
+        // Layer z=0 (bottom) - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=1 - trunk
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=2 - trunk
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=3 - trunk + first leaves layer
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=4 - trunk + leaves layer
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 (top) - leaves only (no trunk)
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,L,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+    }
+};
+
+#undef L
+#undef W
+#define L BLOCK_SPRUCE_LEAVES
+#define W BLOCK_SPRUCE_LOG
+
+// Spruce Tree (Small "Matchstick" Variant) - 5x5x8
+// Based on Minecraft matchstick spruce: 7+ logs, 10+ leaves (narrow conical shape)
+static TreeStamp g_spruceTreeSmall = {
+    5, 5, 8,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-2 (bottom trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=3 - trunk + wide leaves base
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=4 - trunk + leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 - trunk + narrower leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=6 - trunk + leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=7 (top) - leaves only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+    }
+};
+
+#undef L
+#undef W
+#define L BLOCK_JUNGLE_LEAVES
+#define W BLOCK_JUNGLE_LOG
+
+// Jungle Tree (Bush Variant) - 5x5x4
+// Based on Minecraft jungle bush: 1 log, 25-34 leaves (very short, bushy)
+static TreeStamp g_jungleTreeBush = {
+    5, 5, 4,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0 (bottom) - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=1 - trunk + leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=2 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=3 (top) - leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,L,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+    }
+};
+
+#undef L
+#undef W
+#define L BLOCK_ACACIA_LEAVES
+#define W BLOCK_ACACIA_LOG
+
+// Acacia Tree (Simplified) - 7x7x7
+// Based on Minecraft acacia: 9+ logs, 84 leaves (angled trunk)
+// Simplified to vertical trunk with wide canopy
+static TreeStamp g_acaciaTree = {
+    7, 7, 7,    // sizeX, sizeY, sizeZ
+    3, 3,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-2 (trunk)
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+
+        // Layer z=3 - trunk + leaves start
+        A,A,A,A,A,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,W,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,A,A,A,A,A,
+
+        // Layer z=4 - trunk + wide canopy
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,W,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=5 - leaves
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=6 (top) - leaves only
+        A,A,A,A,A,A,A,
+        A,A,L,L,L,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,L,L,L,A,A,
+        A,A,A,A,A,A,A,
+    }
+};
+
+#undef A
+#undef L
+#undef W
+
+// Re-define macros for Birch tree
+#define A BLOCK_AIR
+#define L BLOCK_BIRCH_LEAVES
+#define W BLOCK_BIRCH_LOG
+
+// Birch Tree (Small Variant) - 5x5x7
+// Based on Minecraft birch: 5+ logs, 57 leaves (tall and slender)
+// Similar to oak but taller and narrower canopy
+static TreeStamp g_birchTree = {
+    5, 5, 7,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-2 (trunk only)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=3 - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=4 - trunk + first leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 - trunk + leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=6 (top) - leaves only
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,L,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+    }
+};
+
+#undef L
+#undef W
+#define L BLOCK_SPRUCE_LEAVES_SNOW
+#define W BLOCK_SPRUCE_LOG
+
+// Snowy Spruce Tree (Small Variant) - 5x5x8
+// Based on spruce matchstick but with snowy leaves for SNOWY_TAIGA biome
+// Same structure as regular spruce, different leaf texture
+static TreeStamp g_snowySpruceTree = {
+    5, 5, 8,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-2 (bottom trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=3 - trunk + wide leaves base
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=4 - trunk + leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 - trunk + narrower leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=6 - trunk + leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=7 (top) - leaves only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+    }
+};
+
+#undef A
+#undef L
+#undef W
+
+//----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
     : m_chunkCoords(chunkCoords)
 {
@@ -104,6 +433,14 @@ void Chunk::Update(float const deltaSeconds)
 
     // NOTE: F2 debug key handling is now managed by World class to ensure consistent behavior
     // across all chunks including newly activated ones
+
+    // Cross-Chunk Tree Placement (Option 1: Post-Processing Pass)
+    // Place trees that extend into neighboring chunks after this chunk is complete
+    // and neighbors are available. This ensures thread-safe cross-chunk operations.
+    if (GetState() == ChunkState::COMPLETE && !m_crossChunkTrees.empty())
+    {
+        PlaceCrossChunkTrees();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -789,9 +1126,10 @@ void Chunk::GenerateTerrain()
                 int     idxXY        = y * CHUNK_SIZE_X + x;
 
                 // Retrieve cached per-column data from Pass 1
-                int   dirtDepth     = dirtDepthXY[idxXY];
-                float humidity      = humidityMapXY[idxXY];
-                float temperature   = temperatureMapXY[idxXY];
+                // Note: Some cached data is still used in specific terrain features
+                int   dirtDepth     = dirtDepthXY[idxXY];     // Phase 2: Currently unused (keep for reference)
+                float humidity      = humidityMapXY[idxXY];   // Phase 2: Currently unused (keep for reference)
+                float temperature   = temperatureMapXY[idxXY]; // Used in ice formation logic
 
                 // --- Assignment 4: 3D Density Formula (Phase 2, Task 2.1) ---
 
@@ -812,10 +1150,9 @@ void Chunk::GenerateTerrain()
                     densitySeed
                 ); // Returns N(x,y,z,s) in [-1, 1]
 
-                // Calculate vertical bias: B(z) = b × (z − t)
-                // Higher blocks (z > DEFAULT_TERRAIN_HEIGHT) get positive bias (more air)
-                // Lower blocks (z < DEFAULT_TERRAIN_HEIGHT) get negative bias (more solid)
-                float bias = DENSITY_BIAS_PER_BLOCK * (float)(globalCoords.z - (int)DEFAULT_TERRAIN_HEIGHT);
+                // Note: Original bias calculation is now unused because we use shaped bias
+                // This is kept for reference and potential future modifications
+                // float bias = DENSITY_BIAS_PER_BLOCK * (float)(globalCoords.z - (int)DEFAULT_TERRAIN_HEIGHT);
 
                 // --- Assignment 4: Top and Bottom Slides (Phase 2, Task 2.2) ---
 
@@ -1116,6 +1453,420 @@ void Chunk::GenerateTerrain()
                 }
 
                 m_blocks[idx].m_typeIndex = blockType;
+            }
+        }
+    }
+
+    // --- Assignment 4: Find Surface Blocks (Phase 3, Task 3A.1) ---
+    //
+    // After terrain generation is complete, identify the top solid block in each (x,y) column.
+    // This surface height map is used for:
+    // - Task 3A.2: Biome-based surface block replacement
+    // - Task 3B.2: Tree placement logic (trees need to know ground level)
+    //
+    // Algorithm: For each column, scan from top (z=CHUNK_SIZE_Z-1) down to bottom (z=0)
+    // and find the first solid block (non-air, non-water).
+    //
+    // Performance: O(CHUNK_SIZE_X × CHUNK_SIZE_Y × CHUNK_SIZE_Z) worst case
+    // In practice: O(CHUNK_SIZE_X × CHUNK_SIZE_Y × average_height) ≈ 32×32×80 = 81,920 checks
+
+    for (int y = 0; y < CHUNK_SIZE_Y; y++)
+    {
+        for (int x = 0; x < CHUNK_SIZE_X; x++)
+        {
+            int columnIdx = x + y * CHUNK_SIZE_X;
+
+            // Find surface: scan from top down for first solid block
+            int surfaceZ = -1; // -1 indicates no solid surface found (all air/water column)
+
+            for (int searchZ = CHUNK_SIZE_Z - 1; searchZ >= 0; searchZ--)
+            {
+                int blockIdx = x + y * CHUNK_SIZE_X + searchZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+                uint8_t blockType = m_blocks[blockIdx].m_typeIndex;
+
+                // Check if this block is solid (not air or water)
+                // Surface blocks are the top-most solid blocks that can have grass, sand, etc.
+                if (blockType != BLOCK_AIR && blockType != BLOCK_WATER)
+                {
+                    surfaceZ = searchZ;
+                    break; // Found surface, stop scanning this column
+                }
+            }
+
+            m_surfaceHeight[columnIdx] = surfaceZ;
+        }
+    }
+
+    // --- Assignment 4: Biome-Based Surface (Phase 3, Task 3A.2) ---
+    //
+    // After finding surface blocks, replace them with biome-appropriate materials
+    // and add subsurface layers (dirt beneath grass, sand beneath beaches, etc.)
+    //
+    // This enhances the Phase 2 Task 2.4 basic surface replacement with:
+    // - Multi-layer subsurface blocks (3-4 dirt layers standard, 5+ sand for deserts)
+    // - "No dirt layers" rule for specified biomes (Deep Ocean, Frozen Ocean, Stony Peaks, Snowy Peaks)
+    // - Temperature-based variations (Deep Ocean uses temperature for sand/snow choice)
+    //
+    // Performance: O(CHUNK_SIZE_X × CHUNK_SIZE_Y × subsurface_depth) ≈ 32×32×4 = 4,096 replacements
+
+    for (int y = 0; y < CHUNK_SIZE_Y; y++)
+    {
+        for (int x = 0; x < CHUNK_SIZE_X; x++)
+        {
+            int columnIdx = x + y * CHUNK_SIZE_X;
+            int surfaceZ = m_surfaceHeight[columnIdx];
+
+            // Skip columns with no surface (all air/water)
+            if (surfaceZ < 0) continue;
+
+            // Get biome type for this column
+            BiomeType biome = m_biomeData[columnIdx].biomeType;
+            float temperature = m_biomeData[columnIdx].temperature;
+
+            // Determine surface and subsurface block types based on biome
+            uint8_t surfaceBlock = BLOCK_GRASS;  // Default
+            uint8_t subsurfaceBlock = BLOCK_DIRT; // Default
+            int subsurfaceDepth = 3;  // Default 3-4 layers
+            bool hasSubsurfaceLayers = true;
+
+            switch (biome)
+            {
+                // --- Ocean Biomes ---
+                case BiomeType::OCEAN:
+                    surfaceBlock = BLOCK_SAND;  // Sandy ocean floor
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::DEEP_OCEAN:
+                    // Temperature-based surface: cold = snow, warm = sand
+                    surfaceBlock = (temperature < 0.0f) ? BLOCK_SNOW : BLOCK_SAND;
+                    hasSubsurfaceLayers = false;  // "No dirt layers" specification
+                    break;
+
+                case BiomeType::FROZEN_OCEAN:
+                    surfaceBlock = BLOCK_SNOW;
+                    hasSubsurfaceLayers = false;  // "No dirt layers" specification
+                    break;
+
+                // --- Beach Biomes ---
+                case BiomeType::BEACH:
+                    surfaceBlock = BLOCK_SAND;
+                    subsurfaceBlock = BLOCK_SAND;  // Sand extends below
+                    subsurfaceDepth = 4;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::SNOWY_BEACH:
+                    surfaceBlock = BLOCK_SNOW;
+                    subsurfaceBlock = BLOCK_SAND;  // Sand beneath snow
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                // --- Dry Biomes ---
+                case BiomeType::DESERT:
+                    surfaceBlock = BLOCK_SAND;
+                    subsurfaceBlock = BLOCK_SAND;  // "Several sand layers" before dirt
+                    subsurfaceDepth = 5;  // 5+ sand layers
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::SAVANNA:
+                    surfaceBlock = BLOCK_GRASS_YELLOW;  // Dry yellow grass
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                // --- Plains Biomes ---
+                case BiomeType::PLAINS:
+                    surfaceBlock = BLOCK_GRASS;  // Light grass variant
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::SNOWY_PLAINS:
+                    surfaceBlock = BLOCK_SNOW;
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                // --- Forest Biomes ---
+                case BiomeType::FOREST:
+                    surfaceBlock = BLOCK_GRASS_DARK;  // Dark green grass
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 4;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::JUNGLE:
+                    surfaceBlock = BLOCK_GRASS_LIGHT;  // Light tropical grass
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 4;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::TAIGA:
+                    surfaceBlock = BLOCK_GRASS;  // Standard grass
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                case BiomeType::SNOWY_TAIGA:
+                    surfaceBlock = BLOCK_SNOW;
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+
+                // --- Mountain Biomes ---
+                case BiomeType::STONY_PEAKS:
+                    surfaceBlock = BLOCK_STONE;  // Rocky mountain surface
+                    hasSubsurfaceLayers = false;  // "No dirt layers" specification
+                    break;
+
+                case BiomeType::SNOWY_PEAKS:
+                    surfaceBlock = BLOCK_SNOW;
+                    hasSubsurfaceLayers = false;  // "No dirt layers" specification
+                    break;
+
+                default:
+                    surfaceBlock = BLOCK_GRASS;
+                    subsurfaceBlock = BLOCK_DIRT;
+                    subsurfaceDepth = 3;
+                    hasSubsurfaceLayers = true;
+                    break;
+            }
+
+            // Apply surface block replacement
+            int surfaceBlockIdx = x + y * CHUNK_SIZE_X + surfaceZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+            m_blocks[surfaceBlockIdx].m_typeIndex = surfaceBlock;
+
+            // Apply subsurface layers (if biome allows)
+            if (hasSubsurfaceLayers)
+            {
+                for (int depth = 1; depth <= subsurfaceDepth; depth++)
+                {
+                    int subsurfaceZ = surfaceZ - depth;
+
+                    // Stop if we hit bedrock or run out of blocks
+                    if (subsurfaceZ < 0) break;
+
+                    int subsurfaceBlockIdx = x + y * CHUNK_SIZE_X + subsurfaceZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+
+                    // Only replace if this block is currently stone (from density generation)
+                    // Don't replace ore blocks or other special blocks
+                    if (m_blocks[subsurfaceBlockIdx].m_typeIndex == BLOCK_STONE)
+                    {
+                        m_blocks[subsurfaceBlockIdx].m_typeIndex = subsurfaceBlock;
+                    }
+                }
+
+                // After subsurface layers, remaining stone continues as-is
+                // This creates natural transitions: grass → dirt → dirt → dirt → stone
+            }
+        }
+    }
+
+    // --- Assignment 4: Tree Placement (Phase 3, Task 3B.2) ---
+    //
+    // After surface generation and subsurface layers, place trees based on:
+    // 1. Biome type (each biome has specific tree types)
+    // 2. Noise-based sampling (creates natural scattered distribution)
+    // 3. Surface suitability (only place on grass/dirt/sand)
+    // 4. Cross-chunk support (trees can extend into neighboring chunks)
+    //
+    // Tree placement algorithm:
+    // - Sample tree noise at each surface location
+    // - If noise exceeds threshold AND biome allows trees:
+    //   - Select appropriate tree stamp for biome
+    //   - Check if tree extends beyond chunk bounds
+    //   - Store cross-chunk data if needed
+    //   - Place tree portion that fits within current chunk
+
+    // Cross-Chunk Enhancement: Reduced edge safety margin from 4 to 1 block
+    // This allows trees much closer to chunk edges while preventing out-of-bounds access
+    int constexpr CROSS_CHUNK_SAFETY_MARGIN = 1;
+
+    for (int y = CROSS_CHUNK_SAFETY_MARGIN; y < CHUNK_SIZE_Y - CROSS_CHUNK_SAFETY_MARGIN; y++)
+    {
+        for (int x = CROSS_CHUNK_SAFETY_MARGIN; x < CHUNK_SIZE_X - CROSS_CHUNK_SAFETY_MARGIN; x++)
+        {
+            int columnIdx = x + y * CHUNK_SIZE_X;
+            int surfaceZ = m_surfaceHeight[columnIdx];
+
+            // Skip if no surface found in this column
+            if (surfaceZ < 0) continue;
+
+            // Don't place trees underwater (below sea level)
+            // This prevents trees from spawning on ocean floors or submerged beaches
+            if (surfaceZ < SEA_LEVEL_Z) continue;
+
+            // Get biome type for this column
+            BiomeType biome = m_biomeData[columnIdx].biomeType;
+
+            // Check if this biome should have trees
+            TreeStamp* treeStamp = nullptr;
+
+            switch (biome)
+            {
+                case BiomeType::FOREST:
+                    treeStamp = &g_oakTreeSmall;  // Oak trees in forests
+                    break;
+
+                case BiomeType::TAIGA:
+                    treeStamp = &g_spruceTreeSmall;  // Regular spruce in taiga
+                    break;
+
+                case BiomeType::SNOWY_TAIGA:
+                    treeStamp = &g_snowySpruceTree;  // Snowy spruce in snowy taiga
+                    break;
+
+                case BiomeType::JUNGLE:
+                    treeStamp = &g_jungleTreeBush;  // Jungle bushes in jungle
+                    break;
+
+                case BiomeType::SAVANNA:
+                case BiomeType::DESERT:
+                    treeStamp = &g_acaciaTree;  // Acacia in savanna/desert
+                    break;
+
+                case BiomeType::PLAINS:
+                    treeStamp = &g_birchTree;  // Birch in plains (variant)
+                    break;
+
+                // Other biomes don't have trees
+                case BiomeType::OCEAN:
+                case BiomeType::DEEP_OCEAN:
+                case BiomeType::FROZEN_OCEAN:
+                case BiomeType::BEACH:
+                case BiomeType::SNOWY_BEACH:
+                case BiomeType::SNOWY_PLAINS:
+                case BiomeType::STONY_PEAKS:
+                case BiomeType::SNOWY_PEAKS:
+                default:
+                    continue;  // No trees in these biomes
+            }
+
+            // Check if tree stamp is valid
+            if (treeStamp == nullptr) continue;
+
+            // Calculate global coordinates for tree noise sampling
+            int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
+            int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
+
+            // Sample tree noise at this location
+            // Use deterministic seed based on GAME_SEED for consistent trees
+            unsigned int treeSeed = GAME_SEED + 12345;  // Different seed from terrain noise
+            float treeNoise = Compute2dPerlinNoise(
+                (float)globalX, (float)globalY,
+                TREE_NOISE_SCALE,
+                TREE_NOISE_OCTAVES,
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to -1..1
+                treeSeed
+            );
+
+            // Convert noise from [-1, 1] to [0, 1] for threshold comparison
+            float treeNoise01 = (treeNoise + 1.0f) * 0.5f;
+
+            // Check if we should place a tree here
+            if (treeNoise01 < TREE_PLACEMENT_THRESHOLD) continue;
+
+            // Check surface block type - only place trees on suitable blocks
+            int surfaceBlockIdx = x + y * CHUNK_SIZE_X + surfaceZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+            uint8_t surfaceBlockType = m_blocks[surfaceBlockIdx].m_typeIndex;
+
+            // Trees can only grow on grass, dirt, or sand
+            bool isSuitableSurface = (
+                surfaceBlockType == BLOCK_GRASS ||
+                surfaceBlockType == BLOCK_GRASS_LIGHT ||
+                surfaceBlockType == BLOCK_GRASS_DARK ||
+                surfaceBlockType == BLOCK_GRASS_YELLOW ||
+                surfaceBlockType == BLOCK_DIRT ||
+                surfaceBlockType == BLOCK_SAND
+            );
+
+            if (!isSuitableSurface) continue;
+
+            // Place tree stamp at this location
+            // Tree origin is at trunk center-bottom, so offset by trunk offset values
+            int treeBaseX = x - treeStamp->trunkOffsetX;
+            int treeBaseY = y - treeStamp->trunkOffsetY;
+            int treeBaseZ = surfaceZ + 1;  // Place trunk 1 block above surface
+
+            // Cross-Chunk Tree Detection: Check if tree extends beyond current chunk
+            bool extendsNorth = false;
+            bool extendsSouth = false;
+            bool extendsEast = false;
+            bool extendsWest = false;
+
+            int treeMinX = treeBaseX;
+            int treeMaxX = treeBaseX + treeStamp->sizeX - 1;
+            int treeMinY = treeBaseY;
+            int treeMaxY = treeBaseY + treeStamp->sizeY - 1;
+
+            if (treeMinX < 0) extendsWest = true;
+            if (treeMaxX >= CHUNK_SIZE_X) extendsEast = true;
+            if (treeMinY < 0) extendsSouth = true;
+            if (treeMaxY >= CHUNK_SIZE_Y) extendsNorth = true;
+
+            // Store cross-chunk tree data if this tree extends beyond chunk boundaries
+            if (extendsNorth || extendsSouth || extendsEast || extendsWest)
+            {
+                CrossChunkTreeData crossChunkTree;
+                crossChunkTree.localX = x;
+                crossChunkTree.localY = y;
+                crossChunkTree.localZ = treeBaseZ;
+                crossChunkTree.treeStamp = treeStamp;
+                crossChunkTree.extendsNorth = extendsNorth;
+                crossChunkTree.extendsSouth = extendsSouth;
+                crossChunkTree.extendsEast = extendsEast;
+                crossChunkTree.extendsWest = extendsWest;
+
+                m_crossChunkTrees.push_back(crossChunkTree);
+            }
+
+            // Copy tree stamp blocks into chunk (only portions within current chunk)
+            for (int stampZ = 0; stampZ < treeStamp->sizeZ; stampZ++)
+            {
+                for (int stampY = 0; stampY < treeStamp->sizeY; stampY++)
+                {
+                    for (int stampX = 0; stampX < treeStamp->sizeX; stampX++)
+                    {
+                        // Calculate world position for this stamp block
+                        int worldX = treeBaseX + stampX;
+                        int worldY = treeBaseY + stampY;
+                        int worldZ = treeBaseZ + stampZ;
+
+                        // Bounds check: only place blocks within current chunk
+                        if (worldX < 0 || worldX >= CHUNK_SIZE_X) continue;
+                        if (worldY < 0 || worldY >= CHUNK_SIZE_Y) continue;
+                        if (worldZ < 0 || worldZ >= CHUNK_SIZE_Z) continue;
+
+                        // Get block type from stamp
+                        int stampIdx = stampX + stampY * treeStamp->sizeX + stampZ * treeStamp->sizeX * treeStamp->sizeY;
+                        uint8_t stampBlockType = treeStamp->blocks[stampIdx];
+
+                        // Skip air blocks (0 in stamp means don't place anything)
+                        if (stampBlockType == BLOCK_AIR) continue;
+
+                        // Calculate chunk block index
+                        int chunkBlockIdx = worldX + worldY * CHUNK_SIZE_X + worldZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+
+                        // Only place tree blocks in air (don't overwrite existing solid blocks)
+                        if (m_blocks[chunkBlockIdx].m_typeIndex == BLOCK_AIR)
+                        {
+                            m_blocks[chunkBlockIdx].m_typeIndex = stampBlockType;
+                        }
+                    }
+                }
             }
         }
     }
@@ -1740,4 +2491,145 @@ bool Chunk::SaveToDisk() const
     fclose(file);
 
     return written == fileBuffer.size();
+}
+
+//----------------------------------------------------------------------------------------------------
+// Cross-Chunk Tree Placement (Option 1: Post-Processing Pass)
+//----------------------------------------------------------------------------------------------------
+void Chunk::PlaceCrossChunkTrees()
+{
+    // Only run on main thread when chunk is complete and neighbors are available
+    if (GetState() != ChunkState::COMPLETE) return;
+
+    // Process each tree that extends into neighboring chunks
+    for (CrossChunkTreeData const& treeData : m_crossChunkTrees)
+    {
+        TreeStamp* treeStamp = treeData.treeStamp;
+        if (!treeStamp) continue;
+
+        // Calculate tree base position
+        int treeBaseX = treeData.localX - treeStamp->trunkOffsetX;
+        int treeBaseY = treeData.localY - treeStamp->trunkOffsetY;
+        int treeBaseZ = treeData.localZ;
+
+        // Place tree portions that extend into each neighbor chunk
+        if (treeData.extendsNorth && m_northNeighbor && m_northNeighbor->IsComplete())
+        {
+            PlaceTreeInNeighborChunk(m_northNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, CHUNK_SIZE_Y, 0);
+        }
+
+        if (treeData.extendsSouth && m_southNeighbor && m_southNeighbor->IsComplete())
+        {
+            PlaceTreeInNeighborChunk(m_southNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, -CHUNK_SIZE_Y, 0);
+        }
+
+        if (treeData.extendsEast && m_eastNeighbor && m_eastNeighbor->IsComplete())
+        {
+            PlaceTreeInNeighborChunk(m_eastNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   CHUNK_SIZE_X, 0, 0);
+        }
+
+        if (treeData.extendsWest && m_westNeighbor && m_westNeighbor->IsComplete())
+        {
+            PlaceTreeInNeighborChunk(m_westNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   -CHUNK_SIZE_X, 0, 0);
+        }
+
+        // Handle corner cases (trees extending into diagonal neighbors)
+        // Note: Simplified diagonal neighbor access to avoid potential null pointer issues
+        if (treeData.extendsNorth && treeData.extendsEast && m_northNeighbor && m_eastNeighbor)
+        {
+            // The northeast diagonal chunk would be handled by both north and east chunks
+            // We'll place portions in both north and east chunks, avoiding direct diagonal access
+            PlaceTreeInNeighborChunk(m_northNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, CHUNK_SIZE_Y, 0);
+            PlaceTreeInNeighborChunk(m_eastNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   CHUNK_SIZE_X, 0, 0);
+        }
+
+        if (treeData.extendsNorth && treeData.extendsWest && m_northNeighbor && m_westNeighbor)
+        {
+            // The northwest diagonal chunk would be handled by both north and west chunks
+            PlaceTreeInNeighborChunk(m_northNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, CHUNK_SIZE_Y, 0);
+            PlaceTreeInNeighborChunk(m_westNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   -CHUNK_SIZE_X, 0, 0);
+        }
+
+        if (treeData.extendsSouth && treeData.extendsEast && m_southNeighbor && m_eastNeighbor)
+        {
+            // The southeast diagonal chunk would be handled by both south and east chunks
+            PlaceTreeInNeighborChunk(m_southNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, -CHUNK_SIZE_Y, 0);
+            PlaceTreeInNeighborChunk(m_eastNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   CHUNK_SIZE_X, 0, 0);
+        }
+
+        if (treeData.extendsSouth && treeData.extendsWest && m_southNeighbor && m_westNeighbor)
+        {
+            // The southwest diagonal chunk would be handled by both south and west chunks
+            PlaceTreeInNeighborChunk(m_southNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   0, -CHUNK_SIZE_Y, 0);
+            PlaceTreeInNeighborChunk(m_westNeighbor, treeStamp, treeBaseX, treeBaseY, treeBaseZ,
+                                   -CHUNK_SIZE_X, 0, 0);
+        }
+    }
+
+    // Clear cross-chunk tree data after processing
+    if (!m_crossChunkTrees.empty())
+    {
+        m_crossChunkTrees.clear();
+        SetIsMeshDirty(true); // Mark mesh as dirty since we've added blocks
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void Chunk::PlaceTreeInNeighborChunk(Chunk* neighborChunk, TreeStamp* treeStamp,
+                                    int treeBaseX, int treeBaseY, int treeBaseZ,
+                                    int offsetX, int offsetY, int offsetZ)
+{
+    if (!neighborChunk || !treeStamp) return;
+
+    // Copy tree stamp blocks into neighbor chunk with coordinate transformation
+    for (int stampZ = 0; stampZ < treeStamp->sizeZ; stampZ++)
+    {
+        for (int stampY = 0; stampY < treeStamp->sizeY; stampY++)
+        {
+            for (int stampX = 0; stampX < treeStamp->sizeX; stampX++)
+            {
+                // Calculate world position relative to this chunk
+                int worldX = treeBaseX + stampX;
+                int worldY = treeBaseY + stampY;
+                int worldZ = treeBaseZ + stampZ;
+
+                // Transform to neighbor chunk coordinates
+                int neighborX = worldX + offsetX;
+                int neighborY = worldY + offsetY;
+                int neighborZ = worldZ + offsetZ;
+
+                // Check if block is within neighbor chunk bounds
+                if (neighborX < 0 || neighborX >= CHUNK_SIZE_X) continue;
+                if (neighborY < 0 || neighborY >= CHUNK_SIZE_Y) continue;
+                if (neighborZ < 0 || neighborZ >= CHUNK_SIZE_Z) continue;
+
+                // Get stamp block type
+                int stampIdx = stampX + stampY * treeStamp->sizeX + stampZ * treeStamp->sizeX * treeStamp->sizeY;
+                uint8_t stampBlockType = treeStamp->blocks[stampIdx];
+
+                if (stampBlockType == BLOCK_AIR) continue;
+
+                // Place block in neighbor chunk
+                int neighborBlockIdx = neighborX + neighborY * CHUNK_SIZE_X + neighborZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
+                if (neighborChunk->m_blocks[neighborBlockIdx].m_typeIndex == BLOCK_AIR)
+                {
+                    neighborChunk->m_blocks[neighborBlockIdx].m_typeIndex = stampBlockType;
+                }
+            }
+        }
+    }
+
+    // Mark neighbor chunk mesh as dirty since we've added blocks
+    neighborChunk->SetIsMeshDirty(true);
 }

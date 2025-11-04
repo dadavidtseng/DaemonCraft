@@ -83,6 +83,34 @@ enum class ChunkState : uint8_t
 };
 
 //----------------------------------------------------------------------------------------------------
+// TreeStamp - Hardcoded tree pattern data (Phase 3, Task 3B.1 - Assignment 4)
+//----------------------------------------------------------------------------------------------------
+// Trees are placed using "stamps" - pre-defined 3D patterns of wood and leaf blocks.
+// Each stamp is a 3D grid of block types that can be copied into the world.
+// Based on Minecraft wiki tree structures, simplified for available assets.
+//
+// Coordinate system for tree stamps:
+//   - Origin (0,0,0) is at the center-bottom of the trunk
+//   - X axis: West (-) to East (+)
+//   - Y axis: South (-) to North (+)
+//   - Z axis: Down (-) to Up (+)
+//
+// Usage: During tree placement (Task 3B.2), stamp blocks are copied into chunk
+// with proper bounds checking to handle trees near chunk edges.
+//----------------------------------------------------------------------------------------------------
+struct TreeStamp
+{
+    int sizeX;              // Width (east-west) of the stamp bounding box
+    int sizeY;              // Depth (north-south) of the stamp bounding box
+    int sizeZ;              // Height (vertical) of the stamp bounding box
+    int trunkOffsetX;       // X offset from stamp origin to trunk center
+    int trunkOffsetY;       // Y offset from stamp origin to trunk center
+    std::vector<uint8_t> blocks;  // Flattened 3D array [x + y*sizeX + z*sizeX*sizeY]
+                                  // 0 = air (skip this block during placement)
+                                  // non-zero = block type to place
+};
+
+//----------------------------------------------------------------------------------------------------
 // BiomeData - Per-column biome information (Phase 1, Task 1.2 - Assignment 4)
 //----------------------------------------------------------------------------------------------------
 // Stores biome noise parameters for each (x,y) column in a chunk.
@@ -101,6 +129,23 @@ struct BiomeData
     float     peaksValleys;     // PV: [-1, 1] range (5 levels: Valleys to Peaks)
                                 // PV = 1 - |(3 * abs(W)) - 2|
     BiomeType biomeType;        // Determined biome (via lookup tables)
+};
+
+//----------------------------------------------------------------------------------------------------
+// Cross-Chunk Tree Placement Data (Option 1: Post-Processing Pass)
+//----------------------------------------------------------------------------------------------------
+// Stores trees that need to extend into neighboring chunks
+struct CrossChunkTreeData
+{
+    int localX;           // X coordinate within this chunk (0-31)
+    int localY;           // Y coordinate within this chunk (0-31)
+    int localZ;           // Z coordinate within this chunk (0-255)
+    TreeStamp* treeStamp; // Pointer to tree stamp definition
+    // Direction indicates which neighbor chunks this tree extends into
+    bool extendsNorth;    // +Y direction
+    bool extendsSouth;    // -Y direction
+    bool extendsEast;     // +X direction
+    bool extendsWest;     // -X direction
 };
 
 //----------------------------------------------------------------------------------------------------
@@ -181,6 +226,12 @@ public:
     bool IsComplete() const { return GetState() == ChunkState::COMPLETE; }
     bool CanBeModified() const { return GetState() == ChunkState::COMPLETE; }
 
+    // Cross-Chunk Tree Placement (Option 1: Post-Processing Pass)
+    void PlaceCrossChunkTrees();
+    void PlaceTreeInNeighborChunk(Chunk* neighborChunk, TreeStamp* treeStamp,
+                                int treeBaseX, int treeBaseY, int treeBaseZ,
+                                int offsetX, int offsetY, int offsetZ);
+
     // Disk I/O operations (thread-safe, called by I/O worker thread)
     bool LoadFromDisk();
     bool SaveToDisk() const;
@@ -197,6 +248,13 @@ private:
     // Assignment 4: Biome data per (x,y) column (Phase 1, Task 1.2)
     // Stores 6 noise parameters and biome type for each horizontal column
     BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y];
+
+    // Assignment 4: Surface height per (x,y) column (Phase 3, Task 3A.1)
+    // Stores the z-coordinate of the top solid block in each column
+    // Value of -1 indicates no solid blocks found in column (all air)
+    int m_surfaceHeight[CHUNK_SIZE_X * CHUNK_SIZE_Y];
+
+    std::vector<CrossChunkTreeData> m_crossChunkTrees;
 
     // Rendering
     VertexList_PCU m_vertices;

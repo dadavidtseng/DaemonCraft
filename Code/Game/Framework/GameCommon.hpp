@@ -171,6 +171,22 @@ float constexpr PV_HEIGHT_MAX = 25.0f;                    // Peak elevation
 
 // Note: Cave carving parameters (cheese/spaghetti) will be added in Phase 4
 
+//----------------------------------------------------------------------------------------------------
+// Assignment 4: Tree Placement Parameters (Phase 3, Task 3B.2)
+//----------------------------------------------------------------------------------------------------
+// Trees are placed using noise-based sampling after surface generation.
+// Each biome has specific tree types and placement density.
+
+// Tree Noise Parameters
+float constexpr TREE_NOISE_SCALE = 10.f;              // Small scale for local variation
+unsigned int constexpr TREE_NOISE_OCTAVES = 2u;       // Low octaves for performance
+float constexpr TREE_PLACEMENT_THRESHOLD = 0.8f;      // Higher threshold = sparser trees
+
+// Tree Spacing Parameters
+int constexpr MIN_TREE_SPACING = 3;                   // Minimum blocks between tree trunks
+int constexpr TREE_EDGE_SAFETY_MARGIN = 4;            // Blocks from chunk edge to skip trees
+
+//----------------------------------------------------------------------------------------------------
 // Soil Layer Configuration
 int constexpr   MIN_DIRT_OFFSET_Z = 3;
 int constexpr   MAX_DIRT_OFFSET_Z = 4;
