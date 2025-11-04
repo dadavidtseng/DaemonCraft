@@ -18,47 +18,65 @@
 
 ## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
 
-**Status:** Phase 0 - Prerequisites ✅ COMPLETED (2025-11-01)
+**Status:** Phase 2 - 3D Density Terrain ✅ COMPLETED (2025-11-03)
 
-**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method will undergo a complete restructure.
+**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phase 1 and Phase 2 implementations.
 
-### Files to be Modified
+### Completed Modifications (Phases 1-2)
 
-**Chunk.cpp** (lines 112-324)
+**Chunk.cpp** - `GenerateTerrain()` method (lines 112-1100+)
 - **Pass 1** (lines 132-217): Per-(x,y) column calculations
-  - **ADD:** 6 biome noise layers (Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys)
-  - **ADD:** Biome selection using lookup tables
-  - **STORE:** BiomeData for each column
-- **Pass 2** (lines 220-320): Per-(x,y,z) block placement
-  - **REPLACE:** 2D heightmap logic with 3D density formula: D(x,y,z) = N(x,y,z,s) + B(z)
-  - **ADD:** Terrain shaping curves based on Continentalness, Erosion, and Peaks & Valleys
-  - **ADD:** Top and bottom slides for smooth transitions
-  - **ADD:** Cheese and spaghetti cave carving (3D noise-based)
-  - **ADD:** Tree placement using hardcoded stamps
-  - **ADD:** Biome-appropriate surface block replacement
+  - ✅ **ADDED:** 6 biome noise layers (Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys)
+  - ✅ **ADDED:** Biome selection using lookup tables with 16 biome types
+  - ✅ **STORED:** BiomeData array for each column
+- **Pass 2** (lines 700-1100+): Per-(x,y,z) block placement
+  - ✅ **REPLACED:** 2D heightmap logic with 3D density formula: D(x,y,z) = N(x,y,z,s) + B_shaped(z)
+  - ✅ **ADDED:** Terrain shaping curves based on Continentalness, Erosion, and Peaks & Valleys
+  - ✅ **ADDED:** Top and bottom slides for smooth world boundaries (z=0-20, z=100-120)
+  - ✅ **ADDED:** Biome-specific surface block replacement (16 biome types)
+  - ✅ **FIXED:** Effective terrain height calculation to eliminate floating blocks
+  - ⏳ **TODO:** Tree placement using hardcoded stamps (Phase 3)
+  - ⏳ **TODO:** Cheese and spaghetti cave carving (Phase 4)
 
 **Chunk.hpp**
-- **ADD:** `BiomeData` struct (6 noise values + BiomeType)
-- **ADD:** `BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y]` member
-- **ADD:** `TreeStamp` struct for hardcoded tree patterns
+- ✅ **ADDED:** `BiomeData` struct (6 noise values + BiomeType)
+- ✅ **ADDED:** `BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y]` member
+- ⏳ **TODO:** `TreeStamp` struct for hardcoded tree patterns (Phase 3)
 
 **GameCommon.hpp**
-- **ADD:** Biome noise scale constants (Continentalness, Erosion, Weirdness, PV)
-- **ADD:** Density formula parameters (scale, octaves, default height, bias)
-- **ADD:** Cave parameters (cheese/spaghetti scales and thresholds)
-- **ADD:** Tree placement parameters
-- **ADD:** Carver parameters (ravines, rivers)
-- **ADD:** `BiomeType` enum
+- ✅ **ADDED:** Biome noise scale constants (Continentalness: 400, Erosion: 300, Weirdness/PV: 350)
+- ✅ **ADDED:** Density formula parameters (scale: 200, octaves: 3, bias: 0.10)
+- ✅ **ADDED:** Terrain shaping curve parameters (continentalness ±30-40, erosion 0.3-2.5x, PV ±15-25)
+- ✅ **ADDED:** Top/bottom slide parameters (z ranges and strengths)
+- ✅ **ADDED:** `BiomeType` enum with 16 biome types
+- ⏳ **TODO:** Cave parameters (cheese/spaghetti scales and thresholds) - Phase 4
+- ⏳ **TODO:** Tree placement parameters - Phase 3
+- ⏳ **TODO:** Carver parameters (ravines, rivers) - Phase 5
 
-### Technical Approach
+### Technical Implementation Details
 
-**Minecraft-Inspired Pipeline:**
-1. **Biomes** - Sample 6 noise layers, determine biome via lookup table
-2. **3D Density** - Use density formula with curves/splines for terrain shaping
-3. **Surface** - Replace surface blocks based on biome type
-4. **Trees** - Place biome-specific tree stamps
-5. **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves
-6. **Carvers** - Add ravines and rivers for dramatic features
+**Phase 1: Biome System** (COMPLETED)
+- 6D biome noise sampling with distinct scales
+- Lookup table biome selection based on T, H, C, E, W, PV values
+- 16 biome types: Oceans, Beaches, Plains, Forests, Deserts, Mountains, Taigas
+
+**Phase 2: 3D Density Terrain** (COMPLETED)
+- Continuous Perlin noise with scale 200, 3 octaves
+- Effective terrain height: `DEFAULT_TERRAIN_HEIGHT + continentalnessOffset + pvOffset`
+- Shaped bias calculation: `DENSITY_BIAS_PER_BLOCK × (z - effectiveTerrainHeight)`
+- Erosion scale multiplier: 0.3 to 2.5 for terrain wildness
+- Top slide (z=100-120): Smooth transition to air at world top
+- Bottom slide (z=0-20): Flatten terrain near bedrock
+- Surface detection: Check if block above has positive density
+- Biome-specific surface blocks: grass variants, sand, snow, cobblestone
+
+**Next Pipeline Stages:**
+1. ✅ **Biomes** - 6 noise layers, lookup table selection (Phase 1)
+2. ✅ **3D Density** - Density formula with terrain shaping curves (Phase 2)
+3. ✅ **Surface** - Biome-appropriate surface block replacement (Phase 2)
+4. ⏳ **Trees** - Place biome-specific tree stamps (Phase 3)
+5. ⏳ **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves (Phase 4)
+6. ⏳ **Carvers** - Add ravines and rivers for dramatic features (Phase 5)
 
 **Key Resources:**
 - [Development Plan](../../../.claude/plan/development.md) - Complete technical specifications
@@ -257,12 +275,27 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 
 ## Changelog
 
+- **2025-11-03**: Completed Phase 2: 3D Density Terrain (Tasks 2.1-2.5) for Assignment 4: World Generation
+  - ✅ Task 2.1: Implemented 3D density formula with continuous Perlin noise (scale 200, 3 octaves)
+  - ✅ Task 2.2: Added top and bottom slides for smooth world boundaries
+  - ✅ Task 2.3: Implemented terrain shaping curves (continentalness, erosion, peaks & valleys)
+  - ✅ Task 2.4: Added biome-specific surface block replacement (16 biome types)
+  - ✅ Task 2.5: Created Phase 2 testing checkpoint with ImGui debug interface
+  - Fixed density formula: Effective terrain height = DEFAULT_TERRAIN_HEIGHT + biome offsets
+  - Fixed floating blocks: Increased DENSITY_BIAS_PER_BLOCK from 0.02 to 0.10
+  - Terrain now forms continuous solid surfaces at biome-appropriate heights
+  - Ready to begin Phase 3: Surface Blocks and Features
+- **2025-11-03**: Completed Phase 1: Foundation (Tasks 1.1-1.4) for Assignment 4: World Generation
+  - ✅ Task 1.1: Asset integration (new sprite sheets and BlockDefinitions.xml)
+  - ✅ Task 1.2: BiomeData structure with 6 noise layers (T, H, C, E, W, PV)
+  - ✅ Task 1.3: Biome noise implementation with lookup table selection
+  - ✅ Task 1.4: Biome visualization with distinct block types per biome
+  - Fixed biome color mapping and SelectBiome() logic
 - **2025-11-01**: Completed Phase 0 prerequisites (Tasks 0.1-0.7) for Assignment 4: World Generation
   - ✅ Chunk preloading, activation, and deactivation optimizations
   - ✅ Mesh rebuilding performance improvements
   - ✅ Job queue limiting and thread-safe chunk state machine
   - ✅ Smart directional preloading based on player movement
-  - Ready to begin Phase 1: Foundation (Biome System Implementation)
 - **2025-10-26**: Updated documentation for Assignment 4: World Generation
   - Added comprehensive Assignment 4 section detailing GenerateTerrain() modifications
   - Added navigation breadcrumbs and quick navigation

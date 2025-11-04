@@ -21,6 +21,17 @@
 ---
 
 ## Changelog
+- **2025-11-03**: Completed Phase 2: 3D Density Terrain (Tasks 2.1-2.5) for Assignment 4: World Generation
+  - ✅ Task 2.1: 3D density formula with continuous Perlin noise (scale 200, 3 octaves)
+  - ✅ Task 2.2: Top and bottom slides for smooth world boundaries
+  - ✅ Task 2.3: Terrain shaping curves (continentalness, erosion, peaks & valleys)
+  - ✅ Task 2.4: Biome-specific surface block replacement (16 biome types)
+  - ✅ Task 2.5: Phase 2 testing checkpoint with ImGui debug interface
+  - Fixed density formula: Use effective terrain height = DEFAULT_TERRAIN_HEIGHT + biome offsets
+  - Fixed floating blocks: Increased DENSITY_BIAS_PER_BLOCK from 0.02 to 0.10
+  - Terrain now forms continuous solid surfaces at biome-appropriate heights
+  - Ocean biomes lower (depth -30), mountain peaks higher (elevation +65)
+  - Ready to begin Phase 3: Surface Blocks and Features
 - **2025-11-03**: Completed Phase 1: Foundation (Tasks 1.1-1.4) for Assignment 4: World Generation
   - ✅ Task 1.1: Asset integration (new sprite sheets and BlockDefinitions.xml)
   - ✅ Task 1.2: BiomeData structure with 6 noise layers (T, H, C, E, W, PV)
@@ -30,7 +41,6 @@
   - Fixed SelectBiome() logic bug for DESERT/SAVANNA selection
   - Reduced biome noise scales to (400, 300, 350) for visible variation
   - Confirmed diverse biome patches (oceans, beaches, forests, savanna)
-  - Ready to begin Phase 2: 3D Density Terrain
 - **2025-11-01**: Completed Phase 0 prerequisites (Tasks 0.1-0.7) for Assignment 4: World Generation
   - ✅ Task 0.1: Chunk preloading system with configurable radius
   - ✅ Task 0.2: Chunk activation burst mode optimization (5 chunks/frame)
@@ -60,20 +70,25 @@ SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engin
 
 ## Current Assignment: World Generation (Assignment 4)
 
-**Status:** Phase 1 - Foundation ✅ COMPLETED (2025-11-03)
-**Next:** Phase 2 - 3D Density Terrain (Task 2.1: Density Formula Implementation)
+**Status:** Phase 2 - 3D Density Terrain ✅ COMPLETED (2025-11-03)
+**Next:** Phase 3 - Surface Blocks and Features (Task 3A.1: Find Surface Blocks)
 
-SimpleMiner is preparing for Assignment 4, which will upgrade the procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline with:
-- **6D Biome System** - Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys
-- **3D Density Terrain** - Volumetric terrain generation with overhangs and caves
-- **Biome-based Features** - Trees, surface blocks, and environmental elements
-- **Cave Systems** - Cheese and spaghetti cave types using 3D noise
-- **Carvers** - Ravines, canyons, and rivers for dramatic terrain features
+SimpleMiner is implementing Assignment 4, which upgrades procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline:
 
-**Key Files to be Modified:**
-- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` method will be completely restructured
-- [Chunk.hpp](Code/Game/Framework/CLAUDE.md) - New BiomeData structure and tree stamp systems
-- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - New constants for biome and cave parameters
+**Completed Phases:**
+- ✅ **Phase 0: Prerequisites** - Chunk management optimization, threading, and performance
+- ✅ **Phase 1: Foundation** - 6D biome system with Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys
+- ✅ **Phase 2: 3D Density Terrain** - Volumetric terrain generation with terrain shaping curves and biome-specific surfaces
+
+**Remaining Phases:**
+- **Phase 3: Surface Blocks and Features** - Trees, vegetation, and biome-specific decorations
+- **Phase 4: Cave Systems** - Cheese and spaghetti cave types using 3D noise
+- **Phase 5: Carvers** - Ravines, canyons, and rivers for dramatic terrain features
+
+**Key Files Modified:**
+- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with 3D density formula
+- [Chunk.hpp](Code/Game/Framework/CLAUDE.md) - Added BiomeData structure with 6 noise layers
+- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - Added density constants, terrain shaping parameters
 
 **Planning Resources:**
 - [Development Plan](.claude/plan/development.md) - Detailed implementation phases and technical specifications
