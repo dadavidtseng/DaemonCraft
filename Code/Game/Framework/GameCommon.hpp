@@ -138,9 +138,37 @@ unsigned int constexpr DENSITY_NOISE_OCTAVES = 3u;        // Balance detail vs p
 // Density Bias Calculation: B(z) = b × (z − t)
 // Controls terrain tendency to be solid vs air based on vertical position
 // Uses DEFAULT_TERRAIN_HEIGHT = 80.f (defined above at line 69)
-float constexpr DENSITY_BIAS_PER_BLOCK = 0.02f;           // Typical range: 0.01-0.05
+// Must be strong enough to overcome noise (which ranges -2.5 to +2.5 after erosion scaling)
+float constexpr DENSITY_BIAS_PER_BLOCK = 0.10f;           // Increased from 0.02 to make terrain height dominant
 
-// Note: Top/bottom slides and terrain shaping curves will be added in Tasks 2.2 and 2.3
+// Top and Bottom Slide Parameters (Phase 2, Task 2.2)
+// Slides smooth density transitions at world boundaries for natural terrain
+// Top slide: prevents sharp cutoffs near surface (makes terrain taper to air)
+// Bottom slide: creates flatter base near bedrock (makes terrain more solid)
+int constexpr TOP_SLIDE_START = 100;                      // Z level where top slide begins
+int constexpr TOP_SLIDE_END = 120;                        // Z level where top slide ends (world top)
+int constexpr BOTTOM_SLIDE_START = 0;                     // Z level where bottom slide starts (world bottom)
+int constexpr BOTTOM_SLIDE_END = 20;                      // Z level where bottom slide ends
+
+// Terrain Shaping Curves (Phase 2, Task 2.3)
+// Use biome parameters (C, E, PV) to shape terrain height and scale
+// Based on professor's October 16 blog findings (squashing factor, height offset)
+
+// Continentalness Curve: Height offset based on ocean/inland distance
+// Maps C: [-1.2, 1.0] → Height offset: [-30, +40]
+float constexpr CONTINENTALNESS_HEIGHT_MIN = -30.0f;     // Ocean depth offset
+float constexpr CONTINENTALNESS_HEIGHT_MAX = 40.0f;      // Inland height boost
+
+// Erosion Curve: Terrain wildness/scale based on flat/mountainous
+// Maps E: [-1, 1] → Scale multiplier: [0.3, 2.5]
+float constexpr EROSION_SCALE_MIN = 0.3f;                 // Flat terrain (low wildness)
+float constexpr EROSION_SCALE_MAX = 2.5f;                 // Mountainous (high wildness)
+
+// Peaks & Valleys Curve: Additional height variation
+// Maps PV: [-1, 1] → Height modifier: [-15, +25]
+float constexpr PV_HEIGHT_MIN = -15.0f;                   // Valley depression
+float constexpr PV_HEIGHT_MAX = 25.0f;                    // Peak elevation
+
 // Note: Cave carving parameters (cheese/spaghetti) will be added in Phase 4
 
 // Soil Layer Configuration

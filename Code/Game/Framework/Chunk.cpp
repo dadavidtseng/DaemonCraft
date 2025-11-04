@@ -797,18 +797,106 @@ void Chunk::GenerateTerrain()
 
                 // Sample 3D noise at this global position
                 // CRITICAL: Use global coordinates for cross-chunk consistency
-                // Get3dNoiseZeroToOne returns [0, 1], need to convert to [-1, 1]
+                // Use Compute3dPerlinNoise for smooth continuous interpolated noise
+                // Returns [-1, 1], scale controls frequency, octaves add detail
                 unsigned int densitySeed = GAME_SEED + 10; // Separate seed for density noise
-                float noiseZeroToOne = Get3dNoiseZeroToOne(globalCoords.x, globalCoords.y, globalCoords.z, densitySeed);
-                float noise = RangeMap(noiseZeroToOne, 0.f, 1.f, -1.f, 1.f); // N(x,y,z,s) in [-1, 1]
+                float noise = Compute3dPerlinNoise(
+                    (float)globalCoords.x,
+                    (float)globalCoords.y,
+                    (float)globalCoords.z,
+                    DENSITY_NOISE_SCALE,           // Scale: 200.0 (lower freq = smoother terrain)
+                    DENSITY_NOISE_OCTAVES,         // Octaves: 3 (adds fractal detail)
+                    DEFAULT_OCTAVE_PERSISTANCE,    // Persistence: 0.5 (amplitude falloff)
+                    DEFAULT_NOISE_OCTAVE_SCALE,    // Octave scale: 2.0 (frequency multiplier)
+                    true,                          // Renormalize to [-1, 1]
+                    densitySeed
+                ); // Returns N(x,y,z,s) in [-1, 1]
 
                 // Calculate vertical bias: B(z) = b × (z − t)
                 // Higher blocks (z > DEFAULT_TERRAIN_HEIGHT) get positive bias (more air)
                 // Lower blocks (z < DEFAULT_TERRAIN_HEIGHT) get negative bias (more solid)
                 float bias = DENSITY_BIAS_PER_BLOCK * (float)(globalCoords.z - (int)DEFAULT_TERRAIN_HEIGHT);
 
-                // Combine noise and bias to get final density
-                float density = noise + bias; // D(x,y,z)
+                // --- Assignment 4: Top and Bottom Slides (Phase 2, Task 2.2) ---
+
+                // Top slide: Smooth transition near surface (z=100-120)
+                // Forces density toward positive (air) near world top to prevent sharp cutoffs
+                float topSlide = 0.0f;
+                if (globalCoords.z >= TOP_SLIDE_START && globalCoords.z <= TOP_SLIDE_END)
+                {
+                    // Calculate slide progress: 0.0 at start, 1.0 at end
+                    float slideProgress = (float)(globalCoords.z - TOP_SLIDE_START) / (float)(TOP_SLIDE_END - TOP_SLIDE_START);
+
+                    // Use SmoothStep3 for smooth transition curve
+                    float smoothedProgress = SmoothStep3(slideProgress);
+
+                    // Apply positive bias to force terrain toward air
+                    // Strength increases as we approach world top
+                    topSlide = smoothedProgress * 2.0f; // Range: 0.0 to 2.0 (positive = more air)
+                }
+
+                // Bottom slide: Flatten terrain near bedrock (z=0-20)
+                // Forces density toward negative (solid) near world bottom for stable base
+                float bottomSlide = 0.0f;
+                if (globalCoords.z >= BOTTOM_SLIDE_START && globalCoords.z <= BOTTOM_SLIDE_END)
+                {
+                    // Calculate slide progress: 1.0 at bottom, 0.0 at end
+                    float slideProgress = 1.0f - ((float)(globalCoords.z - BOTTOM_SLIDE_START) / (float)(BOTTOM_SLIDE_END - BOTTOM_SLIDE_START));
+
+                    // Use SmoothStep3 for smooth transition curve
+                    float smoothedProgress = SmoothStep3(slideProgress);
+
+                    // Apply negative bias to force terrain toward solid
+                    // Strength increases as we approach bedrock
+                    bottomSlide = -smoothedProgress * 3.0f; // Range: -3.0 to 0.0 (negative = more solid)
+                }
+
+                // --- Assignment 4: Terrain Shaping Curves (Phase 2, Task 2.3) ---
+
+                // Retrieve biome data for this column (from Pass 1)
+                BiomeData& biomeData = m_biomeData[idxXY];
+
+                // Continentalness Curve: Height offset based on ocean/inland distance
+                // Maps C: [-1.2, 1.0] → Height offset: [-30, +40]
+                // Ocean areas get negative offset (deeper), inland gets positive (higher)
+                float continentalnessOffset = RangeMap(biomeData.continentalness,
+                                                       -1.2f, 1.0f,
+                                                       CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+
+                // Erosion Curve: Terrain wildness/scale based on flat/mountainous
+                // Maps E: [-1, 1] → Scale multiplier: [0.3, 2.5]
+                // Flat terrain (low E) gets less noise amplification
+                // Mountainous (high E) gets more noise amplification
+                float erosionScale = RangeMap(biomeData.erosion,
+                                              -1.0f, 1.0f,
+                                              EROSION_SCALE_MIN, EROSION_SCALE_MAX);
+
+                // Peaks & Valleys Curve: Additional height variation
+                // Maps PV: [-1, 1] → Height modifier: [-15, +25]
+                // Valleys (low PV) get negative modifier, peaks (high PV) get positive
+                float pvOffset = RangeMap(biomeData.peaksValleys,
+                                         -1.0f, 1.0f,
+                                         PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+
+                // Apply terrain shaping:
+                // 1. Calculate total height offset from biome parameters
+                float heightOffset = continentalnessOffset + pvOffset;
+
+                // 2. Calculate effective terrain height for this location
+                //    - Start with DEFAULT_TERRAIN_HEIGHT (80)
+                //    - Add continentalness and PV height offsets
+                float effectiveTerrainHeight = (float)DEFAULT_TERRAIN_HEIGHT + heightOffset;
+
+                // 3. Calculate bias relative to the SHAPED terrain height (not default height)
+                //    - This makes terrain follow the biome-specific height curves
+                float shapedBias = DENSITY_BIAS_PER_BLOCK * (float)((float)globalCoords.z - effectiveTerrainHeight);
+
+                // 4. Scale noise by erosion factor (controls terrain wildness)
+                float shapedNoise = noise * erosionScale;
+
+                // Combine noise, shaped bias, and slides to get final density
+                // D(x,y,z) = N(x,y,z,s)*erosionScale + B_shaped(z) + topSlide(z) + bottomSlide(z)
+                float density = shapedNoise + shapedBias + topSlide + bottomSlide;
 
                 // Density threshold: negative = solid, positive = air
                 bool isSolid = (density < 0.0f);
@@ -853,10 +941,157 @@ void Chunk::GenerateTerrain()
                         else
                         {
                             blockType = BLOCK_STONE;
-                        }
 
-                        // TODO (Phase 2, Task 2.4): Replace surface stone with dirt/grass/sand
-                        // TODO (Phase 3): Add biome-specific surface blocks
+                            // --- Assignment 4: Phase 2, Task 2.4 - Surface Block Replacement ---
+                            // Check if this block is at the surface (has air above it)
+                            bool isSurface = false;
+                            if (globalCoords.z < CHUNK_SIZE_Z - 1) // Not at world top
+                            {
+                                // Calculate density of block above this one
+                                IntVec3 aboveCoords(globalCoords.x, globalCoords.y, globalCoords.z + 1);
+                                unsigned int aboveDensitySeed = GAME_SEED + 10;
+                                float aboveNoise = Compute3dPerlinNoise(
+                                    (float)aboveCoords.x,
+                                    (float)aboveCoords.y,
+                                    (float)aboveCoords.z,
+                                    DENSITY_NOISE_SCALE,
+                                    DENSITY_NOISE_OCTAVES,
+                                    DEFAULT_OCTAVE_PERSISTANCE,
+                                    DEFAULT_NOISE_OCTAVE_SCALE,
+                                    true,
+                                    aboveDensitySeed
+                                );
+
+                                // Get biome data for this column (same as current block)
+                                BiomeData& aboveBiomeData = m_biomeData[idxXY];
+
+                                // Apply terrain shaping to above block
+                                float aboveContinentalnessOffset = RangeMap(aboveBiomeData.continentalness,
+                                                                           -1.2f, 1.0f,
+                                                                           CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                                float aboveErosionScale = RangeMap(aboveBiomeData.erosion,
+                                                                   -1.0f, 1.0f,
+                                                                   EROSION_SCALE_MIN, EROSION_SCALE_MAX);
+                                float abovePvOffset = RangeMap(aboveBiomeData.peaksValleys,
+                                                               -1.0f, 1.0f,
+                                                               PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+
+                                // Calculate effective terrain height for above block (same as current block)
+                                float aboveHeightOffset = aboveContinentalnessOffset + abovePvOffset;
+                                float aboveEffectiveTerrainHeight = (float)DEFAULT_TERRAIN_HEIGHT + aboveHeightOffset;
+
+                                // Calculate shaped bias relative to effective terrain height
+                                float aboveShapedBias = DENSITY_BIAS_PER_BLOCK * (float)((float)aboveCoords.z - aboveEffectiveTerrainHeight);
+
+                                // Scale noise by erosion factor
+                                float aboveShapedNoise = aboveNoise * aboveErosionScale;
+
+                                // Apply slides to above block
+                                float aboveTopSlide = 0.0f;
+                                if (aboveCoords.z >= TOP_SLIDE_START && aboveCoords.z <= TOP_SLIDE_END)
+                                {
+                                    float slideProgress = (float)(aboveCoords.z - TOP_SLIDE_START) / (float)(TOP_SLIDE_END - TOP_SLIDE_START);
+                                    float smoothedProgress = SmoothStep3(slideProgress);
+                                    aboveTopSlide = smoothedProgress * 2.0f;
+                                }
+
+                                float aboveBottomSlide = 0.0f;
+                                if (aboveCoords.z >= BOTTOM_SLIDE_START && aboveCoords.z <= BOTTOM_SLIDE_END)
+                                {
+                                    float slideProgress = 1.0f - ((float)(aboveCoords.z - BOTTOM_SLIDE_START) / (float)(BOTTOM_SLIDE_END - BOTTOM_SLIDE_START));
+                                    float smoothedProgress = SmoothStep3(slideProgress);
+                                    aboveBottomSlide = -smoothedProgress * 3.0f;
+                                }
+
+                                // Combine components for above block density
+                                float aboveDensity = aboveShapedNoise + aboveShapedBias + aboveTopSlide + aboveBottomSlide;
+                                isSurface = (aboveDensity >= 0.0f); // Above block is air/water
+                            }
+
+                            // Apply biome-specific surface blocks
+                            if (isSurface)
+                            {
+                                BiomeType biome = m_biomeData[idxXY].biomeType;
+
+                                switch (biome)
+                                {
+                                    // Ocean biomes - sandy ocean floor or gravel
+                                    case BiomeType::OCEAN:
+                                    case BiomeType::DEEP_OCEAN:
+                                    case BiomeType::FROZEN_OCEAN:
+                                        blockType = BLOCK_SAND; // Sandy ocean floor
+                                        break;
+
+                                    // Beach biomes - sand
+                                    case BiomeType::BEACH:
+                                    case BiomeType::SNOWY_BEACH:
+                                        blockType = BLOCK_SAND;
+                                        break;
+
+                                    // Desert biome - sand with possible dirt underneath
+                                    case BiomeType::DESERT:
+                                        blockType = BLOCK_SAND;
+                                        break;
+
+                                    // Savanna biome - dirt with grassy surface
+                                    case BiomeType::SAVANNA:
+                                        blockType = BLOCK_GRASS_YELLOW; // Dry yellow grass
+                                        break;
+
+                                    // Plains biomes - standard grass
+                                    case BiomeType::PLAINS:
+                                        blockType = BLOCK_GRASS;
+                                        break;
+
+                                    // Snowy biomes - snow or ice blocks
+                                    case BiomeType::SNOWY_PLAINS:
+                                        blockType = BLOCK_SNOW; // Snow surface
+                                        break;
+
+                                    // Forest biomes - grass with different shades
+                                    case BiomeType::FOREST:
+                                        blockType = BLOCK_GRASS_DARK; // Dark green grass
+                                        break;
+
+                                    case BiomeType::JUNGLE:
+                                        blockType = BLOCK_GRASS_LIGHT; // Light tropical grass
+                                        break;
+
+                                    // Taiga biomes - grass with snow possibilities
+                                    case BiomeType::TAIGA:
+                                        blockType = BLOCK_GRASS; // Standard grass
+                                        break;
+
+                                    case BiomeType::SNOWY_TAIGA:
+                                        blockType = BLOCK_SNOW; // Snow-covered grass
+                                        break;
+
+                                    // Mountain peaks - stone or snow
+                                    case BiomeType::STONY_PEAKS:
+                                        blockType = BLOCK_COBBLESTONE; // Rocky mountain surface
+                                        break;
+
+                                    case BiomeType::SNOWY_PEAKS:
+                                        blockType = BLOCK_SNOW; // Snowy mountain peaks
+                                        break;
+
+                                    default:
+                                        blockType = BLOCK_GRASS; // Default to grass
+                                        break;
+                                }
+
+                                // Special temperature-based surface modifications
+                                float surfaceTemp = m_biomeData[idxXY].temperature;
+                                if (surfaceTemp <= ICE_TEMPERATURE_MAX && globalCoords.z <= ICE_DEPTH_MAX)
+                                {
+                                    // Very cold areas get ice formation near surface
+                                    if (blockType == BLOCK_WATER || (blockType == BLOCK_SAND && globalCoords.z < SEA_LEVEL_Z))
+                                    {
+                                        blockType = BLOCK_ICE;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 else
