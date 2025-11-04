@@ -1238,6 +1238,138 @@ void Chunk::GenerateTerrain()
                 // Density threshold: negative = solid, positive = air
                 bool isSolid = (density < 0.0f);
 
+                // --- Assignment 4: Phase 4, Task 4.1 - Cheese Cave Carving ---
+                //
+                // Carve large open caverns using 3D noise with large scale (60 units).
+                // Cheese caves use high threshold (0.6) to create fewer but bigger caves.
+                //
+                // Safety checks:
+                // 1. Only carve underground (below surface - MIN_CAVE_DEPTH_FROM_SURFACE)
+                // 2. Don't carve too close to lava layer (above LAVA_Z + MIN_CAVE_HEIGHT_ABOVE_LAVA)
+                // 3. Only carve solid blocks (isSolid == true)
+                //
+                // Algorithm: If cheeseNoise > CHEESE_THRESHOLD AND depth checks pass:
+                //   - Override isSolid to false (convert solid block to air)
+                //   - This "carves out" the cavern from the terrain
+
+                if (isSolid) // Only check caves for solid blocks (no need to carve air)
+                {
+                    // CRITICAL FIX: m_surfaceHeight[] is calculated AFTER this loop
+                    // We need to check surface height dynamically by looking upward
+                    // Find the surface by checking if the block above has positive density (is air)
+
+                    bool isNearSurface = false;
+
+                    // Check blocks above this position (up to MIN_CAVE_DEPTH_FROM_SURFACE blocks)
+                    for (int checkZ = globalCoords.z + 1;
+                         checkZ <= globalCoords.z + MIN_CAVE_DEPTH_FROM_SURFACE && checkZ < CHUNK_SIZE_Z;
+                         checkZ++)
+                    {
+                        // Calculate density at check position
+                        IntVec3 checkCoords(globalCoords.x, globalCoords.y, checkZ);
+
+                        float checkNoise = Compute3dPerlinNoise(
+                            (float)checkCoords.x, (float)checkCoords.y, (float)checkCoords.z,
+                            DENSITY_NOISE_SCALE, DENSITY_NOISE_OCTAVES,
+                            DEFAULT_OCTAVE_PERSISTANCE, DEFAULT_NOISE_OCTAVE_SCALE,
+                            true, GAME_SEED + 10
+                        );
+
+                        // Get biome data for shaping
+                        BiomeData& checkBiomeData = m_biomeData[idxXY];
+                        float checkContinentalnessOffset = RangeMap(checkBiomeData.continentalness, -1.2f, 1.0f,
+                                                                    CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                        float checkErosionScale = RangeMap(checkBiomeData.erosion, -1.0f, 1.0f,
+                                                           EROSION_SCALE_MIN, EROSION_SCALE_MAX);
+                        float checkPvOffset = RangeMap(checkBiomeData.peaksValleys, -1.0f, 1.0f,
+                                                       PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+
+                        float checkEffectiveHeight = (float)DEFAULT_TERRAIN_HEIGHT + checkContinentalnessOffset + checkPvOffset;
+                        float checkShapedBias = DENSITY_BIAS_PER_BLOCK * ((float)checkCoords.z - checkEffectiveHeight);
+                        float checkDensity = (checkNoise * checkErosionScale) + checkShapedBias;
+
+                        // If we found air above us within MIN_CAVE_DEPTH_FROM_SURFACE, we're too close to surface
+                        if (checkDensity >= 0.0f) // Positive density = air
+                        {
+                            isNearSurface = true;
+                            break;
+                        }
+                    }
+
+                    // Check if we're high enough above lava to carve caves
+                    bool highEnough = (globalCoords.z > LAVA_Z + MIN_CAVE_HEIGHT_ABOVE_LAVA);
+
+                    // Only carve if we're NOT near surface AND high enough above lava
+                    if (!isNearSurface && highEnough)
+                    {
+                        // Sample 3D cheese cave noise at this global position
+                        // Use different seed from terrain density noise
+                        unsigned int cheeseSeed = GAME_SEED + CHEESE_NOISE_SEED_OFFSET;
+
+                        float cheeseNoise = Compute3dPerlinNoise(
+                            (float)globalCoords.x,
+                            (float)globalCoords.y,
+                            (float)globalCoords.z,
+                            CHEESE_NOISE_SCALE,           // Large scale: 60.0 (big smooth caverns)
+                            CHEESE_NOISE_OCTAVES,         // Low octaves: 2 (smooth shapes)
+                            DEFAULT_OCTAVE_PERSISTANCE,   // 0.5
+                            DEFAULT_NOISE_OCTAVE_SCALE,   // 2.0
+                            true,                         // Renormalize to [-1, 1]
+                            cheeseSeed
+                        ); // Returns [-1, 1]
+
+                        // Convert to [0, 1] range for threshold comparison
+                        float cheeseValue = (cheeseNoise + 1.0f) * 0.5f; // Maps [-1,1] → [0,1]
+
+                        // Carve cavern if noise exceeds threshold
+                        // Higher threshold = fewer/smaller caves
+                        if (cheeseValue > CHEESE_THRESHOLD)
+                        {
+                            isSolid = false; // Carve out this block (convert to air)
+                        }
+
+                        // --- Assignment 4: Phase 4, Task 4.2 - Spaghetti Cave Carving ---
+                        //
+                        // Carve winding tunnels using 3D noise with smaller scale (30 units).
+                        // Spaghetti caves use even higher threshold (0.65) to create narrow tunnels.
+                        //
+                        // These combine with cheese caves using OR logic:
+                        // - If EITHER cheese OR spaghetti threshold is exceeded, carve the block
+                        // - This creates interesting intersections and complex cave networks
+                        //
+                        // Only check spaghetti if block is still solid (not already carved by cheese)
+
+                        if (isSolid) // Only check if cheese didn't already carve this block
+                        {
+                            // Sample 3D spaghetti cave noise at this global position
+                            // Use different seed from both terrain and cheese noise
+                            unsigned int spaghettiSeed = GAME_SEED + SPAGHETTI_NOISE_SEED_OFFSET;
+
+                            float spaghettiNoise = Compute3dPerlinNoise(
+                                (float)globalCoords.x,
+                                (float)globalCoords.y,
+                                (float)globalCoords.z,
+                                SPAGHETTI_NOISE_SCALE,        // Smaller scale: 30.0 (winding tunnels)
+                                SPAGHETTI_NOISE_OCTAVES,      // More octaves: 3 (complex paths)
+                                DEFAULT_OCTAVE_PERSISTANCE,   // 0.5
+                                DEFAULT_NOISE_OCTAVE_SCALE,   // 2.0
+                                true,                         // Renormalize to [-1, 1]
+                                spaghettiSeed
+                            ); // Returns [-1, 1]
+
+                            // Convert to [0, 1] range for threshold comparison
+                            float spaghettiValue = (spaghettiNoise + 1.0f) * 0.5f; // Maps [-1,1] → [0,1]
+
+                            // Carve tunnel if noise exceeds threshold
+                            // Higher threshold = fewer/narrower tunnels
+                            if (spaghettiValue > SPAGHETTI_THRESHOLD)
+                            {
+                                isSolid = false; // Carve out this block (convert to air)
+                            }
+                        }
+                    }
+                }
+
                 // --- Block Type Assignment ---
 
                 uint8_t blockType = BLOCK_AIR; // Default to air

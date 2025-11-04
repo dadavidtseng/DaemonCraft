@@ -169,7 +169,28 @@ float constexpr EROSION_SCALE_MAX = 2.5f;                 // Mountainous (high w
 float constexpr PV_HEIGHT_MIN = -15.0f;                   // Valley depression
 float constexpr PV_HEIGHT_MAX = 25.0f;                    // Peak elevation
 
-// Note: Cave carving parameters (cheese/spaghetti) will be added in Phase 4
+//----------------------------------------------------------------------------------------------------
+// Assignment 4: Cave Carving Parameters (Phase 4, Tasks 4.1-4.2)
+//----------------------------------------------------------------------------------------------------
+// Two cave types based on Minecraft's cave generation:
+// - Cheese caves: Large-scale noise creates big open caverns
+// - Spaghetti caves: Small-scale noise creates winding tunnels
+
+// Cheese Cave Parameters (Phase 4, Task 4.1)
+float constexpr CHEESE_NOISE_SCALE = 60.f;               // Large scale for big caverns (50-100 range)
+unsigned int constexpr CHEESE_NOISE_OCTAVES = 2u;        // Low octaves for smooth cavern shapes
+float constexpr CHEESE_THRESHOLD = 0.45f;                // Lower = more caves (adjusted from 0.6 to 0.45 for visibility)
+unsigned int constexpr CHEESE_NOISE_SEED_OFFSET = 20;    // Seed offset from GAME_SEED
+
+// Spaghetti Cave Parameters (Phase 4, Task 4.2)
+float constexpr SPAGHETTI_NOISE_SCALE = 30.f;            // Smaller scale for winding tunnels (20-40 range)
+unsigned int constexpr SPAGHETTI_NOISE_OCTAVES = 3u;     // More octaves for complex tunnel paths
+float constexpr SPAGHETTI_THRESHOLD = 0.65f;             // Higher value = fewer/narrower tunnels
+unsigned int constexpr SPAGHETTI_NOISE_SEED_OFFSET = 30; // Different seed from cheese caves
+
+// Cave Depth Safety Parameters
+int constexpr MIN_CAVE_DEPTH_FROM_SURFACE = 5;           // Blocks below surface before caves start
+int constexpr MIN_CAVE_HEIGHT_ABOVE_LAVA = 3;            // Don't carve too close to lava layer
 
 //----------------------------------------------------------------------------------------------------
 // Assignment 4: Tree Placement Parameters (Phase 3, Task 3B.2)
