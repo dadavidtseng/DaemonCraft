@@ -18,11 +18,11 @@
 
 ## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
 
-**Status:** Phase 2 - 3D Density Terrain ✅ COMPLETED (2025-11-03)
+**Status:** Phase 3 - Surface Blocks and Features ✅ COMPLETED (2025-11-03)
 
-**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phase 1 and Phase 2 implementations.
+**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-3 implementations.
 
-### Completed Modifications (Phases 1-2)
+### Completed Modifications (Phases 1-3)
 
 **Chunk.cpp** - `GenerateTerrain()` method (lines 112-1100+)
 - **Pass 1** (lines 132-217): Per-(x,y) column calculations
@@ -35,13 +35,22 @@
   - ✅ **ADDED:** Top and bottom slides for smooth world boundaries (z=0-20, z=100-120)
   - ✅ **ADDED:** Biome-specific surface block replacement (16 biome types)
   - ✅ **FIXED:** Effective terrain height calculation to eliminate floating blocks
-  - ⏳ **TODO:** Tree placement using hardcoded stamps (Phase 3)
+  - ✅ **ADDED:** Surface height detection and storage for all (x,y) columns
+- **Pass 3** (lines 1684-1864): Tree placement system
+  - ✅ **ADDED:** Tree stamp system with 6 variants (Oak, Spruce, Jungle)
+  - ✅ **ADDED:** Biome-specific tree selection based on temperature/humidity
+  - ✅ **ADDED:** Cross-chunk tree detection and data storage
+  - ✅ **REDUCED:** Edge safety margin from 4 to 1 block for natural distribution
   - ⏳ **TODO:** Cheese and spaghetti cave carving (Phase 4)
 
 **Chunk.hpp**
 - ✅ **ADDED:** `BiomeData` struct (6 noise values + BiomeType)
 - ✅ **ADDED:** `BiomeData m_biomeData[CHUNK_SIZE_X * CHUNK_SIZE_Y]` member
-- ⏳ **TODO:** `TreeStamp` struct for hardcoded tree patterns (Phase 3)
+- ✅ **ADDED:** `TreeStamp` struct for hardcoded tree patterns
+- ✅ **ADDED:** `CrossChunkTreeData` struct for boundary tree tracking
+- ✅ **ADDED:** `m_surfaceHeight[]` array for surface block storage
+- ✅ **ADDED:** `m_crossChunkTrees` vector for post-processing
+- ✅ **ADDED:** Cross-chunk tree placement method declarations
 
 **GameCommon.hpp**
 - ✅ **ADDED:** Biome noise scale constants (Continentalness: 400, Erosion: 300, Weirdness/PV: 350)
@@ -49,8 +58,8 @@
 - ✅ **ADDED:** Terrain shaping curve parameters (continentalness ±30-40, erosion 0.3-2.5x, PV ±15-25)
 - ✅ **ADDED:** Top/bottom slide parameters (z ranges and strengths)
 - ✅ **ADDED:** `BiomeType` enum with 16 biome types
+- ✅ **ADDED:** Tree placement parameters (noise scale, octaves, threshold, spacing)
 - ⏳ **TODO:** Cave parameters (cheese/spaghetti scales and thresholds) - Phase 4
-- ⏳ **TODO:** Tree placement parameters - Phase 3
 - ⏳ **TODO:** Carver parameters (ravines, rivers) - Phase 5
 
 ### Technical Implementation Details
@@ -70,11 +79,19 @@
 - Surface detection: Check if block above has positive density
 - Biome-specific surface blocks: grass variants, sand, snow, cobblestone
 
-**Next Pipeline Stages:**
+**Phase 3: Surface Blocks and Tree Features** (COMPLETED)
+- Surface height calculation: Store top solid block Z-coordinate for all (x,y) columns
+- Subsurface layer system: 3-4 dirt layers, sand layers for deserts, ocean floor variations
+- Tree stamp methodology: 6 pre-defined 3D patterns (Oak small/large, Spruce variants, Jungle bush)
+- Cross-chunk tree system: Option 1 Post-Processing Pass with thread-safe neighbor modifications
+- Biome-specific tree selection: Temperature and humidity-based tree type mapping
+- Edge safety optimization: Reduced margin from 4 to 1 block for natural distribution
+
+**Completed Pipeline Stages:**
 1. ✅ **Biomes** - 6 noise layers, lookup table selection (Phase 1)
 2. ✅ **3D Density** - Density formula with terrain shaping curves (Phase 2)
 3. ✅ **Surface** - Biome-appropriate surface block replacement (Phase 2)
-4. ⏳ **Trees** - Place biome-specific tree stamps (Phase 3)
+4. ✅ **Trees** - Place biome-specific tree stamps with cross-chunk support (Phase 3)
 5. ⏳ **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves (Phase 4)
 6. ⏳ **Carvers** - Add ravines and rivers for dramatic features (Phase 5)
 
@@ -275,6 +292,17 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 
 ## Changelog
 
+- **2025-11-03**: Completed Phase 3: Surface Blocks and Features (Tasks 3A.1-3B.3) for Assignment 4: World Generation
+  - ✅ Task 3A.1: Implemented surface height detection and storage for all (x,y) columns
+  - ✅ Task 3A.2: Added biome-specific surface block replacement for all 16 biome types
+  - ✅ Task 3A.3: Implemented comprehensive subsurface layer system (dirt, sand, ocean variants)
+  - ✅ Task 3B.1: Created TreeStamp system with 6 hardcoded tree variants (Oak, Spruce, Jungle)
+  - ✅ Task 3B.2: Implemented biome-specific tree placement with noise-based sampling
+  - ✅ Task 3B.3: Added cross-chunk tree placement using Option 1: Post-Processing Pass
+  - Reduced edge safety margin from 4 to 1 block for natural tree distribution
+  - Thread-safe cross-chunk modifications with atomic state transitions
+  - Comprehensive tree coverage for all forest biomes (FOREST→OAK, JUNGLE→JUNGLE, TAIGA→SPRUCE)
+  - Ready to begin Phase 4: Underground Features (Caves)
 - **2025-11-03**: Completed Phase 2: 3D Density Terrain (Tasks 2.1-2.5) for Assignment 4: World Generation
   - ✅ Task 2.1: Implemented 3D density formula with continuous Perlin noise (scale 200, 3 octaves)
   - ✅ Task 2.2: Added top and bottom slides for smooth world boundaries
@@ -284,7 +312,6 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
   - Fixed density formula: Effective terrain height = DEFAULT_TERRAIN_HEIGHT + biome offsets
   - Fixed floating blocks: Increased DENSITY_BIAS_PER_BLOCK from 0.02 to 0.10
   - Terrain now forms continuous solid surfaces at biome-appropriate heights
-  - Ready to begin Phase 3: Surface Blocks and Features
 - **2025-11-03**: Completed Phase 1: Foundation (Tasks 1.1-1.4) for Assignment 4: World Generation
   - ✅ Task 1.1: Asset integration (new sprite sheets and BlockDefinitions.xml)
   - ✅ Task 1.2: BiomeData structure with 6 noise layers (T, H, C, E, W, PV)
