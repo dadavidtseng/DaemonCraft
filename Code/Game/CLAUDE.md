@@ -17,7 +17,7 @@
 
 ## Assignment 4 Context: World Generation
 
-**Status:** Phase 3 - Surface Blocks and Features ✅ COMPLETED (2025-11-03)
+**Status:** Phase 4 - Underground Features (Caves) ✅ COMPLETED (2025-11-04)
 
 This module has been indirectly affected by Assignment 4 as the [Framework module](Framework/CLAUDE.md) and [Gameplay module](Gameplay/CLAUDE.md) underwent significant changes for procedural world generation. The [App class](Framework/CLAUDE.md) manages the JobSystem that executes world generation jobs.
 
@@ -29,6 +29,7 @@ This module has been indirectly affected by Assignment 4 as the [Framework modul
 - ✅ Complete surface blocks and tree features system implemented in [Framework](Framework/CLAUDE.md)
 - ✅ Cross-chunk tree placement with thread-safe neighbor chunk modifications
 - ✅ Comprehensive biome coverage with surface height detection and storage
+- ✅ Cave carving system with cheese (caverns) and spaghetti (tunnels) implemented in [Framework](Framework/CLAUDE.md)
 
 **Resources:**
 - [Development Plan](../../.claude/plan/development.md) - Complete implementation guide
@@ -206,11 +207,18 @@ A: Chunk mesh rebuilding occurs when `m_needsRebuild` flag is set, typically aft
 
 ## Changelog
 
+- **2025-11-04**: Completed Phase 4: Underground Features (Tasks 4.1-4.4) for Assignment 4: World Generation
+  - ✅ Task 4.1: Cheese cave carving creates large open caverns using 3D Perlin noise
+  - ✅ Task 4.2: Spaghetti cave carving creates winding tunnels using smaller-scale 3D noise
+  - ✅ Task 4.3: Combined cave systems with OR logic for interesting intersections
+  - ✅ Task 4.4: User confirmed visually interesting cave patterns
+  - Dynamic surface detection prevents caves from breaking through terrain surface
+  - Safety parameters ensure caves don't affect lava layer or break surface
+  - Ready to begin Phase 5: Polish and Advanced Features (Carvers)
 - **2025-11-03**: Completed Phase 3: Surface Blocks and Features (Tasks 3A.1-3B.3) for Assignment 4: World Generation
   - Complete surface blocks and tree features system implemented in Framework module
   - Cross-chunk tree placement with thread-safe neighbor chunk modifications
   - Comprehensive biome coverage with 6 tree variants and surface height detection
-  - Ready to begin Phase 4: Underground Features (Caves)
 - **2025-11-03**: Completed Phase 2: 3D Density Terrain (Tasks 2.1-2.5) for Assignment 4: World Generation
   - ImGui debug interface enhanced with Phase 2 Testing tab for terrain validation
   - All terrain generation improvements verified through debug interface

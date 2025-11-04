@@ -18,11 +18,11 @@
 
 ## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
 
-**Status:** Phase 3 - Surface Blocks and Features ✅ COMPLETED (2025-11-03)
+**Status:** Phase 4 - Underground Features (Caves) ✅ COMPLETED (2025-11-04)
 
-**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-3 implementations.
+**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-4 implementations.
 
-### Completed Modifications (Phases 1-3)
+### Completed Modifications (Phases 1-4)
 
 **Chunk.cpp** - `GenerateTerrain()` method (lines 112-1100+)
 - **Pass 1** (lines 132-217): Per-(x,y) column calculations
@@ -36,12 +36,17 @@
   - ✅ **ADDED:** Biome-specific surface block replacement (16 biome types)
   - ✅ **FIXED:** Effective terrain height calculation to eliminate floating blocks
   - ✅ **ADDED:** Surface height detection and storage for all (x,y) columns
+- **Pass 2 (Cave Carving)** (lines 1241-1371): Cave system carving
+  - ✅ **ADDED:** Cheese cave carving using 3D Perlin noise (scale 60, octaves 2, threshold 0.45)
+  - ✅ **ADDED:** Spaghetti cave carving using 3D Perlin noise (scale 30, octaves 3, threshold 0.65)
+  - ✅ **ADDED:** Dynamic surface detection to prevent caves too close to surface
+  - ✅ **ADDED:** Safety checks for minimum depth from surface and lava layer
+  - ✅ **FIXED:** OR logic combination - either cheese OR spaghetti threshold triggers carving
 - **Pass 3** (lines 1684-1864): Tree placement system
   - ✅ **ADDED:** Tree stamp system with 6 variants (Oak, Spruce, Jungle)
   - ✅ **ADDED:** Biome-specific tree selection based on temperature/humidity
   - ✅ **ADDED:** Cross-chunk tree detection and data storage
   - ✅ **REDUCED:** Edge safety margin from 4 to 1 block for natural distribution
-  - ⏳ **TODO:** Cheese and spaghetti cave carving (Phase 4)
 
 **Chunk.hpp**
 - ✅ **ADDED:** `BiomeData` struct (6 noise values + BiomeType)
@@ -59,7 +64,7 @@
 - ✅ **ADDED:** Top/bottom slide parameters (z ranges and strengths)
 - ✅ **ADDED:** `BiomeType` enum with 16 biome types
 - ✅ **ADDED:** Tree placement parameters (noise scale, octaves, threshold, spacing)
-- ⏳ **TODO:** Cave parameters (cheese/spaghetti scales and thresholds) - Phase 4
+- ✅ **ADDED:** Cave parameters (cheese/spaghetti scales, octaves, thresholds, seed offsets) - Phase 4
 - ⏳ **TODO:** Carver parameters (ravines, rivers) - Phase 5
 
 ### Technical Implementation Details
@@ -87,12 +92,22 @@
 - Biome-specific tree selection: Temperature and humidity-based tree type mapping
 - Edge safety optimization: Reduced margin from 4 to 1 block for natural distribution
 
+**Phase 4: Underground Features (Caves)** (COMPLETED - USER VERIFIED)
+- **Cheese Caves**: Large-scale 3D Perlin noise (scale 60, octaves 2) creates big smooth caverns
+- **Spaghetti Caves**: Smaller-scale 3D Perlin noise (scale 30, octaves 3) creates winding tunnels
+- **Dynamic Surface Detection**: Checks density of blocks above to prevent caves near surface
+- **OR Logic Combination**: Either cheese OR spaghetti threshold triggers carving
+- **Safety Parameters**: Minimum 5 blocks below surface, 3 blocks above lava layer
+- **Separate Seeds**: CHEESE_NOISE_SEED_OFFSET=20, SPAGHETTI_NOISE_SEED_OFFSET=30
+- **Threshold Tuning**: Cheese 0.45 (balanced), Spaghetti 0.65 (fewer/narrower tunnels)
+- **User Verification**: Confirmed visually interesting cave patterns with natural intersections
+
 **Completed Pipeline Stages:**
 1. ✅ **Biomes** - 6 noise layers, lookup table selection (Phase 1)
 2. ✅ **3D Density** - Density formula with terrain shaping curves (Phase 2)
 3. ✅ **Surface** - Biome-appropriate surface block replacement (Phase 2)
 4. ✅ **Trees** - Place biome-specific tree stamps with cross-chunk support (Phase 3)
-5. ⏳ **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves (Phase 4)
+5. ✅ **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves (Phase 4)
 6. ⏳ **Carvers** - Add ravines and rivers for dramatic features (Phase 5)
 
 **Key Resources:**
@@ -292,6 +307,17 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 
 ## Changelog
 
+- **2025-11-04**: Completed Phase 4: Underground Features (Tasks 4.1-4.4) for Assignment 4: World Generation
+  - ✅ Task 4.1: Implemented cheese cave carving using 3D Perlin noise (scale 60, octaves 2, threshold 0.45)
+  - ✅ Task 4.2: Implemented spaghetti cave carving using 3D Perlin noise (scale 30, octaves 3, threshold 0.65)
+  - ✅ Task 4.3: Combined cave systems with OR logic for interesting intersections
+  - ✅ Task 4.4: Testing checkpoint - User confirmed visually interesting cave patterns
+  - Fixed critical bug: Dynamic surface detection instead of static m_surfaceHeight[] lookup
+  - Implemented OR logic combination: either cheese OR spaghetti threshold triggers carving
+  - Added safety parameters: minimum 5 blocks below surface, 3 blocks above lava layer
+  - Used separate noise seeds (CHEESE_SEED_OFFSET=20, SPAGHETTI_SEED_OFFSET=30)
+  - Large open caverns (cheese) and winding tunnels (spaghetti) verified working
+  - Ready to begin Phase 5: Polish and Advanced Features (Carvers)
 - **2025-11-03**: Completed Phase 3: Surface Blocks and Features (Tasks 3A.1-3B.3) for Assignment 4: World Generation
   - ✅ Task 3A.1: Implemented surface height detection and storage for all (x,y) columns
   - ✅ Task 3A.2: Added biome-specific surface block replacement for all 16 biome types

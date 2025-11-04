@@ -21,6 +21,14 @@
 ---
 
 ## Changelog
+- **2025-11-04**: Completed Phase 4: Underground Features (Tasks 4.1-4.4) for Assignment 4: World Generation
+  - ✅ Task 4.1: Cheese cave carving using 3D Perlin noise (scale 60, octaves 2, threshold 0.45)
+  - ✅ Task 4.2: Spaghetti cave carving using 3D Perlin noise (scale 30, octaves 3, threshold 0.65)
+  - ✅ Task 4.3: Combined cave systems with OR logic for interesting intersections
+  - ✅ Task 4.4: Testing checkpoint - User confirmed visually interesting cave patterns
+  - Fixed critical bug: Dynamic surface detection prevents caves too close to surface
+  - Safety parameters ensure caves don't break through surface or affect lava layer
+  - Large open caverns and winding tunnels verified working in underground terrain
 - **2025-11-03**: Completed Phase 3: Surface Blocks and Features (Tasks 3A.1-3B.3) for Assignment 4: World Generation
   - ✅ Task 3A.1: Surface height detection and storage for all terrain columns
   - ✅ Task 3A.2: Biome-specific surface block replacement for all 16 biome types
@@ -78,8 +86,8 @@ SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engin
 
 ## Current Assignment: World Generation (Assignment 4)
 
-**Status:** Phase 3 - Surface Blocks and Features ✅ COMPLETED (2025-11-03)
-**Next:** Phase 4 - Underground Features (Task 4.1: Cheese Cave Implementation)
+**Status:** Phase 4 - Underground Features (Caves) ✅ COMPLETED (2025-11-04)
+**Next:** Phase 5 - Polish and Advanced Features (Carvers)
 
 SimpleMiner is implementing Assignment 4, which upgrades procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline:
 
@@ -88,15 +96,15 @@ SimpleMiner is implementing Assignment 4, which upgrades procedural terrain gene
 - ✅ **Phase 1: Foundation** - 6D biome system with Temperature, Humidity, Continentalness, Erosion, Weirdness, Peaks & Valleys
 - ✅ **Phase 2: 3D Density Terrain** - Volumetric terrain generation with terrain shaping curves and biome-specific surfaces
 - ✅ **Phase 3: Surface Blocks and Features** - Biome-appropriate surface blocks and comprehensive tree system
+- ✅ **Phase 4: Underground Features (Caves)** - Cheese (caverns) and spaghetti (tunnels) cave systems with 3D noise
 
 **Remaining Phases:**
-- **Phase 4: Cave Systems** - Cheese and spaghetti cave types using 3D noise
-- **Phase 5: Carvers** - Ravines, canyons, and rivers for dramatic terrain features
+- **Phase 5: Polish and Advanced Features** - Carvers (ravines, rivers), parameter tuning, performance optimization
 
 **Key Files Modified:**
-- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with Phases 1-3 implementation
+- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with Phases 1-4 implementation
 - [Chunk.hpp](Code/Game/Framework/CLAUDE.md) - Added BiomeData, TreeStamp, CrossChunkTreeData structures
-- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - Added density, terrain shaping, and tree parameters
+- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - Added biome, density, terrain shaping, tree, and cave parameters
 
 **Planning Resources:**
 - [Development Plan](.claude/plan/development.md) - Detailed implementation phases and technical specifications
