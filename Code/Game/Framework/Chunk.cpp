@@ -397,6 +397,47 @@ static TreeStamp g_snowySpruceTree = {
 #undef L
 #undef W
 
+// Re-define macros for Cactus
+#define A BLOCK_AIR
+#define C BLOCK_CACTUS_LOG
+
+// Cactus (Vertical Column) - 3x3x5
+// Cacti are simple vertical columns, 3-5 blocks tall
+// Found in DESERT biome only (not SAVANNA, which has acacia trees)
+static TreeStamp g_cactus = {
+    3, 3, 5,    // sizeX, sizeY, sizeZ (smaller footprint)
+    1, 1,       // trunkOffsetX, trunkOffsetY (center column)
+    {
+        // Layer z=0 (bottom)
+        A,A,A,
+        A,C,A,
+        A,A,A,
+
+        // Layer z=1
+        A,A,A,
+        A,C,A,
+        A,A,A,
+
+        // Layer z=2
+        A,A,A,
+        A,C,A,
+        A,A,A,
+
+        // Layer z=3
+        A,A,A,
+        A,C,A,
+        A,A,A,
+
+        // Layer z=4 (top)
+        A,A,A,
+        A,C,A,
+        A,A,A,
+    }
+};
+
+#undef A
+#undef C
+
 //----------------------------------------------------------------------------------------------------
 Chunk::Chunk(IntVec2 const& chunkCoords)
     : m_chunkCoords(chunkCoords)
@@ -465,22 +506,13 @@ void Chunk::Render()
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
 
         // Phase 1, Task 1.1: Use Assignment 4 Dokucraft High 32px sprite sheet (matches new XML layout)
-        g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/SpriteSheet_Dokucraft_High_32px.png"));
+        g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/SpriteSheet_Faithful_64x.png"));
 
         // CRITICAL FIX: Use buffer's internal size to avoid race condition during RebuildMesh()
         // RebuildMesh() clears m_indices at line 579, causing m_indices.size() to return 0
         // This results in bright flashing when rendering with 0 indices
         // Buffer's size is stable and represents the actual GPU data
         int indexCount = m_indexBuffer->GetSize() / m_indexBuffer->GetStride();
-
-        // DEBUG: Log rendering info when chunk is dirty (being rebuilt)
-        if (m_isMeshDirty)
-        {
-            DebuggerPrintf("RENDER DURING DIRTY: Chunk(%d,%d) - indexCount=%d, m_indices.size()=%zu, bufferSize=%u, bufferStride=%u\n",
-                m_chunkCoords.x, m_chunkCoords.y,
-                indexCount, m_indices.size(),
-                m_indexBuffer->GetSize(), m_indexBuffer->GetStride());
-        }
 
         g_renderer->DrawIndexedVertexBuffer(m_vertexBuffer, m_indexBuffer, indexCount);
     }
@@ -903,6 +935,31 @@ void Chunk::GenerateTerrain()
                         BiomeType biome = SelectBiome(temperatureNormalized, humidityNormalized,
                                                        continentalness, erosion, peaksValleys);
 
+                        // DEBUG: Log detailed biome noise values for investigation
+                        if (globalX % 16 == 0 && globalY % 16 == 0)  // Log every 16th position to reduce spam
+                        {
+                            const char* biomeName = "UNKNOWN";
+                            switch (biome) {
+                                case BiomeType::OCEAN: biomeName = "OCEAN"; break;
+                                case BiomeType::DEEP_OCEAN: biomeName = "DEEP_OCEAN"; break;
+                                case BiomeType::FROZEN_OCEAN: biomeName = "FROZEN_OCEAN"; break;
+                                case BiomeType::BEACH: biomeName = "BEACH"; break;
+                                case BiomeType::SNOWY_BEACH: biomeName = "SNOWY_BEACH"; break;
+                                case BiomeType::DESERT: biomeName = "DESERT"; break;
+                                case BiomeType::SAVANNA: biomeName = "SAVANNA"; break;
+                                case BiomeType::PLAINS: biomeName = "PLAINS"; break;
+                                case BiomeType::SNOWY_PLAINS: biomeName = "SNOWY_PLAINS"; break;
+                                case BiomeType::FOREST: biomeName = "FOREST"; break;
+                                case BiomeType::JUNGLE: biomeName = "JUNGLE"; break;
+                                case BiomeType::TAIGA: biomeName = "TAIGA"; break;
+                                case BiomeType::SNOWY_TAIGA: biomeName = "SNOWY_TAIGA"; break;
+                                case BiomeType::STONY_PEAKS: biomeName = "STONY_PEAKS"; break;
+                                case BiomeType::SNOWY_PEAKS: biomeName = "SNOWY_PEAKS"; break;
+                            }
+
+
+                        }
+
                         // Cast biome enum to float for color mapping
                         noiseValue = static_cast<float>(static_cast<int>(biome));
                         break;
@@ -940,8 +997,6 @@ void Chunk::GenerateTerrain()
         SetNeedsSaving(true);
         return;  // Skip normal terrain generation
     }
-
-    // Normal terrain generation continues below...
 
     // Derive deterministic seeds for each noise channel
     unsigned int terrainSeed     = GAME_SEED;
@@ -1370,11 +1425,204 @@ void Chunk::GenerateTerrain()
                     }
                 }
 
+                // --- Assignment 4: Phase 5, Task 5A.1 - Ravine Carver ---
+                //
+                // Carve dramatic vertical slices through terrain using 2D noise paths.
+                // Ravines are VERY RARE (threshold 0.85) but create impressive geological features.
+                //
+                // Algorithm:
+                // 1. Sample 2D ravine path noise at (x,y) to determine if on ravine path
+                // 2. If on ravine path, sample secondary width noise for variable width
+                // 3. Calculate distance from ravine center (0 = center, 1 = edge)
+                // 4. Use distance to determine depth (deeper at center, shallower at edges)
+                // 5. Carve vertical slice from surface down to calculated depth
+
+                if (isSolid) // Only carve ravines through solid terrain
+                {
+                    // Sample 2D ravine path noise at this (x,y) column position
+                    unsigned int ravineSeed = GAME_SEED + RAVINE_NOISE_SEED_OFFSET;
+
+                    float ravinePathNoise = Compute2dPerlinNoise(
+                        (float)globalCoords.x,
+                        (float)globalCoords.y,
+                        RAVINE_PATH_NOISE_SCALE,        // Very large scale (800) for rare, long ravines
+                        RAVINE_PATH_NOISE_OCTAVES,      // Multiple octaves (3) for natural meandering
+                        DEFAULT_OCTAVE_PERSISTANCE,     // 0.5
+                        DEFAULT_NOISE_OCTAVE_SCALE,     // 2.0
+                        true,                           // Renormalize to [-1, 1]
+                        ravineSeed
+                    ); // Returns [-1, 1]
+
+                    // Convert to [0, 1] range for threshold comparison
+                    float ravinePathValue = (ravinePathNoise + 1.0f) * 0.5f; // Maps [-1,1] → [0,1]
+
+                    // Check if this (x,y) position is on a ravine path
+                    // Very high threshold (0.85) means ravines are rare (1-2 per ~10 chunks)
+                    if (ravinePathValue > RAVINE_PATH_THRESHOLD)
+                    {
+                        // We're on a ravine path! Now determine width and depth
+
+                        // Sample secondary width noise for variable ravine width (3-7 blocks)
+                        unsigned int widthSeed = ravineSeed + 10; // Offset seed for width variation
+
+                        float widthNoise = Compute2dPerlinNoise(
+                            (float)globalCoords.x,
+                            (float)globalCoords.y,
+                            RAVINE_WIDTH_NOISE_SCALE,       // Smaller scale (50) for local variation
+                            RAVINE_WIDTH_NOISE_OCTAVES,     // Low octaves (2) for smooth changes
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            widthSeed
+                        ); // Returns [-1, 1]
+
+                        // Convert width noise to [0, 1] and map to width range [3, 7]
+                        float widthNoiseNormalized = (widthNoise + 1.0f) * 0.5f;
+                        int ravineHalfWidth = (int)(RAVINE_WIDTH_MIN + widthNoiseNormalized * (RAVINE_WIDTH_MAX - RAVINE_WIDTH_MIN)) / 2;
+
+                        // Calculate distance from ravine center using noise as approximate center
+                        // This is simplified - we use the path noise value to estimate center position
+                        // For more accurate ravines, would need to trace actual path curves
+
+                        // Use path noise value to create a "center line" effect
+                        // Higher path values (>0.85) = closer to center, carve deeper
+                        float centerFactor = (ravinePathValue - RAVINE_PATH_THRESHOLD) / (1.0f - RAVINE_PATH_THRESHOLD);
+                        centerFactor = GetClamped(centerFactor, 0.0f, 1.0f);
+
+                        // Apply edge falloff: ravines are deepest at center, shallower at edges
+                        // centerFactor ranges [0, 1] where 1 = center, 0 = edge
+                        float depthMultiplier = centerFactor * (1.0f - RAVINE_EDGE_FALLOFF) + RAVINE_EDGE_FALLOFF;
+
+                        // Calculate ravine depth: interpolate between min and max based on center factor
+                        int ravineDepth = (int)(RAVINE_DEPTH_MIN + depthMultiplier * (RAVINE_DEPTH_MAX - RAVINE_DEPTH_MIN));
+
+                        // Get surface height for this column (calculated in Pass 3, but we need estimate)
+                        // For now, estimate surface as the first air block we'd encounter going up
+                        // ALTERNATIVE: Use effective terrain height from density calculation
+
+                        BiomeData& ravBiomeData = m_biomeData[idxXY];
+                        float ravContinentalnessOffset = RangeMap(ravBiomeData.continentalness, -1.2f, 1.0f,
+                                                                  CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                        float ravPvOffset = RangeMap(ravBiomeData.peaksValleys, -1.0f, 1.0f,
+                                                     PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+                        float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + ravContinentalnessOffset + ravPvOffset;
+
+                        // Calculate ravine bottom Z coordinate
+                        int ravineBottomZ = (int)(estimatedSurfaceHeight - ravineDepth);
+                        ravineBottomZ = (std::max)(ravineBottomZ, LAVA_Z + 1); // Don't carve below lava
+
+                        // Carve this block if we're between surface and ravine bottom
+                        if (globalCoords.z >= ravineBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
+                        {
+                            isSolid = false; // Carve out this block (convert to air)
+                        }
+                    }
+                }
+
                 // --- Block Type Assignment ---
 
                 uint8_t blockType = BLOCK_AIR; // Default to air
+                bool isRiverWater = false;      // Track if this block should be river water
 
-                if (isSolid)
+                // --- Assignment 4: Phase 5, Task 5A.2 - River Carver ---
+                //
+                // Carve shallow water channels through terrain using 2D noise paths.
+                // Rivers are more common than ravines (threshold 0.70) and fill with water.
+                //
+                // Algorithm:
+                // 1. Sample 2D river path noise at (x,y) to determine if on river path
+                // 2. If on river path, sample secondary width noise for variable width
+                // 3. Calculate shallow channel depth (3-8 blocks from surface)
+                // 4. Carve channel and fill with water
+                // 5. Use sand/gravel for riverbed
+
+                if (isSolid) // Only carve rivers through solid terrain
+                {
+                    // Sample 2D river path noise at this (x,y) column position
+                    unsigned int riverSeed = GAME_SEED + RIVER_NOISE_SEED_OFFSET;
+
+                    float riverPathNoise = Compute2dPerlinNoise(
+                        (float)globalCoords.x,
+                        (float)globalCoords.y,
+                        RIVER_PATH_NOISE_SCALE,         // Large scale (600) for long, winding rivers
+                        RIVER_PATH_NOISE_OCTAVES,       // Multiple octaves (3) for natural meandering
+                        DEFAULT_OCTAVE_PERSISTANCE,     // 0.5
+                        DEFAULT_NOISE_OCTAVE_SCALE,     // 2.0
+                        true,                           // Renormalize to [-1, 1]
+                        riverSeed
+                    ); // Returns [-1, 1]
+
+                    // Convert to [0, 1] range for threshold comparison
+                    float riverPathValue = (riverPathNoise + 1.0f) * 0.5f; // Maps [-1,1] → [0,1]
+
+                    // Check if this (x,y) position is on a river path
+                    // Moderate threshold (0.70) means rivers are more common than ravines
+                    if (riverPathValue > RIVER_PATH_THRESHOLD)
+                    {
+                        // We're on a river path! Now determine width and depth
+
+                        // Sample secondary width noise for variable river width (5-12 blocks)
+                        unsigned int widthSeed = riverSeed + 10; // Offset seed for width variation
+
+                        float widthNoise = Compute2dPerlinNoise(
+                            (float)globalCoords.x,
+                            (float)globalCoords.y,
+                            RIVER_WIDTH_NOISE_SCALE,        // Smaller scale (40) for local variation
+                            RIVER_WIDTH_NOISE_OCTAVES,      // Low octaves (2) for smooth changes
+                            DEFAULT_OCTAVE_PERSISTANCE,
+                            DEFAULT_NOISE_OCTAVE_SCALE,
+                            true,
+                            widthSeed
+                        ); // Returns [-1, 1]
+
+                        // Calculate distance from river center using noise as approximate center
+                        // Use path noise value to create a "center line" effect
+                        float centerFactor = (riverPathValue - RIVER_PATH_THRESHOLD) / (1.0f - RIVER_PATH_THRESHOLD);
+                        centerFactor = GetClamped(centerFactor, 0.0f, 1.0f);
+
+                        // Apply edge falloff: rivers are deepest at center, shallower at edges
+                        float depthMultiplier = centerFactor * (1.0f - RIVER_EDGE_FALLOFF) + RIVER_EDGE_FALLOFF;
+
+                        // Calculate river depth: shallow channels (3-8 blocks from surface)
+                        int riverDepth = (int)(RIVER_DEPTH_MIN + depthMultiplier * (RIVER_DEPTH_MAX - RIVER_DEPTH_MIN));
+
+                        // Estimate surface height using biome parameters
+                        BiomeData& rivBiomeData = m_biomeData[idxXY];
+                        float rivContinentalnessOffset = RangeMap(rivBiomeData.continentalness, -1.2f, 1.0f,
+                                                                  CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                        float rivPvOffset = RangeMap(rivBiomeData.peaksValleys, -1.0f, 1.0f,
+                                                     PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+                        float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + rivContinentalnessOffset + rivPvOffset;
+
+                        // Calculate river bottom Z coordinate
+                        int riverBottomZ = (int)(estimatedSurfaceHeight - riverDepth);
+                        riverBottomZ = (std::max)(riverBottomZ, SEA_LEVEL_Z - 5); // Don't carve too far below sea level
+
+                        // Determine if this block should be carved out or filled with water
+                        if (globalCoords.z >= riverBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
+                        {
+                            // Carve the channel
+                            isSolid = false;
+
+                            // Fill with water above the riverbed
+                            // Leave bottom 1-2 blocks as carved terrain (will become sand/gravel in block assignment)
+                            if (globalCoords.z > riverBottomZ + 1)
+                            {
+                                // This block should be water
+                                blockType = BLOCK_WATER;
+                                isRiverWater = true;
+                            }
+                            else
+                            {
+                                // Riverbed - will be assigned sand or gravel later
+                                blockType = BLOCK_SAND; // Default riverbed material
+                                isRiverWater = false;
+                            }
+                        }
+                    }
+                }
+
+                if (isSolid && !isRiverWater)
                 {
                     // --- Solid terrain blocks ---
 
@@ -1825,6 +2073,18 @@ void Chunk::GenerateTerrain()
     // This allows trees much closer to chunk edges while preventing out-of-bounds access
     int constexpr CROSS_CHUNK_SAFETY_MARGIN = 1;
 
+    // DEBUG: Count biomes in this chunk (focus on tree-bearing biomes only)
+    {
+        int desertCount = 0, snowyPlainsCount = 0, snowyTaigaCount = 0;
+        for (int i = 0; i < CHUNK_SIZE_X * CHUNK_SIZE_Y; i++)
+        {
+            BiomeType b = m_biomeData[i].biomeType;
+            if (b == BiomeType::DESERT) desertCount++;
+            else if (b == BiomeType::SNOWY_PLAINS) snowyPlainsCount++;
+            else if (b == BiomeType::SNOWY_TAIGA) snowyTaigaCount++;
+        }
+    }
+
     for (int y = CROSS_CHUNK_SAFETY_MARGIN; y < CHUNK_SIZE_Y - CROSS_CHUNK_SAFETY_MARGIN; y++)
     {
         for (int x = CROSS_CHUNK_SAFETY_MARGIN; x < CHUNK_SIZE_X - CROSS_CHUNK_SAFETY_MARGIN; x++)
@@ -1832,21 +2092,43 @@ void Chunk::GenerateTerrain()
             int columnIdx = x + y * CHUNK_SIZE_X;
             int surfaceZ = m_surfaceHeight[columnIdx];
 
+            // Get biome type for this column (moved BEFORE early exits for debugging)
+            BiomeType biome = m_biomeData[columnIdx].biomeType;
+
+            // DEBUG: Log EVERY desert/snowy_plains/snowy_taiga column before filtering
+            // (Excluding SNOWY_PEAKS to reduce spam - peaks don't have trees anyway)
+            if (biome == BiomeType::DESERT ||
+                biome == BiomeType::SNOWY_PLAINS ||
+                biome == BiomeType::SNOWY_TAIGA)
+            {
+                int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
+                int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
+                bool isUnderwater = (surfaceZ < SEA_LEVEL_Z);
+          bool canGrowUnderwater = (biome == BiomeType::DESERT ||
+                                   biome == BiomeType::SNOWY_PLAINS ||
+                                   biome == BiomeType::SNOWY_TAIGA);
+            }
+
             // Skip if no surface found in this column
             if (surfaceZ < 0) continue;
 
             // Don't place trees underwater (below sea level)
             // This prevents trees from spawning on ocean floors or submerged beaches
-            if (surfaceZ < SEA_LEVEL_Z) continue;
-
-            // Get biome type for this column
-            BiomeType biome = m_biomeData[columnIdx].biomeType;
+            // EXCEPTION: Allow desert cactus and snow trees even underwater for better visibility
+            if (surfaceZ < SEA_LEVEL_Z &&
+                biome != BiomeType::DESERT &&
+                biome != BiomeType::SNOWY_PLAINS &&
+                biome != BiomeType::SNOWY_TAIGA) continue;
 
             // Check if this biome should have trees
             TreeStamp* treeStamp = nullptr;
 
             switch (biome)
             {
+                case BiomeType::PLAINS:
+                    treeStamp = &g_oakTreeSmall;  // Oak trees in plains
+                    break;
+
                 case BiomeType::FOREST:
                     treeStamp = &g_oakTreeSmall;  // Oak trees in forests
                     break;
@@ -1863,13 +2145,16 @@ void Chunk::GenerateTerrain()
                     treeStamp = &g_jungleTreeBush;  // Jungle bushes in jungle
                     break;
 
-                case BiomeType::SAVANNA:
                 case BiomeType::DESERT:
-                    treeStamp = &g_acaciaTree;  // Acacia in savanna/desert
+                    treeStamp = &g_cactus;  // Cactus in desert
                     break;
 
-                case BiomeType::PLAINS:
-                    treeStamp = &g_birchTree;  // Birch in plains (variant)
+                case BiomeType::SAVANNA:
+                    treeStamp = &g_acaciaTree;  // Acacia in savanna
+                    break;
+
+                case BiomeType::SNOWY_PLAINS:
+                    treeStamp = &g_snowySpruceTree;  // Snowy spruce in snowy plains
                     break;
 
                 // Other biomes don't have trees
@@ -1878,7 +2163,6 @@ void Chunk::GenerateTerrain()
                 case BiomeType::FROZEN_OCEAN:
                 case BiomeType::BEACH:
                 case BiomeType::SNOWY_BEACH:
-                case BiomeType::SNOWY_PLAINS:
                 case BiomeType::STONY_PEAKS:
                 case BiomeType::SNOWY_PEAKS:
                 default:
@@ -1891,6 +2175,26 @@ void Chunk::GenerateTerrain()
             // Calculate global coordinates for tree noise sampling
             int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
             int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
+
+            // DEBUG: Log ALL biome types to understand distribution
+            const char* biomeName = "UNKNOWN";
+            switch (biome) {
+                case BiomeType::OCEAN: biomeName = "OCEAN"; break;
+                case BiomeType::DEEP_OCEAN: biomeName = "DEEP_OCEAN"; break;
+                case BiomeType::FROZEN_OCEAN: biomeName = "FROZEN_OCEAN"; break;
+                case BiomeType::BEACH: biomeName = "BEACH"; break;
+                case BiomeType::SNOWY_BEACH: biomeName = "SNOWY_BEACH"; break;
+                case BiomeType::DESERT: biomeName = "DESERT"; break;
+                case BiomeType::SAVANNA: biomeName = "SAVANNA"; break;
+                case BiomeType::PLAINS: biomeName = "PLAINS"; break;
+                case BiomeType::SNOWY_PLAINS: biomeName = "SNOWY_PLAINS"; break;
+                case BiomeType::FOREST: biomeName = "FOREST"; break;
+                case BiomeType::JUNGLE: biomeName = "JUNGLE"; break;
+                case BiomeType::TAIGA: biomeName = "TAIGA"; break;
+                case BiomeType::SNOWY_TAIGA: biomeName = "SNOWY_TAIGA"; break;
+                case BiomeType::STONY_PEAKS: biomeName = "STONY_PEAKS"; break;
+                case BiomeType::SNOWY_PEAKS: biomeName = "SNOWY_PEAKS"; break;
+            }
 
             // Sample tree noise at this location
             // Use deterministic seed based on GAME_SEED for consistent trees
@@ -1908,6 +2212,18 @@ void Chunk::GenerateTerrain()
             // Convert noise from [-1, 1] to [0, 1] for threshold comparison
             float treeNoise01 = (treeNoise + 1.0f) * 0.5f;
 
+            // DEBUG: For desert/snow, log ALL noise attempts regardless of threshold
+            // TEMPORARY: Also debug PLAINS to see why trees aren't being placed
+            bool isDebugBiome = (biome == BiomeType::DESERT ||
+                                biome == BiomeType::SNOWY_PLAINS ||
+                                biome == BiomeType::SNOWY_TAIGA ||
+                                biome == BiomeType::PLAINS); // TEMPORARY DEBUG
+
+
+
+
+
+
             // Check if we should place a tree here
             if (treeNoise01 < TREE_PLACEMENT_THRESHOLD) continue;
 
@@ -1915,17 +2231,22 @@ void Chunk::GenerateTerrain()
             int surfaceBlockIdx = x + y * CHUNK_SIZE_X + surfaceZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
             uint8_t surfaceBlockType = m_blocks[surfaceBlockIdx].m_typeIndex;
 
-            // Trees can only grow on grass, dirt, or sand
+
+            // Trees can only grow on grass, dirt, sand, or snow
             bool isSuitableSurface = (
                 surfaceBlockType == BLOCK_GRASS ||
                 surfaceBlockType == BLOCK_GRASS_LIGHT ||
                 surfaceBlockType == BLOCK_GRASS_DARK ||
                 surfaceBlockType == BLOCK_GRASS_YELLOW ||
                 surfaceBlockType == BLOCK_DIRT ||
-                surfaceBlockType == BLOCK_SAND
+                surfaceBlockType == BLOCK_SAND ||
+                surfaceBlockType == BLOCK_SNOW  // Allow trees on snow (for SNOWY_TAIGA)
             );
 
+
             if (!isSuitableSurface) continue;
+
+
 
             // Place tree stamp at this location
             // Tree origin is at trunk center-bottom, so offset by trunk offset values
@@ -1995,7 +2316,7 @@ void Chunk::GenerateTerrain()
                         // Only place tree blocks in air (don't overwrite existing solid blocks)
                         if (m_blocks[chunkBlockIdx].m_typeIndex == BLOCK_AIR)
                         {
-                            m_blocks[chunkBlockIdx].m_typeIndex = stampBlockType;
+                            SetBlock(worldX, worldY, worldZ, stampBlockType);
                         }
                     }
                 }
@@ -2085,6 +2406,7 @@ void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockI
     // Check if block type is actually changing
     if (m_blocks[index].m_typeIndex != blockTypeIndex)
     {
+
         // Set the new block type
         m_blocks[index].m_typeIndex = blockTypeIndex;
 

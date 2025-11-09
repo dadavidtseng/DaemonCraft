@@ -196,7 +196,7 @@ void World::ActivateChunk(IntVec2 const& chunkCoords)
 {
     // Check if chunk is already active (with mutex protection)
     {
-        std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+        std::lock_guard lock(m_activeChunksMutex);
         if (m_activeChunks.contains(chunkCoords))
         {
             return; // Already active
@@ -205,7 +205,7 @@ void World::ActivateChunk(IntVec2 const& chunkCoords)
 
     // Check if chunk is already queued for generation (with mutex protection)
     {
-        std::lock_guard<std::mutex> lock(m_queuedChunksMutex);
+        std::lock_guard lock(m_queuedChunksMutex);
         if (m_queuedGenerateChunks.find(chunkCoords) != m_queuedGenerateChunks.end())
         {
             return; // Already queued for generation
@@ -732,12 +732,16 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
 
                     IntVec2 testChunk(lookaheadChunk.x + dx, lookaheadChunk.y + dy);
 
-                    // Phase 0, Task 0.6: Enforce fixed world bounds
+                    // Phase 0, Task 0.6: Fixed world bounds DISABLED for infinite world generation
+                    // Previously limited to 16x16 chunks (256 total) for testing
+                    // Now supports infinite terrain generation
+                    /*
                     if (testChunk.x < WORLD_MIN_CHUNK_X || testChunk.x > WORLD_MAX_CHUNK_X ||
                         testChunk.y < WORLD_MIN_CHUNK_Y || testChunk.y > WORLD_MAX_CHUNK_Y)
                     {
                         continue;
                     }
+                    */
 
                     // Fast O(1) lookups without mutex locks
                     if (activeSet.find(testChunk) != activeSet.end())
@@ -778,13 +782,16 @@ IntVec2 World::FindNearestMissingChunkInRange(Vec3 const& cameraPos) const
 
                 IntVec2 testChunk(cameraChunkCoords.x + dx, cameraChunkCoords.y + dy);
 
-                // Phase 0, Task 0.6: Enforce fixed world bounds
-                // Skip chunks outside the defined world limits
+                // Phase 0, Task 0.6: Fixed world bounds DISABLED for infinite world generation
+                // Previously limited to 16x16 chunks (256 total) for testing
+                // Now supports infinite terrain generation
+                /*
                 if (testChunk.x < WORLD_MIN_CHUNK_X || testChunk.x > WORLD_MAX_CHUNK_X ||
                     testChunk.y < WORLD_MIN_CHUNK_Y || testChunk.y > WORLD_MAX_CHUNK_Y)
                 {
                     continue;
                 }
+                */
 
                 // Fast O(1) lookups without mutex locks
                 if (activeSet.find(testChunk) != activeSet.end())

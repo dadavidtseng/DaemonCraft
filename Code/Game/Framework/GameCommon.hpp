@@ -79,7 +79,7 @@ unsigned int constexpr HUMIDITY_NOISE_OCTAVES = 4u;
 // Temperature Parameters
 // Assignment 4: Updated to match official Minecraft frequencies (FREQ_T = 1.0 / 8192.0)
 float constexpr        TEMPERATURE_RAW_NOISE_SCALE = 0.0075f;
-float constexpr        TEMPERATURE_NOISE_SCALE     = 8192.f;
+float constexpr        TEMPERATURE_NOISE_SCALE     = 4096.f;
 unsigned int constexpr TEMPERATURE_NOISE_OCTAVES   = 4u;
 
 // Hill/Mountain Parameters
@@ -193,6 +193,52 @@ int constexpr MIN_CAVE_DEPTH_FROM_SURFACE = 5;           // Blocks below surface
 int constexpr MIN_CAVE_HEIGHT_ABOVE_LAVA = 3;            // Don't carve too close to lava layer
 
 //----------------------------------------------------------------------------------------------------
+// Assignment 4: Ravine Carver Parameters (Phase 5, Task 5A.1)
+//----------------------------------------------------------------------------------------------------
+// Ravines are dramatic vertical cuts through terrain using 2D noise paths
+// They create rare but impressive geological features
+
+// Ravine Path Noise Parameters (2D)
+float constexpr RAVINE_PATH_NOISE_SCALE = 800.f;         // Very large scale for rare, long ravines
+unsigned int constexpr RAVINE_PATH_NOISE_OCTAVES = 3u;   // Multiple octaves for natural meandering
+float constexpr RAVINE_PATH_THRESHOLD = 0.85f;           // Very high threshold = rare (1-2 per ~10 chunks)
+unsigned int constexpr RAVINE_NOISE_SEED_OFFSET = 40;    // Seed offset from GAME_SEED
+
+// Ravine Width Noise Parameters (secondary 2D noise for variation)
+float constexpr RAVINE_WIDTH_NOISE_SCALE = 50.f;         // Smaller scale for local width variation
+unsigned int constexpr RAVINE_WIDTH_NOISE_OCTAVES = 2u;  // Low octaves for smooth width changes
+int constexpr RAVINE_WIDTH_MIN = 3;                      // Minimum ravine width (blocks)
+int constexpr RAVINE_WIDTH_MAX = 7;                      // Maximum ravine width (blocks)
+
+// Ravine Depth Parameters
+int constexpr RAVINE_DEPTH_MIN = 40;                     // Minimum depth from surface (shallow ravines)
+int constexpr RAVINE_DEPTH_MAX = 80;                     // Maximum depth from surface (deep ravines)
+float constexpr RAVINE_EDGE_FALLOFF = 0.3f;             // Controls how steeply walls taper at edges (0-1)
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 4: River Carver Parameters (Phase 5, Task 5A.2)
+//----------------------------------------------------------------------------------------------------
+// Rivers are shallow water channels that carve through terrain
+// They create natural water features that meander across the landscape
+
+// River Path Noise Parameters (2D)
+float constexpr RIVER_PATH_NOISE_SCALE = 600.f;         // Large scale for long, winding rivers
+unsigned int constexpr RIVER_PATH_NOISE_OCTAVES = 3u;   // Multiple octaves for natural meandering
+float constexpr RIVER_PATH_THRESHOLD = 0.70f;           // Moderate threshold for more common rivers
+unsigned int constexpr RIVER_NOISE_SEED_OFFSET = 50;    // Seed offset from GAME_SEED
+
+// River Width Noise Parameters (secondary 2D noise for variation)
+float constexpr RIVER_WIDTH_NOISE_SCALE = 40.f;         // Smaller scale for local width variation
+unsigned int constexpr RIVER_WIDTH_NOISE_OCTAVES = 2u;  // Low octaves for smooth width changes
+int constexpr RIVER_WIDTH_MIN = 5;                      // Minimum river width (blocks)
+int constexpr RIVER_WIDTH_MAX = 12;                     // Maximum river width (blocks)
+
+// River Depth Parameters
+int constexpr RIVER_DEPTH_MIN = 3;                      // Minimum depth from surface (shallow rivers)
+int constexpr RIVER_DEPTH_MAX = 8;                      // Maximum depth from surface (deep rivers)
+float constexpr RIVER_EDGE_FALLOFF = 0.4f;             // Controls how steeply banks slope at edges (0-1)
+
+//----------------------------------------------------------------------------------------------------
 // Assignment 4: Tree Placement Parameters (Phase 3, Task 3B.2)
 //----------------------------------------------------------------------------------------------------
 // Trees are placed using noise-based sampling after surface generation.
@@ -201,7 +247,7 @@ int constexpr MIN_CAVE_HEIGHT_ABOVE_LAVA = 3;            // Don't carve too clos
 // Tree Noise Parameters
 float constexpr TREE_NOISE_SCALE = 10.f;              // Small scale for local variation
 unsigned int constexpr TREE_NOISE_OCTAVES = 2u;       // Low octaves for performance
-float constexpr TREE_PLACEMENT_THRESHOLD = 0.8f;      // Higher threshold = sparser trees
+float constexpr TREE_PLACEMENT_THRESHOLD = 0.45f;    // FIXED: Lowered to match actual noise values (15% coverage)
 
 // Tree Spacing Parameters
 int constexpr MIN_TREE_SPACING = 3;                   // Minimum blocks between tree trunks
