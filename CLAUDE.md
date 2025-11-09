@@ -21,6 +21,18 @@
 ---
 
 ## Changelog
+- **2025-11-08**: Updated planning documentation to reflect completed Phase 5A implementation
+  - Updated development.md and task-pointer.md with Phase 5A completion status
+  - Documented ravine carver implementation (Chunk.cpp lines 1430-1520)
+  - Documented river carver implementation (Chunk.cpp lines 1527-1623)
+  - Phase 5A (Carvers) mostly complete, Phase 5B (Tuning) status unknown
+- **Date Unknown**: Completed Phase 5A: Carvers - Ravines and Rivers (Tasks 5A.1-5A.2) for Assignment 4: World Generation
+  - ✅ Task 5A.1: Ravine carver with 2D noise paths, dramatic vertical cuts (40-80 blocks deep, 3-7 wide)
+  - ✅ Task 5A.2: River carver with shallow water channels (3-8 blocks deep, 5-12 wide) filled with water
+  - Both carvers use secondary width noise for natural variation
+  - Ravines very rare (threshold 0.85), rivers more common (threshold 0.70)
+  - All parameters defined in GameCommon.hpp (lines 202-216, 225-239)
+  - Task 5A.3 testing status unknown - needs user verification
 - **2025-11-04**: Completed Phase 4: Underground Features (Tasks 4.1-4.4) for Assignment 4: World Generation
   - ✅ Task 4.1: Cheese cave carving using 3D Perlin noise (scale 60, octaves 2, threshold 0.45)
   - ✅ Task 4.2: Spaghetti cave carving using 3D Perlin noise (scale 30, octaves 3, threshold 0.65)
@@ -86,8 +98,8 @@ SimpleMiner (internally named DaemonCraft) is a modern 3D voxel-based game engin
 
 ## Current Assignment: World Generation (Assignment 4)
 
-**Status:** Phase 4 - Underground Features (Caves) ✅ COMPLETED (2025-11-04)
-**Next:** Phase 5 - Polish and Advanced Features (Carvers)
+**Status:** Phase 5A - Carvers (Ravines/Rivers) ✅ MOSTLY COMPLETED (Date Unknown)
+**Next:** Phase 5B - Parameter Tuning and Final Polish (Testing, Optimization, Bug Fixing)
 
 SimpleMiner is implementing Assignment 4, which upgrades procedural terrain generation from simple 2D Perlin noise to a Minecraft-inspired multi-stage pipeline:
 
@@ -97,9 +109,10 @@ SimpleMiner is implementing Assignment 4, which upgrades procedural terrain gene
 - ✅ **Phase 2: 3D Density Terrain** - Volumetric terrain generation with terrain shaping curves and biome-specific surfaces
 - ✅ **Phase 3: Surface Blocks and Features** - Biome-appropriate surface blocks and comprehensive tree system
 - ✅ **Phase 4: Underground Features (Caves)** - Cheese (caverns) and spaghetti (tunnels) cave systems with 3D noise
+- ✅ **Phase 5A: Carvers (Ravines/Rivers)** - Dramatic ravine vertical cuts and shallow water-filled river channels
 
 **Remaining Phases:**
-- **Phase 5: Polish and Advanced Features** - Carvers (ravines, rivers), parameter tuning, performance optimization
+- **Phase 5B: Parameter Tuning and Final Polish** - Testing, visual quality pass, performance optimization, bug fixing
 
 **Key Files Modified:**
 - [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with Phases 1-4 implementation

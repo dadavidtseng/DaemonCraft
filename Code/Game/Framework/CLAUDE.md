@@ -18,11 +18,11 @@
 
 ## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
 
-**Status:** Phase 4 - Underground Features (Caves) ✅ COMPLETED (2025-11-04)
+**Status:** Phase 5A - Carvers (Ravines/Rivers) ✅ MOSTLY COMPLETED (Date Unknown)
 
-**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-4 implementations.
+**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-5A implementations.
 
-### Completed Modifications (Phases 1-4)
+### Completed Modifications (Phases 1-5A)
 
 **Chunk.cpp** - `GenerateTerrain()` method (lines 112-1100+)
 - **Pass 1** (lines 132-217): Per-(x,y) column calculations
@@ -42,6 +42,12 @@
   - ✅ **ADDED:** Dynamic surface detection to prevent caves too close to surface
   - ✅ **ADDED:** Safety checks for minimum depth from surface and lava layer
   - ✅ **FIXED:** OR logic combination - either cheese OR spaghetti threshold triggers carving
+- **Pass 2 (Carvers)** (lines 1430-1623): Ravine and river carving - **Phase 5A**
+  - ✅ **ADDED:** Ravine carver using 2D noise paths (lines 1430-1520)
+  - ✅ **ADDED:** River carver using 2D noise paths (lines 1527-1623)
+  - ✅ **ADDED:** Variable width and depth calculations for both features
+  - ✅ **ADDED:** Water filling for rivers with sand riverbeds
+  - ✅ **ADDED:** Edge falloff for natural terrain transitions
 - **Pass 3** (lines 1684-1864): Tree placement system
   - ✅ **ADDED:** Tree stamp system with 6 variants (Oak, Spruce, Jungle)
   - ✅ **ADDED:** Biome-specific tree selection based on temperature/humidity
@@ -65,7 +71,14 @@
 - ✅ **ADDED:** `BiomeType` enum with 16 biome types
 - ✅ **ADDED:** Tree placement parameters (noise scale, octaves, threshold, spacing)
 - ✅ **ADDED:** Cave parameters (cheese/spaghetti scales, octaves, thresholds, seed offsets) - Phase 4
-- ⏳ **TODO:** Carver parameters (ravines, rivers) - Phase 5
+- ✅ **ADDED:** Ravine carver parameters (lines 202-216) - Phase 5A
+  - Path noise scale: 800, octaves: 3, threshold: 0.85 (very rare)
+  - Width noise scale: 50, octaves: 2, min/max width: 3-7 blocks
+  - Depth range: 40-80 blocks, edge falloff: 0.3
+- ✅ **ADDED:** River carver parameters (lines 225-239) - Phase 5A
+  - Path noise scale: 600, octaves: 3, threshold: 0.70 (more common)
+  - Width noise scale: 40, octaves: 2, min/max width: 5-12 blocks
+  - Depth range: 3-8 blocks, edge falloff: 0.4
 
 ### Technical Implementation Details
 
@@ -102,13 +115,33 @@
 - **Threshold Tuning**: Cheese 0.45 (balanced), Spaghetti 0.65 (fewer/narrower tunnels)
 - **User Verification**: Confirmed visually interesting cave patterns with natural intersections
 
+**Phase 5A: Carvers - Ravines and Rivers** (MOSTLY COMPLETED - DATE UNKNOWN)
+- **Ravine Carver**: 2D noise path system for dramatic vertical cuts
+  - Very high threshold (0.85) ensures ravines are extremely rare (1-2 per ~10 chunks)
+  - Variable width using secondary noise (3-7 blocks wide)
+  - Depth ramping from edges to center (40-80 blocks deep from surface)
+  - Edge falloff (0.3) creates natural wall tapering for realistic geology
+  - Surface height estimation using biome parameters (continentalness + peaks & valleys)
+  - Safety checks: Don't carve below lava layer (LAVA_Z + 1)
+- **River Carver**: 2D noise path system for shallow water channels
+  - Moderate threshold (0.70) makes rivers more common than ravines
+  - Variable width using secondary noise (5-12 blocks wide)
+  - Shallow depth (3-8 blocks from surface) for natural river channels
+  - Water filling (BLOCK_WATER) above riverbed layer
+  - Sand riverbed (BLOCK_SAND) at channel bottom for realistic material
+  - Edge falloff (0.4) creates gentle bank slopes
+  - Safety checks: Don't carve too far below sea level (SEA_LEVEL_Z - 5)
+- **Implementation**: Both carvers in Pass 2 (Chunk.cpp lines 1430-1623)
+- **Testing Status**: Unknown - needs user verification for visual quality
+
 **Completed Pipeline Stages:**
 1. ✅ **Biomes** - 6 noise layers, lookup table selection (Phase 1)
 2. ✅ **3D Density** - Density formula with terrain shaping curves (Phase 2)
 3. ✅ **Surface** - Biome-appropriate surface block replacement (Phase 2)
 4. ✅ **Trees** - Place biome-specific tree stamps with cross-chunk support (Phase 3)
 5. ✅ **Caves** - Carve cheese (caverns) and spaghetti (tunnels) caves (Phase 4)
-6. ⏳ **Carvers** - Add ravines and rivers for dramatic features (Phase 5)
+6. ✅ **Carvers** - Ravines and rivers implemented with 2D noise paths (Phase 5A)
+7. ⏳ **Tuning** - Parameter optimization and final polish (Phase 5B)
 
 **Key Resources:**
 - [Development Plan](../../../.claude/plan/development.md) - Complete technical specifications
@@ -307,6 +340,21 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 
 ## Changelog
 
+- **2025-11-08**: Updated documentation to reflect completed Phase 5A implementation
+  - Updated Assignment 4 status section with Phase 5A carvers information
+  - Documented ravine carver implementation details (Chunk.cpp lines 1430-1520)
+  - Documented river carver implementation details (Chunk.cpp lines 1527-1623)
+  - Added all carver parameters to GameCommon.hpp documentation
+  - Updated completed pipeline stages to include Phase 5A carvers
+- **Date Unknown**: Completed Phase 5A: Carvers - Ravines and Rivers (Tasks 5A.1-5A.2) for Assignment 4: World Generation
+  - ✅ Task 5A.1: Implemented ravine carver using 2D noise paths (Chunk.cpp lines 1430-1520)
+  - ✅ Task 5A.2: Implemented river carver using 2D noise paths (Chunk.cpp lines 1527-1623)
+  - Ravines: Very rare (threshold 0.85), 3-7 blocks wide, 40-80 blocks deep
+  - Rivers: More common (threshold 0.70), 5-12 blocks wide, 3-8 blocks deep
+  - Both use secondary width noise for variable dimensions
+  - Rivers filled with BLOCK_WATER, sand riverbeds (BLOCK_SAND)
+  - All parameters defined in GameCommon.hpp (lines 202-216 ravines, 225-239 rivers)
+  - Task 5A.3 testing status unknown - needs user verification
 - **2025-11-04**: Completed Phase 4: Underground Features (Tasks 4.1-4.4) for Assignment 4: World Generation
   - ✅ Task 4.1: Implemented cheese cave carving using 3D Perlin noise (scale 60, octaves 2, threshold 0.45)
   - ✅ Task 4.2: Implemented spaghetti cave carving using 3D Perlin noise (scale 30, octaves 3, threshold 0.65)

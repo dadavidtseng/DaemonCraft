@@ -230,6 +230,9 @@ A: Multiple cameras exist: m_screenCamera for UI, m_worldCamera for 3D gameplay.
 
 ## Changelog
 
+- **2025-11-08**: Assignment 4 Phase 5A (Carvers) completed in Framework module
+  - World class continues to manage chunk activation and job processing for all world generation phases
+  - Ravine and river carvers now part of terrain generation pipeline
 - **2025-11-01**: Completed Phase 0 prerequisites (Tasks 0.1-0.7) for Assignment 4: World Generation
   - ✅ World class chunk management optimizations complete
   - ✅ Thread-safe job processing and chunk state transitions

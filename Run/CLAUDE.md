@@ -17,7 +17,7 @@
 
 ## Assignment 4: World Generation - Asset Requirements
 
-**Status:** Phase 2 - 3D Density Terrain ✅ COMPLETED (2025-11-03)
+**Status:** Phase 5A - Carvers (Ravines/Rivers) ✅ MOSTLY COMPLETED (Date Unknown)
 
 **Asset Integration:** New sprite sheets and block definitions have been successfully integrated to support biome-specific blocks (trees, leaves, surface variants).
 
@@ -209,13 +209,15 @@ A: Yes, GameConfig.xml and BlockSpriteSheet_BlockDefinitions.xml are loaded at r
 
 ## Changelog
 
+- **2025-11-08**: Assignment 4 Phase 5A (Carvers) completed in Framework module
+  - Assets continue to support all terrain generation features
+  - BLOCK_WATER and BLOCK_SAND definitions used by river carver system
 - **2025-11-03**: Completed Phase 2: 3D Density Terrain (Tasks 2.1-2.5) for Assignment 4: World Generation
   - Core chunk management system successfully integrated with 3D density terrain generation
   - Assets (sprite sheets and block definitions) verified and working with biome-specific surface blocks
   - Terrain now generates with proper biome-specific heights and surface materials
   - Surface blocks and tree features fully implemented with comprehensive biome coverage
   - Cross-chunk tree placement system ensures natural tree distribution across boundaries
-  - Ready for Phase 4: Underground Features (Caves)
 - **2025-11-03**: Completed Phase 1: Foundation (Tasks 1.1-1.4) for Assignment 4: World Generation
   - ✅ Task 1.1: Asset integration completed (new sprite sheets and BlockDefinitions.xml)
   - ✅ Tasks 1.2-1.4: Biome system fully operational with 16 biome types

@@ -218,9 +218,12 @@ A: BlockDefinition defines properties, [Chunk terrain generation](../Framework/C
 
 ## Changelog
 
+- **2025-11-08**: Assignment 4 Phase 5A (Carvers) completed in Framework module
+  - Block definitions continue to support all terrain generation phases
+  - BLOCK_WATER and BLOCK_SAND used by river carver for water channels and riverbeds
 - **2025-11-01**: Completed Phase 0 prerequisites (Tasks 0.1-0.7) for Assignment 4: World Generation
   - Core systems optimized and ready for new block definitions
-  - Awaiting Phase 1, Task 1.1: XML replacement with biome-specific block types
+  - Phase 1, Task 1.1 completed: XML replacement with biome-specific block types
 - **2025-10-26**: Initial Definition module documentation created
   - Documented BlockDefinition system and XML configuration
   - Added Assignment 4 context for new block types and asset requirements
