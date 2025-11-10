@@ -320,6 +320,7 @@
         <ClCompile Include="Framework/ChunkSaveJob.cpp"/>
         <ClCompile Include="Framework/GameCommon.cpp"/>
         <ClCompile Include="Framework/Main_Windows.cpp"/>
+        <ClCompile Include="Framework/WorldGenConfig.cpp"/>
         <ClCompile Include="Gameplay/Entity.cpp"/>
         <ClCompile Include="Gameplay/Game.cpp"/>
         <ClCompile Include="Gameplay/Player.cpp"/>
@@ -340,6 +341,7 @@
         <ClInclude Include="Framework/ChunkMeshJob.hpp"/>
         <ClInclude Include="Framework/ChunkSaveJob.hpp"/>
         <ClInclude Include="Framework/GameCommon.hpp"/>
+        <ClInclude Include="Framework/WorldGenConfig.hpp"/>
         <ClInclude Include="Gameplay/Entity.hpp"/>
         <ClInclude Include="Gameplay/Game.hpp"/>
         <ClInclude Include="Gameplay/Player.hpp"/>

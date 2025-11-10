@@ -28,7 +28,13 @@
     <ClCompile Include="Framework/Main_Windows.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
+    <ClCompile Include="Framework/WorldGenConfig.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
     <ClCompile Include="Framework/ChunkGenerateJob.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Framework/ChunkMeshJob.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
     <ClCompile Include="Framework/ChunkLoadJob.cpp">
@@ -100,6 +106,12 @@
       <Filter>Framework</Filter>
     </ClInclude>
     <ClInclude Include="Framework/GameCommon.hpp">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Framework/WorldGenConfig.hpp">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Framework/ChunkMeshJob.hpp">
       <Filter>Framework</Filter>
     </ClInclude>
   </ItemGroup>
