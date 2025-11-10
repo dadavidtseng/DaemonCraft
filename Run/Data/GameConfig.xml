@@ -1,10 +1,33 @@
 <GameConfig>
-    <WindowClose>false</WindowClose>
-    
-    <!-- Screen configuration -->
-    <screenSizeX>1600</screenSizeX>
-    <screenSizeY>800</screenSizeY>
-    <screenCenterX>800</screenCenterX>
-    <screenCenterY>400</screenCenterY>
-
+    <WorldGenConfig>
+        <BiomeNoise temperatureScale="4096" temperatureOctaves="4" temperaturePersistence="0.5" humidityScale="8192" humidityOctaves="4" humidityPersistence="0.5" continentalnessScale="400" continentalnessOctaves="4" continentalnessPersistence="0.5" erosionScale="300" erosionOctaves="4" erosionPersistence="0.5" weirdnessScale="350" weirdnessOctaves="3" weirdnessPersistence="0.5"/>
+        <Density densityNoiseScale="200" densityNoiseOctaves="3" densityBiasPerBlock="0.1" topSlideStart="100" topSlideEnd="120" bottomSlideStart="0" bottomSlideEnd="20" defaultTerrainHeight="80" seaLevel="80"/>
+        <CurveParams continentalnessHeightMin="-30" continentalnessHeightMax="40" erosionScaleMin="0.30000001" erosionScaleMax="2.5" pvHeightMin="-15" pvHeightMax="25"/>
+        <Caves cheeseNoiseScale="60" cheeseNoiseOctaves="2" cheeseThreshold="0.44999999" cheeseNoiseSeedOffset="20" spaghettiNoiseScale="30" spaghettiNoiseOctaves="3" spaghettiThreshold="0.64999998" spaghettiNoiseSeedOffset="30" minCaveDepthFromSurface="5" minCaveHeightAboveLava="3"/>
+        <Trees treeNoiseScale="10" treeNoiseOctaves="2" treePlacementThreshold="0.44999999" minTreeSpacing="3"/>
+        <Carvers ravinePathNoiseScale="800" ravinePathNoiseOctaves="3" ravinePathThreshold="0.85000002" ravineNoiseSeedOffset="40" ravineWidthNoiseScale="50" ravineWidthNoiseOctaves="2" ravineWidthMin="3" ravineWidthMax="7" ravineDepthMin="40" ravineDepthMax="80" ravineEdgeFalloff="0.30000001" riverPathNoiseScale="600" riverPathNoiseOctaves="3" riverPathThreshold="0.69999999" riverNoiseSeedOffset="50" riverWidthNoiseScale="40" riverWidthNoiseOctaves="2" riverWidthMin="5" riverWidthMax="12" riverDepthMin="3" riverDepthMax="8" riverEdgeFalloff="0.40000001"/>
+        <Curves>
+            <ContinentalnessCurve numPoints="5">
+                <Point t="-1" value="-0.5"/>
+                <Point t="-0.5" value="-0.30000001"/>
+                <Point t="0" value="0"/>
+                <Point t="0.5" value="0.2"/>
+                <Point t="1" value="0.40000001"/>
+            </ContinentalnessCurve>
+            <ErosionCurve numPoints="5">
+                <Point t="-1" value="1.4"/>
+                <Point t="-0.5" value="1.4"/>
+                <Point t="0" value="1.4"/>
+                <Point t="0.5" value="1.4"/>
+                <Point t="1" value="1.4"/>
+            </ErosionCurve>
+            <PeaksValleysCurve numPoints="5">
+                <Point t="-1" value="-0.5"/>
+                <Point t="-0.5" value="-0.2"/>
+                <Point t="0" value="0"/>
+                <Point t="0.5" value="0.30000001"/>
+                <Point t="1" value="0.69999999"/>
+            </PeaksValleysCurve>
+        </Curves>
+    </WorldGenConfig>
 </GameConfig>

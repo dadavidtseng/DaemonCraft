@@ -8,7 +8,6 @@
 #include <filesystem>
 
 #include "Engine/Core/EngineCommon.hpp"
-#include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Core/FileUtils.hpp"
 #include "Engine/Core/Rgba8.hpp"
 #include "Engine/Input/InputSystem.hpp"
@@ -22,6 +21,7 @@
 #include "Engine/Resource/ResourceSubsystem.hpp"
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Framework/WorldGenConfig.hpp"  // For g_worldGenConfig (Assignment 4: Phase 5B.4)
 #include "Game/Framework/BlockIterator.hpp"
 #include "Game/Gameplay/Game.hpp"  // For g_game and visualization mode access
 #include "ThirdParty/Noise/RawNoise.hpp"
@@ -779,9 +779,9 @@ void Chunk::GenerateTerrain()
                         float rawTemp = Get2dNoiseNegOneToOne(globalX, globalY, visualizationSeed) * TEMPERATURE_RAW_NOISE_SCALE;
                         noiseValue = rawTemp + 0.5f + 0.5f * Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            TEMPERATURE_NOISE_SCALE,
-                            TEMPERATURE_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.temperatureScale,
+                            g_worldGenConfig->biomeNoise.temperatureOctaves,
+                            g_worldGenConfig->biomeNoise.temperaturePersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -794,9 +794,9 @@ void Chunk::GenerateTerrain()
                     case DebugVisualizationMode::HUMIDITY:
                         noiseValue = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            HUMIDITY_NOISE_SCALE,
-                            HUMIDITY_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.humidityScale,
+                            g_worldGenConfig->biomeNoise.humidityOctaves,
+                            g_worldGenConfig->biomeNoise.humidityPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -806,9 +806,9 @@ void Chunk::GenerateTerrain()
                     case DebugVisualizationMode::CONTINENTALNESS:
                         noiseValue = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            CONTINENTALNESS_NOISE_SCALE,
-                            CONTINENTALNESS_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.continentalnessScale,
+                            g_worldGenConfig->biomeNoise.continentalnessOctaves,
+                            g_worldGenConfig->biomeNoise.continentalnessPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -818,9 +818,9 @@ void Chunk::GenerateTerrain()
                     case DebugVisualizationMode::EROSION:
                         noiseValue = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            EROSION_NOISE_SCALE,
-                            EROSION_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.erosionScale,
+                            g_worldGenConfig->biomeNoise.erosionOctaves,
+                            g_worldGenConfig->biomeNoise.erosionPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -830,9 +830,9 @@ void Chunk::GenerateTerrain()
                     case DebugVisualizationMode::WEIRDNESS:
                         noiseValue = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            WEIRDNESS_NOISE_SCALE,
-                            WEIRDNESS_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.weirdnessScale,
+                            g_worldGenConfig->biomeNoise.weirdnessOctaves,
+                            g_worldGenConfig->biomeNoise.weirdnessPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -844,9 +844,9 @@ void Chunk::GenerateTerrain()
                         // PV is derived from weirdness: PV = 1 - |( 3 * abs(W) ) - 2|
                         float weirdness = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            WEIRDNESS_NOISE_SCALE,
-                            WEIRDNESS_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.weirdnessScale,
+                            g_worldGenConfig->biomeNoise.weirdnessOctaves,
+                            g_worldGenConfig->biomeNoise.weirdnessPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             visualizationSeed
@@ -872,9 +872,9 @@ void Chunk::GenerateTerrain()
                         float rawTemp = Get2dNoiseNegOneToOne(globalX, globalY, temperatureSeed) * TEMPERATURE_RAW_NOISE_SCALE;
                         float temperature = rawTemp + 0.5f + 0.5f * Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            TEMPERATURE_NOISE_SCALE,
-                            TEMPERATURE_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.temperatureScale,
+                            g_worldGenConfig->biomeNoise.temperatureOctaves,
+                            g_worldGenConfig->biomeNoise.temperaturePersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             temperatureSeed
@@ -885,9 +885,9 @@ void Chunk::GenerateTerrain()
                         // Sample Humidity (matches Pass 1 lines 627-635)
                         float humidity = 0.5f + 0.5f * Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            HUMIDITY_NOISE_SCALE,
-                            HUMIDITY_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.humidityScale,
+                            g_worldGenConfig->biomeNoise.humidityOctaves,
+                            g_worldGenConfig->biomeNoise.humidityPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             humiditySeed
@@ -898,9 +898,9 @@ void Chunk::GenerateTerrain()
                         // Sample Continentalness (matches Pass 1 lines 653-661)
                         float continentalness = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            CONTINENTALNESS_NOISE_SCALE,
-                            CONTINENTALNESS_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.continentalnessScale,
+                            g_worldGenConfig->biomeNoise.continentalnessOctaves,
+                            g_worldGenConfig->biomeNoise.continentalnessPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             continentalnessSeed
@@ -909,9 +909,9 @@ void Chunk::GenerateTerrain()
                         // Sample Erosion (matches Pass 1 lines 664-672)
                         float erosion = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            EROSION_NOISE_SCALE,
-                            EROSION_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.erosionScale,
+                            g_worldGenConfig->biomeNoise.erosionOctaves,
+                            g_worldGenConfig->biomeNoise.erosionPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             erosionSeed
@@ -920,9 +920,9 @@ void Chunk::GenerateTerrain()
                         // Sample Weirdness (matches Pass 1 lines 675-683)
                         float weirdness = Compute2dPerlinNoise(
                             (float)globalX, (float)globalY,
-                            WEIRDNESS_NOISE_SCALE,
-                            WEIRDNESS_NOISE_OCTAVES,
-                            DEFAULT_OCTAVE_PERSISTANCE,
+                            g_worldGenConfig->biomeNoise.weirdnessScale,
+                            g_worldGenConfig->biomeNoise.weirdnessOctaves,
+                            g_worldGenConfig->biomeNoise.weirdnessPersistence,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             weirdnessSeed
@@ -975,26 +975,33 @@ void Chunk::GenerateTerrain()
                 // Phase 0, Task 0.5: Updated to match new sea level (was Y=64 for 128-block chunks)
                 constexpr int VISUALIZATION_HEIGHT = 80;
 
+                // BUGFIX: Use direct array assignment instead of SetBlock() to avoid triggering saves
+                // Debug visualization is temporary and should NOT mark chunks as needing save
                 // Fill bottom with stone (foundation)
                 for (int z = 0; z < VISUALIZATION_HEIGHT; z++)
                 {
-                    SetBlock(x, y, z, BLOCK_STONE);
+                    int blockIdx = LocalCoordsToIndex(x, y, z);
+                    m_blocks[blockIdx].m_typeIndex = BLOCK_STONE;
                 }
 
                 // Place the visualization block on top
-                SetBlock(x, y, VISUALIZATION_HEIGHT, visualizationBlock);
+                int topBlockIdx = LocalCoordsToIndex(x, y, VISUALIZATION_HEIGHT);
+                m_blocks[topBlockIdx].m_typeIndex = visualizationBlock;
 
                 // Leave everything above as air
                 for (int z = VISUALIZATION_HEIGHT + 1; z < CHUNK_SIZE_Z; z++)
                 {
-                    SetBlock(x, y, z, BLOCK_AIR);
+                    int blockIdx = LocalCoordsToIndex(x, y, z);
+                    m_blocks[blockIdx].m_typeIndex = BLOCK_AIR;
                 }
             }
         }
 
-        // Mark chunk as needing mesh rebuild and dirty save
+        // Mark chunk as needing mesh rebuild (but NOT save - debug visualization is temporary)
+        // BUGFIX: Debug visualization is NOT a player modification, so don't save to disk
+        // Saving debug visualization would write temporary colored blocks to .chunk files
         SetIsMeshDirty(true);
-        SetNeedsSaving(true);
+        // NOTE: Do NOT call SetNeedsSaving(true) - debug viz is temporary and shouldn't persist
         return;  // Skip normal terrain generation
     }
 
@@ -1028,9 +1035,9 @@ void Chunk::GenerateTerrain()
             // Humidity calculation (0.5 + 0.5 * Perlin2D(...))
             float humidity = 0.5f + 0.5f * Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                HUMIDITY_NOISE_SCALE,
-                HUMIDITY_NOISE_OCTAVES,
-                DEFAULT_OCTAVE_PERSISTANCE,
+                g_worldGenConfig->biomeNoise.humidityScale,
+                g_worldGenConfig->biomeNoise.humidityOctaves,
+                g_worldGenConfig->biomeNoise.humidityPersistence,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize
                 humiditySeed
@@ -1040,9 +1047,9 @@ void Chunk::GenerateTerrain()
             float temperature = Get2dNoiseNegOneToOne(globalX, globalY, temperatureSeed) * TEMPERATURE_RAW_NOISE_SCALE;
             temperature       = temperature + 0.5f + 0.5f * Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                TEMPERATURE_NOISE_SCALE,
-                TEMPERATURE_NOISE_OCTAVES,
-                DEFAULT_OCTAVE_PERSISTANCE,
+                g_worldGenConfig->biomeNoise.temperatureScale,
+                g_worldGenConfig->biomeNoise.temperatureOctaves,
+                g_worldGenConfig->biomeNoise.temperaturePersistence,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize
                 temperatureSeed
@@ -1054,9 +1061,9 @@ void Chunk::GenerateTerrain()
             // Continentalness - Ocean to inland distance (C: [-1.2, 1.0])
             float continentalness = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                CONTINENTALNESS_NOISE_SCALE,
-                CONTINENTALNESS_NOISE_OCTAVES,
-                DEFAULT_OCTAVE_PERSISTANCE,
+                g_worldGenConfig->biomeNoise.continentalnessScale,
+                g_worldGenConfig->biomeNoise.continentalnessOctaves,
+                g_worldGenConfig->biomeNoise.continentalnessPersistence,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize to [-1, 1]
                 continentalnessSeed
@@ -1065,9 +1072,9 @@ void Chunk::GenerateTerrain()
             // Erosion - Flat to mountainous (E: [-1, 1])
             float erosion = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                EROSION_NOISE_SCALE,
-                EROSION_NOISE_OCTAVES,
-                DEFAULT_OCTAVE_PERSISTANCE,
+                g_worldGenConfig->biomeNoise.erosionScale,
+                g_worldGenConfig->biomeNoise.erosionOctaves,
+                g_worldGenConfig->biomeNoise.erosionPersistence,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize to [-1, 1]
                 erosionSeed
@@ -1076,9 +1083,9 @@ void Chunk::GenerateTerrain()
             // Weirdness - Terrain variation (W: [-1, 1])
             float weirdness = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                WEIRDNESS_NOISE_SCALE,
-                WEIRDNESS_NOISE_OCTAVES,
-                DEFAULT_OCTAVE_PERSISTANCE,
+                g_worldGenConfig->biomeNoise.weirdnessScale,
+                g_worldGenConfig->biomeNoise.weirdnessOctaves,
+                g_worldGenConfig->biomeNoise.weirdnessPersistence,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize to [-1, 1]
                 weirdnessSeed
@@ -1181,9 +1188,6 @@ void Chunk::GenerateTerrain()
                 int     idxXY        = y * CHUNK_SIZE_X + x;
 
                 // Retrieve cached per-column data from Pass 1
-                // Note: Some cached data is still used in specific terrain features
-                int   dirtDepth     = dirtDepthXY[idxXY];     // Phase 2: Currently unused (keep for reference)
-                float humidity      = humidityMapXY[idxXY];   // Phase 2: Currently unused (keep for reference)
                 float temperature   = temperatureMapXY[idxXY]; // Used in ice formation logic
 
                 // --- Assignment 4: 3D Density Formula (Phase 2, Task 2.1) ---
@@ -1197,8 +1201,8 @@ void Chunk::GenerateTerrain()
                     (float)globalCoords.x,
                     (float)globalCoords.y,
                     (float)globalCoords.z,
-                    DENSITY_NOISE_SCALE,           // Scale: 200.0 (lower freq = smoother terrain)
-                    DENSITY_NOISE_OCTAVES,         // Octaves: 3 (adds fractal detail)
+                    g_worldGenConfig->density.densityNoiseScale,           // Scale: 200.0 (lower freq = smoother terrain)
+                    g_worldGenConfig->density.densityNoiseOctaves,         // Octaves: 3 (adds fractal detail)
                     DEFAULT_OCTAVE_PERSISTANCE,    // Persistence: 0.5 (amplitude falloff)
                     DEFAULT_NOISE_OCTAVE_SCALE,    // Octave scale: 2.0 (frequency multiplier)
                     true,                          // Renormalize to [-1, 1]
@@ -1214,10 +1218,10 @@ void Chunk::GenerateTerrain()
                 // Top slide: Smooth transition near surface (z=100-120)
                 // Forces density toward positive (air) near world top to prevent sharp cutoffs
                 float topSlide = 0.0f;
-                if (globalCoords.z >= TOP_SLIDE_START && globalCoords.z <= TOP_SLIDE_END)
+                if (globalCoords.z >= g_worldGenConfig->density.topSlideStart && globalCoords.z <= g_worldGenConfig->density.topSlideEnd)
                 {
                     // Calculate slide progress: 0.0 at start, 1.0 at end
-                    float slideProgress = (float)(globalCoords.z - TOP_SLIDE_START) / (float)(TOP_SLIDE_END - TOP_SLIDE_START);
+                    float slideProgress = (float)(globalCoords.z - g_worldGenConfig->density.topSlideStart) / (float)(g_worldGenConfig->density.topSlideEnd - g_worldGenConfig->density.topSlideStart);
 
                     // Use SmoothStep3 for smooth transition curve
                     float smoothedProgress = SmoothStep3(slideProgress);
@@ -1230,10 +1234,10 @@ void Chunk::GenerateTerrain()
                 // Bottom slide: Flatten terrain near bedrock (z=0-20)
                 // Forces density toward negative (solid) near world bottom for stable base
                 float bottomSlide = 0.0f;
-                if (globalCoords.z >= BOTTOM_SLIDE_START && globalCoords.z <= BOTTOM_SLIDE_END)
+                if (globalCoords.z >= g_worldGenConfig->density.bottomSlideStart && globalCoords.z <= g_worldGenConfig->density.bottomSlideEnd)
                 {
                     // Calculate slide progress: 1.0 at bottom, 0.0 at end
-                    float slideProgress = 1.0f - ((float)(globalCoords.z - BOTTOM_SLIDE_START) / (float)(BOTTOM_SLIDE_END - BOTTOM_SLIDE_START));
+                    float slideProgress = 1.0f - ((float)(globalCoords.z - g_worldGenConfig->density.bottomSlideStart) / (float)(g_worldGenConfig->density.bottomSlideEnd - g_worldGenConfig->density.bottomSlideStart));
 
                     // Use SmoothStep3 for smooth transition curve
                     float smoothedProgress = SmoothStep3(slideProgress);
@@ -1249,26 +1253,34 @@ void Chunk::GenerateTerrain()
                 BiomeData& biomeData = m_biomeData[idxXY];
 
                 // Continentalness Curve: Height offset based on ocean/inland distance
-                // Maps C: [-1.2, 1.0] → Height offset: [-30, +40]
+                // Uses PiecewiseCurve1D for non-linear terrain shaping (Assignment 4: Phase 5B.4)
+                // Input: C noise [-1.2, 1.0], Output: normalized [-1, 1] from curve
+                // Scale output by [continentalnessHeightMin, continentalnessHeightMax]
                 // Ocean areas get negative offset (deeper), inland gets positive (higher)
-                float continentalnessOffset = RangeMap(biomeData.continentalness,
-                                                       -1.2f, 1.0f,
-                                                       CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                float continentalnessNormalized = g_worldGenConfig->continentalnessCurve.Evaluate(biomeData.continentalness);
+                float continentalnessOffset = RangeMap(continentalnessNormalized,
+                                                       -1.0f, 1.0f,
+                                                       g_worldGenConfig->curves.continentalnessHeightMin,
+                                                       g_worldGenConfig->curves.continentalnessHeightMax);
 
                 // Erosion Curve: Terrain wildness/scale based on flat/mountainous
-                // Maps E: [-1, 1] → Scale multiplier: [0.3, 2.5]
+                // Uses PiecewiseCurve1D for non-linear terrain shaping (Assignment 4: Phase 5B.4)
+                // Input: E noise [-1, 1], Output: scale multiplier directly from curve
+                // Curve output range: [erosionScaleMin, erosionScaleMax] = [0.3, 2.5]
                 // Flat terrain (low E) gets less noise amplification
                 // Mountainous (high E) gets more noise amplification
-                float erosionScale = RangeMap(biomeData.erosion,
-                                              -1.0f, 1.0f,
-                                              EROSION_SCALE_MIN, EROSION_SCALE_MAX);
+                float erosionScale = g_worldGenConfig->erosionCurve.Evaluate(biomeData.erosion);
 
                 // Peaks & Valleys Curve: Additional height variation
-                // Maps PV: [-1, 1] → Height modifier: [-15, +25]
+                // Uses PiecewiseCurve1D for non-linear terrain shaping (Assignment 4: Phase 5B.4)
+                // Input: PV noise [-1, 1], Output: normalized [-1, 1] from curve
+                // Scale output by [pvHeightMin, pvHeightMax]
                 // Valleys (low PV) get negative modifier, peaks (high PV) get positive
-                float pvOffset = RangeMap(biomeData.peaksValleys,
+                float pvNormalized = g_worldGenConfig->peaksValleysCurve.Evaluate(biomeData.peaksValleys);
+                float pvOffset = RangeMap(pvNormalized,
                                          -1.0f, 1.0f,
-                                         PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+                                         g_worldGenConfig->curves.pvHeightMin,
+                                         g_worldGenConfig->curves.pvHeightMax);
 
                 // Apply terrain shaping:
                 // 1. Calculate total height offset from biome parameters
@@ -1281,7 +1293,7 @@ void Chunk::GenerateTerrain()
 
                 // 3. Calculate bias relative to the SHAPED terrain height (not default height)
                 //    - This makes terrain follow the biome-specific height curves
-                float shapedBias = DENSITY_BIAS_PER_BLOCK * (float)((float)globalCoords.z - effectiveTerrainHeight);
+                float shapedBias = g_worldGenConfig->density.densityBiasPerBlock * (float)((float)globalCoords.z - effectiveTerrainHeight);
 
                 // 4. Scale noise by erosion factor (controls terrain wildness)
                 float shapedNoise = noise * erosionScale;
@@ -1325,7 +1337,7 @@ void Chunk::GenerateTerrain()
 
                         float checkNoise = Compute3dPerlinNoise(
                             (float)checkCoords.x, (float)checkCoords.y, (float)checkCoords.z,
-                            DENSITY_NOISE_SCALE, DENSITY_NOISE_OCTAVES,
+                            g_worldGenConfig->density.densityNoiseScale, g_worldGenConfig->density.densityNoiseOctaves,
                             DEFAULT_OCTAVE_PERSISTANCE, DEFAULT_NOISE_OCTAVE_SCALE,
                             true, GAME_SEED + 10
                         );
@@ -1340,7 +1352,7 @@ void Chunk::GenerateTerrain()
                                                        PV_HEIGHT_MIN, PV_HEIGHT_MAX);
 
                         float checkEffectiveHeight = (float)DEFAULT_TERRAIN_HEIGHT + checkContinentalnessOffset + checkPvOffset;
-                        float checkShapedBias = DENSITY_BIAS_PER_BLOCK * ((float)checkCoords.z - checkEffectiveHeight);
+                        float checkShapedBias = g_worldGenConfig->density.densityBiasPerBlock * ((float)checkCoords.z - checkEffectiveHeight);
                         float checkDensity = (checkNoise * checkErosionScale) + checkShapedBias;
 
                         // If we found air above us within MIN_CAVE_DEPTH_FROM_SURFACE, we're too close to surface
@@ -1365,8 +1377,8 @@ void Chunk::GenerateTerrain()
                             (float)globalCoords.x,
                             (float)globalCoords.y,
                             (float)globalCoords.z,
-                            CHEESE_NOISE_SCALE,           // Large scale: 60.0 (big smooth caverns)
-                            CHEESE_NOISE_OCTAVES,         // Low octaves: 2 (smooth shapes)
+                            g_worldGenConfig->caves.cheeseNoiseScale,           // Large scale: 60.0 (big smooth caverns)
+                            g_worldGenConfig->caves.cheeseNoiseOctaves,         // Low octaves: 2 (smooth shapes)
                             DEFAULT_OCTAVE_PERSISTANCE,   // 0.5
                             DEFAULT_NOISE_OCTAVE_SCALE,   // 2.0
                             true,                         // Renormalize to [-1, 1]
@@ -1378,7 +1390,7 @@ void Chunk::GenerateTerrain()
 
                         // Carve cavern if noise exceeds threshold
                         // Higher threshold = fewer/smaller caves
-                        if (cheeseValue > CHEESE_THRESHOLD)
+                        if (cheeseValue > g_worldGenConfig->caves.cheeseThreshold)
                         {
                             isSolid = false; // Carve out this block (convert to air)
                         }
@@ -1404,8 +1416,8 @@ void Chunk::GenerateTerrain()
                                 (float)globalCoords.x,
                                 (float)globalCoords.y,
                                 (float)globalCoords.z,
-                                SPAGHETTI_NOISE_SCALE,        // Smaller scale: 30.0 (winding tunnels)
-                                SPAGHETTI_NOISE_OCTAVES,      // More octaves: 3 (complex paths)
+                                g_worldGenConfig->caves.spaghettiNoiseScale,        // Smaller scale: 30.0 (winding tunnels)
+                                g_worldGenConfig->caves.spaghettiNoiseOctaves,      // More octaves: 3 (complex paths)
                                 DEFAULT_OCTAVE_PERSISTANCE,   // 0.5
                                 DEFAULT_NOISE_OCTAVE_SCALE,   // 2.0
                                 true,                         // Renormalize to [-1, 1]
@@ -1417,7 +1429,7 @@ void Chunk::GenerateTerrain()
 
                             // Carve tunnel if noise exceeds threshold
                             // Higher threshold = fewer/narrower tunnels
-                            if (spaghettiValue > SPAGHETTI_THRESHOLD)
+                            if (spaghettiValue > g_worldGenConfig->caves.spaghettiThreshold)
                             {
                                 isSolid = false; // Carve out this block (convert to air)
                             }
@@ -1445,8 +1457,8 @@ void Chunk::GenerateTerrain()
                     float ravinePathNoise = Compute2dPerlinNoise(
                         (float)globalCoords.x,
                         (float)globalCoords.y,
-                        RAVINE_PATH_NOISE_SCALE,        // Very large scale (800) for rare, long ravines
-                        RAVINE_PATH_NOISE_OCTAVES,      // Multiple octaves (3) for natural meandering
+                        g_worldGenConfig->carvers.ravinePathNoiseScale,        // Very large scale (800) for rare, long ravines
+                        g_worldGenConfig->carvers.ravinePathNoiseOctaves,      // Multiple octaves (3) for natural meandering
                         DEFAULT_OCTAVE_PERSISTANCE,     // 0.5
                         DEFAULT_NOISE_OCTAVE_SCALE,     // 2.0
                         true,                           // Renormalize to [-1, 1]
@@ -1458,7 +1470,7 @@ void Chunk::GenerateTerrain()
 
                     // Check if this (x,y) position is on a ravine path
                     // Very high threshold (0.85) means ravines are rare (1-2 per ~10 chunks)
-                    if (ravinePathValue > RAVINE_PATH_THRESHOLD)
+                    if (ravinePathValue > g_worldGenConfig->carvers.ravinePathThreshold)
                     {
                         // We're on a ravine path! Now determine width and depth
 
@@ -1468,8 +1480,8 @@ void Chunk::GenerateTerrain()
                         float widthNoise = Compute2dPerlinNoise(
                             (float)globalCoords.x,
                             (float)globalCoords.y,
-                            RAVINE_WIDTH_NOISE_SCALE,       // Smaller scale (50) for local variation
-                            RAVINE_WIDTH_NOISE_OCTAVES,     // Low octaves (2) for smooth changes
+                            g_worldGenConfig->carvers.ravineWidthNoiseScale,       // Smaller scale (50) for local variation
+                            g_worldGenConfig->carvers.ravineWidthNoiseOctaves,     // Low octaves (2) for smooth changes
                             DEFAULT_OCTAVE_PERSISTANCE,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
@@ -1478,43 +1490,77 @@ void Chunk::GenerateTerrain()
 
                         // Convert width noise to [0, 1] and map to width range [3, 7]
                         float widthNoiseNormalized = (widthNoise + 1.0f) * 0.5f;
-                        int ravineHalfWidth = (int)(RAVINE_WIDTH_MIN + widthNoiseNormalized * (RAVINE_WIDTH_MAX - RAVINE_WIDTH_MIN)) / 2;
+                        int ravineFullWidth = (int)(g_worldGenConfig->carvers.ravineWidthMin + widthNoiseNormalized * (g_worldGenConfig->carvers.ravineWidthMax - g_worldGenConfig->carvers.ravineWidthMin));
+                        int ravineHalfWidth = ravineFullWidth / 2;
 
-                        // Calculate distance from ravine center using noise as approximate center
-                        // This is simplified - we use the path noise value to estimate center position
-                        // For more accurate ravines, would need to trace actual path curves
+                        // Option A: Radius-based carving with center finding
+                        // Sample nearby positions to find ravine center (highest pathValue = center)
+                        float maxPathValue = ravinePathValue;
+                        int centerOffsetX = 0;
+                        int centerOffsetY = 0;
 
-                        // Use path noise value to create a "center line" effect
-                        // Higher path values (>0.85) = closer to center, carve deeper
-                        float centerFactor = (ravinePathValue - RAVINE_PATH_THRESHOLD) / (1.0f - RAVINE_PATH_THRESHOLD);
-                        centerFactor = GetClamped(centerFactor, 0.0f, 1.0f);
-
-                        // Apply edge falloff: ravines are deepest at center, shallower at edges
-                        // centerFactor ranges [0, 1] where 1 = center, 0 = edge
-                        float depthMultiplier = centerFactor * (1.0f - RAVINE_EDGE_FALLOFF) + RAVINE_EDGE_FALLOFF;
-
-                        // Calculate ravine depth: interpolate between min and max based on center factor
-                        int ravineDepth = (int)(RAVINE_DEPTH_MIN + depthMultiplier * (RAVINE_DEPTH_MAX - RAVINE_DEPTH_MIN));
-
-                        // Get surface height for this column (calculated in Pass 3, but we need estimate)
-                        // For now, estimate surface as the first air block we'd encounter going up
-                        // ALTERNATIVE: Use effective terrain height from density calculation
-
-                        BiomeData& ravBiomeData = m_biomeData[idxXY];
-                        float ravContinentalnessOffset = RangeMap(ravBiomeData.continentalness, -1.2f, 1.0f,
-                                                                  CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
-                        float ravPvOffset = RangeMap(ravBiomeData.peaksValleys, -1.0f, 1.0f,
-                                                     PV_HEIGHT_MIN, PV_HEIGHT_MAX);
-                        float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + ravContinentalnessOffset + ravPvOffset;
-
-                        // Calculate ravine bottom Z coordinate
-                        int ravineBottomZ = (int)(estimatedSurfaceHeight - ravineDepth);
-                        ravineBottomZ = (std::max)(ravineBottomZ, LAVA_Z + 1); // Don't carve below lava
-
-                        // Carve this block if we're between surface and ravine bottom
-                        if (globalCoords.z >= ravineBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
+                        // Sample in a small radius to find local maximum (ravine center)
+                        int searchRadius = ravineHalfWidth + 2; // Search slightly beyond half-width
+                        for (int dy = -searchRadius; dy <= searchRadius; ++dy)
                         {
-                            isSolid = false; // Carve out this block (convert to air)
+                            for (int dx = -searchRadius; dx <= searchRadius; ++dx)
+                            {
+                                if (dx == 0 && dy == 0) continue; // Skip current position
+
+                                float samplePathNoise = Compute2dPerlinNoise(
+                                    (float)(globalCoords.x + dx),
+                                    (float)(globalCoords.y + dy),
+                                    g_worldGenConfig->carvers.ravinePathNoiseScale,
+                                    g_worldGenConfig->carvers.ravinePathNoiseOctaves,
+                                    DEFAULT_OCTAVE_PERSISTANCE,
+                                    DEFAULT_NOISE_OCTAVE_SCALE,
+                                    true,
+                                    ravineSeed
+                                );
+                                float samplePathValue = (samplePathNoise + 1.0f) * 0.5f;
+
+                                if (samplePathValue > maxPathValue)
+                                {
+                                    maxPathValue = samplePathValue;
+                                    centerOffsetX = dx;
+                                    centerOffsetY = dy;
+                                }
+                            }
+                        }
+
+                        // Calculate distance from current position to estimated ravine center
+                        float distanceToCenter = sqrtf((float)(centerOffsetX * centerOffsetX + centerOffsetY * centerOffsetY));
+
+                        // Only carve if within ravine half-width radius
+                        if (distanceToCenter <= (float)ravineHalfWidth)
+                        {
+                            // Calculate falloff based on distance from center
+                            float radialFalloff = 1.0f - (distanceToCenter / (float)ravineHalfWidth);
+                            radialFalloff = GetClamped(radialFalloff, 0.0f, 1.0f);
+
+                            // Apply edge falloff for smooth transitions
+                            float depthMultiplier = radialFalloff * (1.0f - g_worldGenConfig->carvers.ravineEdgeFalloff) + g_worldGenConfig->carvers.ravineEdgeFalloff;
+
+                            // Calculate ravine depth: deeper at center, shallower at edges
+                            int ravineDepth = (int)(g_worldGenConfig->carvers.ravineDepthMin + depthMultiplier * (g_worldGenConfig->carvers.ravineDepthMax - g_worldGenConfig->carvers.ravineDepthMin));
+
+                            // Estimate surface height using biome parameters
+                            BiomeData& ravBiomeData = m_biomeData[idxXY];
+                            float ravContinentalnessOffset = RangeMap(ravBiomeData.continentalness, -1.2f, 1.0f,
+                                                                      CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                            float ravPvOffset = RangeMap(ravBiomeData.peaksValleys, -1.0f, 1.0f,
+                                                         PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+                            float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + ravContinentalnessOffset + ravPvOffset;
+
+                            // Calculate ravine bottom Z coordinate
+                            int ravineBottomZ = (int)(estimatedSurfaceHeight - ravineDepth);
+                            ravineBottomZ = (std::max)(ravineBottomZ, LAVA_Z + 1); // Don't carve below lava
+
+                            // Carve this block if we're between surface and ravine bottom
+                            if (globalCoords.z >= ravineBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
+                            {
+                                isSolid = false; // Carve out this block (convert to air)
+                            }
                         }
                     }
                 }
@@ -1544,8 +1590,8 @@ void Chunk::GenerateTerrain()
                     float riverPathNoise = Compute2dPerlinNoise(
                         (float)globalCoords.x,
                         (float)globalCoords.y,
-                        RIVER_PATH_NOISE_SCALE,         // Large scale (600) for long, winding rivers
-                        RIVER_PATH_NOISE_OCTAVES,       // Multiple octaves (3) for natural meandering
+                        g_worldGenConfig->carvers.riverPathNoiseScale,         // Large scale (600) for long, winding rivers
+                        g_worldGenConfig->carvers.riverPathNoiseOctaves,       // Multiple octaves (3) for natural meandering
                         DEFAULT_OCTAVE_PERSISTANCE,     // 0.5
                         DEFAULT_NOISE_OCTAVE_SCALE,     // 2.0
                         true,                           // Renormalize to [-1, 1]
@@ -1557,7 +1603,7 @@ void Chunk::GenerateTerrain()
 
                     // Check if this (x,y) position is on a river path
                     // Moderate threshold (0.70) means rivers are more common than ravines
-                    if (riverPathValue > RIVER_PATH_THRESHOLD)
+                    if (riverPathValue > g_worldGenConfig->carvers.riverPathThreshold)
                     {
                         // We're on a river path! Now determine width and depth
 
@@ -1567,56 +1613,102 @@ void Chunk::GenerateTerrain()
                         float widthNoise = Compute2dPerlinNoise(
                             (float)globalCoords.x,
                             (float)globalCoords.y,
-                            RIVER_WIDTH_NOISE_SCALE,        // Smaller scale (40) for local variation
-                            RIVER_WIDTH_NOISE_OCTAVES,      // Low octaves (2) for smooth changes
+                            g_worldGenConfig->carvers.riverWidthNoiseScale,        // Smaller scale (40) for local variation
+                            g_worldGenConfig->carvers.riverWidthNoiseOctaves,      // Low octaves (2) for smooth changes
                             DEFAULT_OCTAVE_PERSISTANCE,
                             DEFAULT_NOISE_OCTAVE_SCALE,
                             true,
                             widthSeed
                         ); // Returns [-1, 1]
 
-                        // Calculate distance from river center using noise as approximate center
-                        // Use path noise value to create a "center line" effect
-                        float centerFactor = (riverPathValue - RIVER_PATH_THRESHOLD) / (1.0f - RIVER_PATH_THRESHOLD);
-                        centerFactor = GetClamped(centerFactor, 0.0f, 1.0f);
+                        // Convert width noise to [0, 1] and map to width range [5, 12]
+                        float widthNoiseNormalized = (widthNoise + 1.0f) * 0.5f;
+                        int riverFullWidth = (int)(g_worldGenConfig->carvers.riverWidthMin + widthNoiseNormalized * (g_worldGenConfig->carvers.riverWidthMax - g_worldGenConfig->carvers.riverWidthMin));
+                        int riverHalfWidth = riverFullWidth / 2;
 
-                        // Apply edge falloff: rivers are deepest at center, shallower at edges
-                        float depthMultiplier = centerFactor * (1.0f - RIVER_EDGE_FALLOFF) + RIVER_EDGE_FALLOFF;
+                        // Option A: Radius-based carving with center finding
+                        // Sample nearby positions to find river center (highest pathValue = center)
+                        float maxPathValue = riverPathValue;
+                        int centerOffsetX = 0;
+                        int centerOffsetY = 0;
 
-                        // Calculate river depth: shallow channels (3-8 blocks from surface)
-                        int riverDepth = (int)(RIVER_DEPTH_MIN + depthMultiplier * (RIVER_DEPTH_MAX - RIVER_DEPTH_MIN));
-
-                        // Estimate surface height using biome parameters
-                        BiomeData& rivBiomeData = m_biomeData[idxXY];
-                        float rivContinentalnessOffset = RangeMap(rivBiomeData.continentalness, -1.2f, 1.0f,
-                                                                  CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
-                        float rivPvOffset = RangeMap(rivBiomeData.peaksValleys, -1.0f, 1.0f,
-                                                     PV_HEIGHT_MIN, PV_HEIGHT_MAX);
-                        float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + rivContinentalnessOffset + rivPvOffset;
-
-                        // Calculate river bottom Z coordinate
-                        int riverBottomZ = (int)(estimatedSurfaceHeight - riverDepth);
-                        riverBottomZ = (std::max)(riverBottomZ, SEA_LEVEL_Z - 5); // Don't carve too far below sea level
-
-                        // Determine if this block should be carved out or filled with water
-                        if (globalCoords.z >= riverBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
+                        // Sample in a small radius to find local maximum (river center)
+                        int searchRadius = riverHalfWidth + 2; // Search slightly beyond half-width
+                        for (int dy = -searchRadius; dy <= searchRadius; ++dy)
                         {
-                            // Carve the channel
-                            isSolid = false;
+                            for (int dx = -searchRadius; dx <= searchRadius; ++dx)
+                            {
+                                if (dx == 0 && dy == 0) continue; // Skip current position
 
-                            // Fill with water above the riverbed
-                            // Leave bottom 1-2 blocks as carved terrain (will become sand/gravel in block assignment)
-                            if (globalCoords.z > riverBottomZ + 1)
-                            {
-                                // This block should be water
-                                blockType = BLOCK_WATER;
-                                isRiverWater = true;
+                                float samplePathNoise = Compute2dPerlinNoise(
+                                    (float)(globalCoords.x + dx),
+                                    (float)(globalCoords.y + dy),
+                                    g_worldGenConfig->carvers.riverPathNoiseScale,
+                                    g_worldGenConfig->carvers.riverPathNoiseOctaves,
+                                    DEFAULT_OCTAVE_PERSISTANCE,
+                                    DEFAULT_NOISE_OCTAVE_SCALE,
+                                    true,
+                                    riverSeed
+                                );
+                                float samplePathValue = (samplePathNoise + 1.0f) * 0.5f;
+
+                                if (samplePathValue > maxPathValue)
+                                {
+                                    maxPathValue = samplePathValue;
+                                    centerOffsetX = dx;
+                                    centerOffsetY = dy;
+                                }
                             }
-                            else
+                        }
+
+                        // Calculate distance from current position to estimated river center
+                        float distanceToCenter = sqrtf((float)(centerOffsetX * centerOffsetX + centerOffsetY * centerOffsetY));
+
+                        // Only carve if within river half-width radius
+                        if (distanceToCenter <= (float)riverHalfWidth)
+                        {
+                            // Calculate falloff based on distance from center
+                            float radialFalloff = 1.0f - (distanceToCenter / (float)riverHalfWidth);
+                            radialFalloff = GetClamped(radialFalloff, 0.0f, 1.0f);
+
+                            // Apply edge falloff for smooth transitions
+                            float depthMultiplier = radialFalloff * (1.0f - g_worldGenConfig->carvers.riverEdgeFalloff) + g_worldGenConfig->carvers.riverEdgeFalloff;
+
+                            // Calculate river depth: shallow channels (3-8 blocks from surface)
+                            int riverDepth = (int)(g_worldGenConfig->carvers.riverDepthMin + depthMultiplier * (g_worldGenConfig->carvers.riverDepthMax - g_worldGenConfig->carvers.riverDepthMin));
+
+                            // Estimate surface height using biome parameters
+                            BiomeData& rivBiomeData = m_biomeData[idxXY];
+                            float rivContinentalnessOffset = RangeMap(rivBiomeData.continentalness, -1.2f, 1.0f,
+                                                                      CONTINENTALNESS_HEIGHT_MIN, CONTINENTALNESS_HEIGHT_MAX);
+                            float rivPvOffset = RangeMap(rivBiomeData.peaksValleys, -1.0f, 1.0f,
+                                                         PV_HEIGHT_MIN, PV_HEIGHT_MAX);
+                            float estimatedSurfaceHeight = (float)DEFAULT_TERRAIN_HEIGHT + rivContinentalnessOffset + rivPvOffset;
+
+                            // Calculate river bottom Z coordinate
+                            int riverBottomZ = (int)(estimatedSurfaceHeight - riverDepth);
+                            riverBottomZ = (std::max)(riverBottomZ, SEA_LEVEL_Z - 5); // Don't carve too far below sea level
+
+                            // Determine if this block should be carved out or filled with water
+                            if (globalCoords.z >= riverBottomZ && globalCoords.z <= (int)estimatedSurfaceHeight)
                             {
-                                // Riverbed - will be assigned sand or gravel later
-                                blockType = BLOCK_SAND; // Default riverbed material
-                                isRiverWater = false;
+                                // Carve the channel
+                                isSolid = false;
+
+                                // Fill with water above the riverbed
+                                // Leave bottom 1-2 blocks as carved terrain (will become sand/gravel in block assignment)
+                                if (globalCoords.z > riverBottomZ + 1)
+                                {
+                                    // This block should be water
+                                    blockType = BLOCK_WATER;
+                                    isRiverWater = true;
+                                }
+                                else
+                                {
+                                    // Riverbed - will be assigned sand or gravel later
+                                    blockType = BLOCK_SAND; // Default riverbed material
+                                    isRiverWater = false;
+                                }
                             }
                         }
                     }
@@ -1671,8 +1763,8 @@ void Chunk::GenerateTerrain()
                                     (float)aboveCoords.x,
                                     (float)aboveCoords.y,
                                     (float)aboveCoords.z,
-                                    DENSITY_NOISE_SCALE,
-                                    DENSITY_NOISE_OCTAVES,
+                                    g_worldGenConfig->density.densityNoiseScale,
+                                    g_worldGenConfig->density.densityNoiseOctaves,
                                     DEFAULT_OCTAVE_PERSISTANCE,
                                     DEFAULT_NOISE_OCTAVE_SCALE,
                                     true,
@@ -1698,24 +1790,24 @@ void Chunk::GenerateTerrain()
                                 float aboveEffectiveTerrainHeight = (float)DEFAULT_TERRAIN_HEIGHT + aboveHeightOffset;
 
                                 // Calculate shaped bias relative to effective terrain height
-                                float aboveShapedBias = DENSITY_BIAS_PER_BLOCK * (float)((float)aboveCoords.z - aboveEffectiveTerrainHeight);
+                                float aboveShapedBias = g_worldGenConfig->density.densityBiasPerBlock * (float)((float)aboveCoords.z - aboveEffectiveTerrainHeight);
 
                                 // Scale noise by erosion factor
                                 float aboveShapedNoise = aboveNoise * aboveErosionScale;
 
                                 // Apply slides to above block
                                 float aboveTopSlide = 0.0f;
-                                if (aboveCoords.z >= TOP_SLIDE_START && aboveCoords.z <= TOP_SLIDE_END)
+                                if (aboveCoords.z >= g_worldGenConfig->density.topSlideStart && aboveCoords.z <= g_worldGenConfig->density.topSlideEnd)
                                 {
-                                    float slideProgress = (float)(aboveCoords.z - TOP_SLIDE_START) / (float)(TOP_SLIDE_END - TOP_SLIDE_START);
+                                    float slideProgress = (float)(aboveCoords.z - g_worldGenConfig->density.topSlideStart) / (float)(g_worldGenConfig->density.topSlideEnd - g_worldGenConfig->density.topSlideStart);
                                     float smoothedProgress = SmoothStep3(slideProgress);
                                     aboveTopSlide = smoothedProgress * 2.0f;
                                 }
 
                                 float aboveBottomSlide = 0.0f;
-                                if (aboveCoords.z >= BOTTOM_SLIDE_START && aboveCoords.z <= BOTTOM_SLIDE_END)
+                                if (aboveCoords.z >= g_worldGenConfig->density.bottomSlideStart && aboveCoords.z <= g_worldGenConfig->density.bottomSlideEnd)
                                 {
-                                    float slideProgress = 1.0f - ((float)(aboveCoords.z - BOTTOM_SLIDE_START) / (float)(BOTTOM_SLIDE_END - BOTTOM_SLIDE_START));
+                                    float slideProgress = 1.0f - ((float)(aboveCoords.z - g_worldGenConfig->density.bottomSlideStart) / (float)(g_worldGenConfig->density.bottomSlideEnd - g_worldGenConfig->density.bottomSlideStart));
                                     float smoothedProgress = SmoothStep3(slideProgress);
                                     aboveBottomSlide = -smoothedProgress * 3.0f;
                                 }
@@ -2092,22 +2184,8 @@ void Chunk::GenerateTerrain()
             int columnIdx = x + y * CHUNK_SIZE_X;
             int surfaceZ = m_surfaceHeight[columnIdx];
 
-            // Get biome type for this column (moved BEFORE early exits for debugging)
+            // Get biome type for this column
             BiomeType biome = m_biomeData[columnIdx].biomeType;
-
-            // DEBUG: Log EVERY desert/snowy_plains/snowy_taiga column before filtering
-            // (Excluding SNOWY_PEAKS to reduce spam - peaks don't have trees anyway)
-            if (biome == BiomeType::DESERT ||
-                biome == BiomeType::SNOWY_PLAINS ||
-                biome == BiomeType::SNOWY_TAIGA)
-            {
-                int globalX = m_chunkCoords.x * CHUNK_SIZE_X + x;
-                int globalY = m_chunkCoords.y * CHUNK_SIZE_Y + y;
-                bool isUnderwater = (surfaceZ < SEA_LEVEL_Z);
-          bool canGrowUnderwater = (biome == BiomeType::DESERT ||
-                                   biome == BiomeType::SNOWY_PLAINS ||
-                                   biome == BiomeType::SNOWY_TAIGA);
-            }
 
             // Skip if no surface found in this column
             if (surfaceZ < 0) continue;
@@ -2201,8 +2279,8 @@ void Chunk::GenerateTerrain()
             unsigned int treeSeed = GAME_SEED + 12345;  // Different seed from terrain noise
             float treeNoise = Compute2dPerlinNoise(
                 (float)globalX, (float)globalY,
-                TREE_NOISE_SCALE,
-                TREE_NOISE_OCTAVES,
+                g_worldGenConfig->trees.treeNoiseScale,
+                g_worldGenConfig->trees.treeNoiseOctaves,
                 DEFAULT_OCTAVE_PERSISTANCE,
                 DEFAULT_NOISE_OCTAVE_SCALE,
                 true,  // renormalize to -1..1
@@ -2212,20 +2290,10 @@ void Chunk::GenerateTerrain()
             // Convert noise from [-1, 1] to [0, 1] for threshold comparison
             float treeNoise01 = (treeNoise + 1.0f) * 0.5f;
 
-            // DEBUG: For desert/snow, log ALL noise attempts regardless of threshold
-            // TEMPORARY: Also debug PLAINS to see why trees aren't being placed
-            bool isDebugBiome = (biome == BiomeType::DESERT ||
-                                biome == BiomeType::SNOWY_PLAINS ||
-                                biome == BiomeType::SNOWY_TAIGA ||
-                                biome == BiomeType::PLAINS); // TEMPORARY DEBUG
-
-
-
-
 
 
             // Check if we should place a tree here
-            if (treeNoise01 < TREE_PLACEMENT_THRESHOLD) continue;
+            if (treeNoise01 < g_worldGenConfig->trees.treePlacementThreshold) continue;
 
             // Check surface block type - only place trees on suitable blocks
             int surfaceBlockIdx = x + y * CHUNK_SIZE_X + surfaceZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
@@ -2314,9 +2382,11 @@ void Chunk::GenerateTerrain()
                         int chunkBlockIdx = worldX + worldY * CHUNK_SIZE_X + worldZ * CHUNK_SIZE_X * CHUNK_SIZE_Y;
 
                         // Only place tree blocks in air (don't overwrite existing solid blocks)
+                        // BUGFIX: Direct array assignment instead of SetBlock() to avoid marking chunk as needing save
+                        // Procedurally generated trees shouldn't trigger chunk saves
                         if (m_blocks[chunkBlockIdx].m_typeIndex == BLOCK_AIR)
                         {
-                            SetBlock(worldX, worldY, worldZ, stampBlockType);
+                            m_blocks[chunkBlockIdx].m_typeIndex = stampBlockType;
                         }
                     }
                 }
@@ -3085,5 +3155,7 @@ void Chunk::PlaceTreeInNeighborChunk(Chunk* neighborChunk, TreeStamp* treeStamp,
     }
 
     // Mark neighbor chunk mesh as dirty since we've added blocks
+    // NOTE: We don't call SetNeedsSaving(true) because cross-chunk trees are procedurally generated
+    // They will be regenerated when the neighbor chunk loads, even if this chunk isn't active
     neighborChunk->SetIsMeshDirty(true);
 }
