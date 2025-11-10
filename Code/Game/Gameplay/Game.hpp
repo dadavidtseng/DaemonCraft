@@ -6,6 +6,10 @@
 #pragma once
 //----------------------------------------------------------------------------------------------------
 #include "Game/Gameplay/World.hpp"
+#include <unordered_map>
+#include <string>
+
+#include "imgui.h"
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 class Camera;
@@ -34,15 +38,40 @@ public:
     bool RequestedNewGame() const { return m_requestNewGame; }  // Check if F8 was pressed
     Vec3 GetPlayerCameraPosition() const;
     Vec3 GetPlayerVelocity() const;  // For directional chunk preloading (Task 0.7)
-    void ShowSimpleDemoWindow();
-    void ShowInspectorWindow();
-    void ShowDebugLogWindow();
     void ShowTerrainDebugWindow();
 
     // Accessors for debug visualization (Phase 0, Task 0.4)
     World* GetWorld() const { return m_world; }
 
 private:
+    // ImGui Helper Functions (Assignment 4: Phase 5B.4)
+    void ShowCurvesTab();
+    void ShowBiomeNoiseTab();
+    void ShowDensityTab();
+    void ShowCavesTab();
+    void ShowTreesTab();
+    void ShowCarversTab();
+    void ShowCurveEditor(char const* label, class PiecewiseCurve1D& curve, float minValue, float maxValue);
+
+    // Interactive curve editor helpers
+    struct GraphInteraction {
+        bool isMouseInGraph;
+        ImVec2 mouseScreenPos;
+        float mouseT;         // [-1, 1]
+        float mouseValue;     // [minValue, maxValue]
+    };
+
+    struct CurveEditorState {
+        int hoveredPointIndex = -1;
+        int draggedPointIndex = -1;
+        bool isDragging = false;
+    };
+
+    GraphInteraction GetGraphInteraction(struct ImVec2 graphMin, struct ImVec2 graphSize, float minValue, float maxValue);
+    int FindHoveredPoint(class PiecewiseCurve1D const& curve, GraphInteraction const& interaction,
+                         struct ImVec2 graphMin, struct ImVec2 graphSize, float minValue, float maxValue);
+
+    std::unordered_map<std::string, CurveEditorState> m_curveEditorStates;
     void UpdateFromInput();
     void UpdateFromKeyBoard();
     void UpdateFromController();
@@ -66,12 +95,6 @@ private:
 
     // Debug display toggle
     bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)
-
-    // ImGui window visibility toggles
-    bool m_showDemoWindow = false;
-    bool m_showInspectorWindow = false;
-    bool m_showConsoleWindow = false;
-    bool m_showTerrainDebugWindow = false;
 
     // Game restart request (F8 key)
     bool m_requestNewGame = false;  // Set to true when F8 is pressed, prevents use-after-delete crash
