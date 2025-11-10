@@ -37,7 +37,22 @@ namespace std
 //----------------------------------------------------------------------------------------------------
 // Chunk Management Constants - Reduced for Intel graphics compatibility
 //----------------------------------------------------------------------------------------------------
-constexpr int CHUNK_ACTIVATION_RANGE    = 480;
+// DEBUG MODE: Enable fixed world generation for testing (Task 5B.4)
+// Set to true to generate a fixed 16×16 chunk world (256 chunks) that never expands
+// Set to false for infinite world generation with dynamic loading
+constexpr bool DEBUG_FIXED_WORLD_GEN = false;
+
+// Debug mode: Generate fixed 16×16 chunk grid centered at origin (256 chunks total)
+// This creates a static world from chunk (-8,-8) to (7,7)
+// Chunks will NEVER be generated/deactivated as player moves
+constexpr int DEBUG_FIXED_WORLD_HALF_SIZE = 8;  // 8 chunks in each direction = 16×16 grid
+
+// Normal mode settings
+constexpr int FULL_CHUNK_ACTIVATION_RANGE = 480;
+
+// Use extremely large range in debug mode to keep all 256 chunks active
+// In normal mode, use standard activation range
+constexpr int CHUNK_ACTIVATION_RANGE    = DEBUG_FIXED_WORLD_GEN ? 10000 : FULL_CHUNK_ACTIVATION_RANGE;
 constexpr int CHUNK_DEACTIVATION_RANGE  = CHUNK_ACTIVATION_RANGE + 16 + 16; // CHUNK_SIZE_X + CHUNK_SIZE_Y
 constexpr int CHUNK_ACTIVATION_RADIUS_X = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_X
 constexpr int CHUNK_ACTIVATION_RADIUS_Y = 1 + (CHUNK_ACTIVATION_RANGE / 16); // CHUNK_SIZE_Y

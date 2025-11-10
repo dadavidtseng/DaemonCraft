@@ -208,6 +208,13 @@ A: Chunk mesh rebuilding occurs when `m_needsRebuild` flag is set, typically aft
 
 ## Changelog
 
+- **2025-11-09**: Critical bug fixes and system improvements (Phase 5B progress)
+  - ✅ Fixed shutdown crashes and DirectX 11 memory leaks in [Framework/App.cpp](Framework/CLAUDE.md)
+  - ✅ Fixed chunk save system bugs in [Framework/Chunk.cpp](Framework/CLAUDE.md)
+  - ✅ Fixed RegenerateAllChunks crashes in [Gameplay/World.cpp](Gameplay/CLAUDE.md)
+  - ✅ Integrated PiecewiseCurve1D system into terrain generation
+  - 🆕 Added WorldGenConfig system for runtime parameter tuning ([Framework](Framework/CLAUDE.md))
+  - See Framework and Gameplay modules for detailed technical changes
 - **2025-11-08**: Updated documentation to reflect completed Phase 5A implementation
   - Updated Assignment 4 Context with Phase 5A carvers completion status
   - Documented ravine and river carver implementations in Framework module

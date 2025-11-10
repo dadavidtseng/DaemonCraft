@@ -21,6 +21,27 @@
 ---
 
 ## Changelog
+- **2025-11-09**: Critical bug fixes and system improvements (Phase 5B progress)
+  - ✅ Fixed shutdown crashes and DirectX 11 memory leaks (App.cpp)
+    - Implemented three-stage shutdown: Stop workers → Delete chunks → Destroy Renderer
+    - Fixed fast shutdown crash when pressing ESC immediately after startup
+    - Eliminated 26 DirectX 11 buffer leaks on normal shutdown
+    - Eliminated 3 buffer leaks on RegenerateAllChunks operation
+  - ✅ Fixed chunk save system bugs (Chunk.cpp)
+    - Tree placement now uses direct array assignment to prevent unnecessary saves
+    - Debug visualization no longer triggers chunk saves to disk
+    - Only player modifications (dig/place blocks) save chunks
+  - ✅ Fixed RegenerateAllChunks crashes (World.cpp)
+    - Fixed dangling reference bug in DeactivateChunk() (line 299)
+    - Fixed double-delete bug with completed jobs (lines 405-472)
+    - Properly retrieve and manage completed jobs from JobSystem
+  - ✅ Integrated PiecewiseCurve1D system into terrain generation (Chunk.cpp)
+    - Terrain shaping now uses curve evaluation for Continentalness, Erosion, Peaks & Valleys
+    - Interactive ImGui curve editor affects terrain generation
+  - 🆕 Added WorldGenConfig system for runtime parameter tuning
+    - WorldGenConfig.cpp/hpp: Config management and XML serialization
+    - GameConfig.xml: Persistent storage for world generation parameters
+    - Integrated with ImGui interface for live editing
 - **2025-11-08**: Updated planning documentation to reflect completed Phase 5A implementation
   - Updated development.md and task-pointer.md with Phase 5A completion status
   - Documented ravine carver implementation (Chunk.cpp lines 1430-1520)
@@ -115,9 +136,13 @@ SimpleMiner is implementing Assignment 4, which upgrades procedural terrain gene
 - **Phase 5B: Parameter Tuning and Final Polish** - Testing, visual quality pass, performance optimization, bug fixing
 
 **Key Files Modified:**
-- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with Phases 1-4 implementation
+- [Chunk.cpp](Code/Game/Framework/CLAUDE.md) - `GenerateTerrain()` completely restructured with Phases 1-5A implementation
 - [Chunk.hpp](Code/Game/Framework/CLAUDE.md) - Added BiomeData, TreeStamp, CrossChunkTreeData structures
-- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - Added biome, density, terrain shaping, tree, and cave parameters
+- [GameCommon.hpp](Code/Game/Framework/CLAUDE.md) - Added biome, density, terrain shaping, tree, cave, and carver parameters
+- [App.cpp](Code/Game/Framework/CLAUDE.md) - Three-stage shutdown system for thread safety and DirectX cleanup
+- [World.cpp](Code/Game/Gameplay/CLAUDE.md) - Enhanced chunk lifecycle management and job processing
+- [WorldGenConfig.hpp/cpp](Code/Game/Framework/CLAUDE.md) - NEW: Runtime parameter tuning system with XML persistence
+- [GameConfig.xml](Run/CLAUDE.md) - Persistent storage for world generation configuration
 
 **Planning Resources:**
 - [Development Plan](.claude/plan/development.md) - Detailed implementation phases and technical specifications

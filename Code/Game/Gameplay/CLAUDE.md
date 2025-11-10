@@ -230,6 +230,22 @@ A: Multiple cameras exist: m_screenCamera for UI, m_worldCamera for 3D gameplay.
 
 ## Changelog
 
+- **2025-11-09**: Critical bug fixes in World class (Phase 5B progress)
+  - ✅ **World.cpp - Fixed RegenerateAllChunks crashes** (lines 398-472)
+    - Fixed dangling reference bug in `DeactivateChunk()` (line 299)
+      - Problem: `chunkCoords` reference to map key invalidated after `map.erase()`
+      - Solution: Copy `chunkCoords` to local variable `localChunkCoords` before erasing
+    - Fixed double-delete bug with completed jobs (lines 405-472)
+      - Problem: Completed jobs deleted twice (from `completedJobs` AND tracking lists)
+      - Solution: Retrieve jobs from JobSystem, remove from tracking lists WITHOUT delete, then delete separately
+    - Fixed memory leak with 3 DirectX 11 buffers after RegenerateAllChunks
+      - Problem: Completed jobs still in JobSystem queue when chunks deleted
+      - Solution: Call `g_jobSystem->RetrieveAllCompletedJobs()` before chunk deletion
+  - ✅ **World.cpp - Enhanced job management** (lines 403-472)
+    - Properly retrieve all completed jobs from JobSystem before cleanup
+    - Remove completed jobs from tracking lists to prevent double-delete
+    - Delete remaining tracked jobs (not yet completed) separately
+    - Finally delete completed jobs after all processing
 - **2025-11-08**: Assignment 4 Phase 5A (Carvers) completed in Framework module
   - World class continues to manage chunk activation and job processing for all world generation phases
   - Ravine and river carvers now part of terrain generation pipeline

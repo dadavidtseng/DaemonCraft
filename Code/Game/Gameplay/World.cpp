@@ -118,9 +118,68 @@ void World::Update(float const deltaSeconds)
         activeChunkCount = m_activeChunks.size();
     }
 
+    // DEBUG MODE: Fixed world generation (Task 5B.4)
+    // Generate exactly 256 chunks (16×16 grid) centered at origin, then stop
+    if (DEBUG_FIXED_WORLD_GEN)
+    {
+        // Generate all 256 chunks at startup (aggressive burst)
+        int chunksToActivateThisFrame = (activeChunkCount < 256) ? 50 : 0;
+
+        // 1. Check for dirty chunks and regenerate the single nearest dirty chunk
+        Chunk* nearestDirtyChunk = FindNearestDirtyChunk(cameraPos);
+        if (nearestDirtyChunk != nullptr)
+        {
+            nearestDirtyChunk->RebuildMesh();
+            nearestDirtyChunk->SetIsMeshDirty(false);
+        }
+
+        // 2. Generate fixed 16×16 chunk grid only (never generate beyond this)
+        for (int i = 0; i < chunksToActivateThisFrame; i++)
+        {
+            // Find next chunk in fixed grid that hasn't been generated yet
+            bool foundChunk = false;
+            for (int chunkX = -DEBUG_FIXED_WORLD_HALF_SIZE; chunkX < DEBUG_FIXED_WORLD_HALF_SIZE && !foundChunk; chunkX++)
+            {
+                for (int chunkY = -DEBUG_FIXED_WORLD_HALF_SIZE; chunkY < DEBUG_FIXED_WORLD_HALF_SIZE && !foundChunk; chunkY++)
+                {
+                    IntVec2 chunkCoords(chunkX, chunkY);
+
+                    // Check if this chunk already exists
+                    bool exists = false;
+                    {
+                        std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+                        exists = (m_activeChunks.find(chunkCoords) != m_activeChunks.end());
+                    }
+                    if (!exists)
+                    {
+                        std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+                        for (Chunk* chunk : m_nonActiveChunks)
+                        {
+                            if (chunk->GetChunkCoords() == chunkCoords)
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!exists)
+                    {
+                        ActivateChunk(chunkCoords);
+                        foundChunk = true;
+                    }
+                }
+            }
+            if (!foundChunk) break; // All 256 chunks generated
+        }
+
+        // 3. NEVER deactivate chunks in debug mode (keep all 256 active)
+        return; // Skip normal chunk management
+    }
+
+    // NORMAL MODE: Dynamic world generation
     // Tiered burst mode activation thresholds for responsive world generation
-    // Adjusted for CHUNK_ACTIVATION_RANGE = 640 (doubled from 320)
-    // With 640m range, need ~42×42 = 1,764 chunks for full coverage
+    // Adjusted for CHUNK_ACTIVATION_RANGE = 480
     int chunksToActivateThisFrame = 1; // Default: steady state (minimal activation)
 
     if (activeChunkCount < 400)
@@ -234,10 +293,15 @@ void World::ActivateChunk(IntVec2 const& chunkCoords)
 //----------------------------------------------------------------------------------------------------
 void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSave)
 {
+    // CRITICAL FIX: Copy chunkCoords to local variable BEFORE erasing from map
+    // Problem: chunkCoords is a reference to map key (it->first)
+    // When we erase(it), the reference becomes invalid → crash when used later
+    IntVec2 localChunkCoords = chunkCoords;
+
     Chunk* chunk = nullptr;
     {
         std::lock_guard<std::mutex> lock(m_activeChunksMutex);
-        auto const                  it = m_activeChunks.find(chunkCoords);
+        auto const                  it = m_activeChunks.find(localChunkCoords);
 
         if (it == m_activeChunks.end())
         {
@@ -259,7 +323,7 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSav
     chunk->ClearNeighborPointers();
 
     // Update neighbors to remove references to this chunk
-    ClearNeighborReferences(chunkCoords);
+    ClearNeighborReferences(localChunkCoords);
 
     // Save to disk if needed
     if (chunk->GetNeedsSaving())
@@ -336,12 +400,48 @@ void World::RegenerateAllChunks()
         // This prevents accessing freed memory (chunk coordinates, block array)
     }
 
-    // NOW it's safe to delete ALL pending jobs (mesh, generation, and load jobs)
-    // All workers have finished executing - no dangling pointers or orphaned threads
+    // CRITICAL FIX: Retrieve ALL completed jobs from JobSystem BEFORE deleting chunks
+    // Problem: Completed jobs are in JobSystem's completedJobs queue, NOT in our tracking lists
+    // If we delete chunks first, ProcessCompletedJobs() will try to access deleted chunks
+    //
+    // Solution: Retrieve completed jobs, remove from tracking lists, then delete ALL jobs together
+    std::vector<Job*> completedJobs = g_jobSystem->RetrieveAllCompletedJobs();
+
+    // Remove completed jobs from tracking lists to prevent double-delete
     {
         std::lock_guard<std::mutex> lock(m_jobListsMutex);
 
-        // Delete mesh jobs (workers no longer executing these)
+        // Remove completed mesh jobs from tracking list
+        for (Job* completedJob : completedJobs)
+        {
+            // Try to find and remove from mesh jobs list
+            auto meshIt = std::find(m_chunkMeshJobs.begin(), m_chunkMeshJobs.end(),
+                                   static_cast<ChunkMeshJob*>(completedJob));
+            if (meshIt != m_chunkMeshJobs.end())
+            {
+                m_chunkMeshJobs.erase(meshIt);
+                continue;  // Found in mesh jobs, skip other lists
+            }
+
+            // Try to find and remove from generation jobs list
+            auto genIt = std::find(m_chunkGenerationJobs.begin(), m_chunkGenerationJobs.end(),
+                                  static_cast<ChunkGenerateJob*>(completedJob));
+            if (genIt != m_chunkGenerationJobs.end())
+            {
+                m_chunkGenerationJobs.erase(genIt);
+                continue;  // Found in generation jobs, skip other lists
+            }
+
+            // Try to find and remove from load jobs list
+            auto loadIt = std::find(m_chunkLoadJobs.begin(), m_chunkLoadJobs.end(),
+                                   static_cast<ChunkLoadJob*>(completedJob));
+            if (loadIt != m_chunkLoadJobs.end())
+            {
+                m_chunkLoadJobs.erase(loadIt);
+            }
+        }
+
+        // NOW delete all remaining tracked jobs (not yet completed)
         for (ChunkMeshJob* meshJob : m_chunkMeshJobs)
         {
             if (meshJob != nullptr)
@@ -351,7 +451,6 @@ void World::RegenerateAllChunks()
         }
         m_chunkMeshJobs.clear();
 
-        // Delete generation jobs (workers no longer executing these)
         for (ChunkGenerateJob* genJob : m_chunkGenerationJobs)
         {
             if (genJob != nullptr)
@@ -361,7 +460,6 @@ void World::RegenerateAllChunks()
         }
         m_chunkGenerationJobs.clear();
 
-        // Delete load jobs (workers no longer executing these)
         for (ChunkLoadJob* loadJob : m_chunkLoadJobs)
         {
             if (loadJob != nullptr)
@@ -370,6 +468,12 @@ void World::RegenerateAllChunks()
             }
         }
         m_chunkLoadJobs.clear();
+    }
+
+    // Finally, delete all completed jobs (removed from tracking lists above)
+    for (Job* job : completedJobs)
+    {
+        delete job;
     }
 
     // NOW it's safe to delete orphaned chunks in m_nonActiveChunks

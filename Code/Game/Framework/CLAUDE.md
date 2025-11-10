@@ -340,6 +340,32 @@ A: World coordinates (float Vec3) → Chunk coordinates (IntVec2) → Local bloc
 
 ## Changelog
 
+- **2025-11-09**: Critical bug fixes and system improvements (Phase 5B progress)
+  - ✅ **App.cpp - Three-stage shutdown system** (lines 63-92)
+    - Fixed fast shutdown crash when pressing ESC immediately after startup
+    - Implemented proper shutdown sequence: Stop workers → Delete chunks → Destroy Renderer
+    - Stage 1: `g_jobSystem->Shutdown()` stops all worker threads before chunk deletion
+    - Stage 2: `GAME_SAFE_RELEASE(g_game)` deletes chunks while Renderer still alive
+    - Stage 3: `GEngine::Get().Shutdown()` destroys Renderer after chunks cleaned up
+    - Eliminated 26 DirectX 11 buffer leaks on normal shutdown
+    - Prevents worker threads from accessing freed chunk memory
+  - ✅ **Chunk.cpp - Fixed chunk save system** (multiple locations)
+    - Tree placement (line 2328): Changed from `SetBlock()` to direct array assignment
+    - Cross-chunk trees (line 3101): Removed `SetNeedsSaving(true)` call
+    - Debug visualization (lines 979-1000): Changed to direct array assignment
+    - Only player modifications (dig/place blocks) now trigger saves to disk
+    - Procedurally-generated content and debug visualization no longer persist
+  - ✅ **Chunk.cpp - Integrated PiecewiseCurve1D system** (lines 1252-1280)
+    - Terrain shaping now uses `g_worldGenConfig->continentalnessCurve.Evaluate()`
+    - Terrain shaping now uses `g_worldGenConfig->erosionCurve.Evaluate()`
+    - Terrain shaping now uses `g_worldGenConfig->peaksValleysCurve.Evaluate()`
+    - Interactive ImGui curve editor affects terrain generation in real-time
+  - 🆕 **WorldGenConfig.hpp/cpp - NEW runtime parameter tuning system**
+    - `WorldGenConfig` class for managing all world generation parameters
+    - `LoadFromXML()` and `SaveToXML()` methods for persistence
+    - XML serialization for biome, density, cave, carver, and curve parameters
+    - Integrated with `GameConfig.xml` in Run/Data directory
+    - Allows live parameter editing via ImGui interface
 - **2025-11-08**: Updated documentation to reflect completed Phase 5A implementation
   - Updated Assignment 4 status section with Phase 5A carvers information
   - Documented ravine carver implementation details (Chunk.cpp lines 1430-1520)

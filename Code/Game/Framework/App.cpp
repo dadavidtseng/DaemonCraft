@@ -6,6 +6,7 @@
 #include "Game/Framework/App.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Framework/WorldGenConfig.hpp"
 #include "Game/Gameplay/Game.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "Engine/Audio/AudioSystem.hpp"
@@ -49,6 +50,10 @@ void App::Startup()
     g_eventSystem->SubscribeEventCallbackFunction("OnCloseButtonClicked", OnCloseButtonClicked);
     g_eventSystem->SubscribeEventCallbackFunction("quit", OnCloseButtonClicked);
 
+    // Initialize world generation config system (Assignment 4: Phase 5B.4)
+    g_worldGenConfig = new WorldGenConfig();
+    g_worldGenConfig->LoadFromXML("Data/GameConfig.xml");  // Load saved config if exists
+
     g_game = new Game();
 }
 
@@ -57,8 +62,32 @@ void App::Startup()
 //
 void App::Shutdown()
 {
+    // CRITICAL FIX: Three-stage shutdown to handle both threading AND DirectX cleanup
+    //
+    // Problem 1: Worker threads accessing deleted chunks (crash on fast shutdown)
+    // Problem 2: Chunks trying to release D3D11 buffers after Renderer destroyed (memory leaks)
+    //
+    // Solution: Stop workers → Delete chunks → Destroy Renderer
+
+    // Stage 1: Stop worker threads BEFORE deleting chunks
+    // This prevents workers from accessing freed chunk memory
+    if (g_jobSystem != nullptr)
+    {
+        g_jobSystem->Shutdown();  // Waits for ALL workers to exit cleanly
+    }
+
+    // Stage 2: Delete game/world/chunks WHILE Renderer still alive
+    // This allows chunk destructors to properly release DirectX buffers
     GAME_SAFE_RELEASE(g_game);
 
+    // Stage 3: Cleanup config and shutdown rest of engine
+    if (g_worldGenConfig != nullptr)
+    {
+        delete g_worldGenConfig;
+        g_worldGenConfig = nullptr;
+    }
+
+    // Stage 4: Shutdown remaining engine systems (destroys Renderer last)
     GEngine::Get().Shutdown();
 }
 
