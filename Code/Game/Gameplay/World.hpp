@@ -8,9 +8,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+#include <deque>
 #include <mutex>
 
+#include "Engine/Math/Vec3.hpp"
 #include "Game/Framework/GameCommon.hpp"  // For DebugVisualizationMode
+#include "Game/Framework/BlockIterator.hpp"  // Assignment 5 Phase 4: Required for std::deque<BlockIterator>
 
 struct IntVec2;
 struct IntVec3;
@@ -21,6 +24,8 @@ class ChunkGenerateJob;
 class ChunkLoadJob;
 class ChunkMeshJob;
 class ChunkSaveJob;
+class Shader;
+class ConstantBuffer;
 
 //----------------------------------------------------------------------------------------------------
 // Hash function for IntVec2 to enable std::unordered_map usage
@@ -93,7 +98,25 @@ constexpr int MAX_PENDING_SAVE_JOBS     = 4;    // Maximum chunk save jobs in fl
 // 4. World units: Each world unit is 1 meter.  Each block is 1.0 x 1.0 x 1.0 world units (meters) in size.
 //    This assumption (that blocks are each 1m x 1m x 1m) is fundamental and should be hard-coded (for purposes of speed and numerical precision).
 // 5. World positions: 3D, Vec3 (float x,y,z), free-floating positions in world space.
-//    The world’s bounds extend infinitely in +/- X (east/west) and +/- Y (north/south) directions, but are finite vertically (from Z=0.0 at world bottom to Z=128.0 at world top, if chunks are 128 blocks tall).
+//    The world's bounds extend infinitely in +/- X (east/west) and +/- Y (north/south) directions, but are finite vertically (from Z=0.0 at world bottom to Z=128.0 at world top, if chunks are 128 blocks tall).
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 5 Phase 10: Fast Voxel Raycast Result
+//----------------------------------------------------------------------------------------------------
+struct RaycastResult
+{
+    bool     m_didImpact = false;       // True if ray hit a solid block
+    IntVec3  m_impactBlockCoords;       // Block coordinates of hit (if m_didImpact)
+    float    m_impactDistance = 0.0f;   // Distance along ray to impact point
+    Vec3     m_impactPosition;          // World position of impact
+    Vec3     m_impactNormal;            // Surface normal at impact (face direction)
+
+    RaycastResult() = default;
+    RaycastResult(bool didImpact, IntVec3 const& blockCoords = IntVec3::ZERO, float distance = 0.0f)
+        : m_didImpact(didImpact), m_impactBlockCoords(blockCoords), m_impactDistance(distance) {}
+};
+
+//----------------------------------------------------------------------------------------------------
 class World
 {
 public:
@@ -145,6 +168,19 @@ public:
     void SubmitChunkForLoading(Chunk* chunk);
     void SubmitChunkForSaving(Chunk* chunk);
 
+    // Assignment 5 Phase 4: Dirty light queue management
+    void AddToDirtyLightQueue(BlockIterator const& blockIter);
+    void ProcessDirtyLighting(float maxTimeSeconds);
+
+    // Assignment 5 Phase 5: Light propagation algorithm
+    void RecalculateBlockLighting(BlockIterator const& blockIter);
+
+    // Assignment 5 Phase 10: Fast voxel raycast using Amanatides & Woo algorithm
+    RaycastResult RaycastVoxel(Vec3 const& start, Vec3 const& direction, float maxDistance) const;
+
+    // Assignment 5 Phase 10: Force mark chunk for mesh rebuild (for chunks with InitializeLighting)
+    void MarkChunkForMeshRebuild(Chunk* chunk);
+
 private:
     //----------------------------------------------------------------------------------------------------
     // Active Chunks - Fully loaded and renderable chunks (main thread only)
@@ -180,6 +216,24 @@ private:
 
     std::vector<Chunk*> m_dirtyChunks;  // Chunks needing mesh rebuild (accessed only on main thread)
 
+    // Assignment 5 Phase 4: Dirty light queue for lighting propagation (8ms budget per frame)
+    std::deque<BlockIterator> m_dirtyLightQueue;  // Blocks needing light recalculation (main thread only)
+
+    // Assignment 5 Phase 7: O(1) duplicate detection for lighting queue (fixes infinite propagation loop)
+    // Tracks which blocks are already in m_dirtyLightQueue to prevent duplicate additions
+    // Without this, blocks re-add each other infinitely and lighting queue never empties
+    std::unordered_set<BlockIterator> m_dirtyLightSet;  // Fast lookup for queued blocks (main thread only)
+
+    // Assignment 5 Phase 10: Chunk mesh rebuild tracking (fixes inconsistent nighttime lighting)
+    // When lighting changes, chunks are added to this set but NOT marked mesh-dirty immediately.
+    // After dirty light queue empties (lighting stabilizes), all tracked chunks are marked mesh-dirty.
+    // This prevents mesh rebuild starvation while preserving "wait for stable lighting" behavior.
+    std::unordered_set<Chunk*> m_chunksNeedingMeshRebuild;  // Chunks with changed lighting (main thread only)
+    mutable std::mutex m_meshRebuildSetMutex;  // Protects m_chunksNeedingMeshRebuild from concurrent access
+
+    // Assignment 5: Track when initial world generation is complete
+    bool m_initialWorldGenComplete = false;  // Set to true when all 256 chunks are activated
+
     //----------------------------------------------------------------------------------------------------
     // Game State
     //----------------------------------------------------------------------------------------------------
@@ -188,6 +242,14 @@ private:
 
     // Debug visualization mode (Phase 0, Task 0.4)
     DebugVisualizationMode m_debugVisualizationMode = DebugVisualizationMode::NORMAL_TERRAIN;
+
+    //----------------------------------------------------------------------------------------------------
+    // Assignment 5 Phase 8: World Shader and Lighting Constants
+    //----------------------------------------------------------------------------------------------------
+    Shader*         m_worldShader           = nullptr;  // World.hlsl shader for lighting
+    ConstantBuffer* m_worldConstantBuffer   = nullptr;  // CBO for OutdoorBrightness (register b8)
+    float           m_outdoorBrightness     = 1.0f;     // Day/night modulation (1.0=noon, 0.2=midnight)
+    float           m_gameTime              = 0.0f;     // Game time in seconds for day/night cycle
 
     // Chunk management helper methods
     bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;
