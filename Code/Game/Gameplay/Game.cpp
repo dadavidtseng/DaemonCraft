@@ -99,6 +99,20 @@ void Game::Update()
     // Update world AFTER input processing so block modifications trigger mesh rebuilds this frame
     UpdateWorld(gameDeltaSeconds);
 
+    // Assignment 5 Phase 10: Continuously raycast from camera for visual feedback
+    if (m_world != nullptr && m_player != nullptr)
+    {
+        Camera* camera = m_player->GetCamera();
+        Vec3 const cameraPos = camera->GetPosition();
+        EulerAngles const orientation = camera->GetOrientation();
+
+        // Get forward vector from camera orientation
+        Vec3 forwardIBasis, leftJBasis, upKBasis;
+        orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+
+        // Perform raycast every frame to highlight block at crosshair
+        m_lastRaycastHit = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+    }
 
     ShowTerrainDebugWindow();
 }
@@ -126,6 +140,63 @@ void Game::Render() const
         DebugAddScreenText(Stringf("ClientPosition=(%.1f,%.1f)", clientPosition.x, clientPosition.y), Vec2(0, 80), 20.f, Vec2::ZERO, 0.f);
 
         RenderPlayerBasis();
+
+        // Assignment 5 Phase 10: Draw wireframe around raycast hit face
+        if (m_lastRaycastHit.m_didImpact)
+        {
+            // Calculate the four corners of the hit face based on impact normal
+            Vec3 blockCenter = Vec3(
+                static_cast<float>(m_lastRaycastHit.m_impactBlockCoords.x) + 0.5f,
+                static_cast<float>(m_lastRaycastHit.m_impactBlockCoords.y) + 0.5f,
+                static_cast<float>(m_lastRaycastHit.m_impactBlockCoords.z) + 0.5f
+            );
+
+            Vec3 normal = m_lastRaycastHit.m_impactNormal;
+            Vec3 faceCenter = blockCenter + (normal * 0.5f); // Move to face center
+
+            // Determine face orientation and calculate quad corners
+            Vec3 bottomLeft, bottomRight, topLeft, topRight;
+
+            // Small offset to prevent z-fighting with block faces
+            float const wireframeOffset = 0.01f;
+            Vec3 offset = normal * wireframeOffset;
+
+            if (fabsf(normal.x) > 0.5f) // East/West face (normal along X axis)
+            {
+                // Face perpendicular to X axis
+                bottomLeft  = faceCenter + Vec3(0.0f, -0.5f, -0.5f) + offset;
+                bottomRight = faceCenter + Vec3(0.0f,  0.5f, -0.5f) + offset;
+                topLeft     = faceCenter + Vec3(0.0f, -0.5f,  0.5f) + offset;
+                topRight    = faceCenter + Vec3(0.0f,  0.5f,  0.5f) + offset;
+            }
+            else if (fabsf(normal.y) > 0.5f) // North/South face (normal along Y axis)
+            {
+                // Face perpendicular to Y axis
+                bottomLeft  = faceCenter + Vec3(-0.5f, 0.0f, -0.5f) + offset;
+                bottomRight = faceCenter + Vec3( 0.5f, 0.0f, -0.5f) + offset;
+                topLeft     = faceCenter + Vec3(-0.5f, 0.0f,  0.5f) + offset;
+                topRight    = faceCenter + Vec3( 0.5f, 0.0f,  0.5f) + offset;
+            }
+            else // Top/Bottom face (normal along Z axis)
+            {
+                // Face perpendicular to Z axis
+                bottomLeft  = faceCenter + Vec3(-0.5f, -0.5f, 0.0f) + offset;
+                bottomRight = faceCenter + Vec3( 0.5f, -0.5f, 0.0f) + offset;
+                topLeft     = faceCenter + Vec3(-0.5f,  0.5f, 0.0f) + offset;
+                topRight    = faceCenter + Vec3( 0.5f,  0.5f, 0.0f) + offset;
+            }
+
+            // Draw wireframe quad highlighting the hit face
+            VertexList_PCU wireframeVerts;
+            Rgba8 highlightColor = Rgba8(0, 255, 0, 255); // Bright green wireframe
+            float wireframeThickness = 0.02f;
+
+            AddVertsForWireframeQuad3D(wireframeVerts, bottomLeft, bottomRight, topLeft, topRight, wireframeThickness, highlightColor);
+
+            g_renderer->BindShader(g_renderer->CreateOrGetShaderFromFile("Data/Shaders/Default"));
+            g_renderer->BindTexture(nullptr); // Disable texture for wireframe
+            g_renderer->DrawVertexArray(wireframeVerts);
+        }
     }
 
     g_renderer->EndCamera(*m_player->GetCamera());
@@ -225,34 +296,78 @@ void Game::UpdateFromKeyBoard()
         }
 
         // ========================================
-        // DIGGING AND PLACING SYSTEM
+        // DIGGING AND PLACING SYSTEM (Assignment 5 Phase 10: Using Fast Voxel Raycast)
         // ========================================
 
-        // LMB - Dig highest non-air block at or below camera position
+        // LMB - Dig block at crosshair (using fast voxel raycast)
         if (g_input->WasKeyJustPressed(KEYCODE_LEFT_MOUSE))
         {
             if (m_world != nullptr && m_player != nullptr)
             {
-                Vec3 const cameraPos = m_player->GetCamera()->GetPosition();
-                bool const success   = m_world->DigBlockAtCameraPosition(cameraPos);
+                Camera*       camera         = m_player->GetCamera();
+                Vec3 const    cameraPos      = camera->GetPosition();
+                EulerAngles const orientation = camera->GetOrientation();
 
-                if (!success)
+                // Get forward vector from camera orientation
+                Vec3 forwardIBasis, leftJBasis, upKBasis;
+                orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+
+                // Assignment 5 Phase 10: Use RaycastVoxel to find block at crosshair
+                RaycastResult rayResult = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+
+                if (rayResult.m_didImpact)
                 {
-                    DebuggerPrintf("No block to dig at camera position\n");
+                    // Dig the block we hit
+                    bool const success = m_world->SetBlockAtGlobalCoords(rayResult.m_impactBlockCoords, 0); // 0 = BLOCK_AIR
+                    if (!success)
+                    {
+                        DebuggerPrintf("Failed to dig block at (%d,%d,%d)\n",
+                                       rayResult.m_impactBlockCoords.x,
+                                       rayResult.m_impactBlockCoords.y,
+                                       rayResult.m_impactBlockCoords.z);
+                    }
+                }
+                else
+                {
+                    DebuggerPrintf("No block to dig at crosshair\n");
                 }
             }
         }
 
-        // RMB - Place current block type above highest non-air block at or below camera position
+        // RMB - Place block at crosshair (using fast voxel raycast)
         if (g_input->WasKeyJustPressed(KEYCODE_RIGHT_MOUSE))
         {
             if (m_world != nullptr && m_player != nullptr)
             {
-                Vec3 const cameraPos = m_player->GetCamera()->GetPosition();
-                bool const success   = m_world->PlaceBlockAtCameraPosition(cameraPos, m_currentBlockType);
-                if (!success)
+                Camera*       camera         = m_player->GetCamera();
+                Vec3 const    cameraPos      = camera->GetPosition();
+                EulerAngles const orientation = camera->GetOrientation();
+
+                // Get forward vector from camera orientation
+                Vec3 forwardIBasis, leftJBasis, upKBasis;
+                orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+
+                // Assignment 5 Phase 10: Use RaycastVoxel to find block at crosshair
+                RaycastResult rayResult = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+
+                if (rayResult.m_didImpact)
                 {
-                    DebuggerPrintf("Cannot place block at camera position\n");
+                    // Place block adjacent to the hit block (in the direction of the normal)
+                    IntVec3 placePos = rayResult.m_impactBlockCoords + IntVec3(
+                        static_cast<int>(rayResult.m_impactNormal.x),
+                        static_cast<int>(rayResult.m_impactNormal.y),
+                        static_cast<int>(rayResult.m_impactNormal.z)
+                    );
+
+                    bool const success = m_world->SetBlockAtGlobalCoords(placePos, m_currentBlockType);
+                    if (!success)
+                    {
+                        DebuggerPrintf("Cannot place block at (%d,%d,%d)\n", placePos.x, placePos.y, placePos.z);
+                    }
+                }
+                else
+                {
+                    DebuggerPrintf("No block to place against at crosshair\n");
                 }
             }
         }

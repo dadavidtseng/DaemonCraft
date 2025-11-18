@@ -98,4 +98,7 @@ private:
 
     // Game restart request (F8 key)
     bool m_requestNewGame = false;  // Set to true when F8 is pressed, prevents use-after-delete crash
+
+    // Assignment 5 Phase 10: Raycast visual feedback
+    RaycastResult m_lastRaycastHit;  // Last raycast result for debug visualization
 };
