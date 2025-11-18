@@ -21,6 +21,36 @@
 ---
 
 ## Changelog
+- **2025-11-16**: Assignment 5 Phase 3 Visual Rendering - Tasks 7, 8, 9 Complete
+  - ✅ Task 7: Mesh Building with Vertex Lighting (Chunk.cpp:2758-2825)
+    - Modified AddBlockFacesWithHiddenSurfaceRemoval() to encode lighting in vertex colors
+    - r channel = outdoor light (0-255), g channel = indoor light (0-255), b channel = directional shading
+    - Directional shading: Top=1.0, Sides=0.8, Bottom=0.6
+    - All block faces now carry lighting information for GPU rendering
+  - ✅ Task 8: World Shader Creation (Run/Data/Shaders/World.hlsl - NEW FILE)
+    - Created dedicated World.hlsl shader for voxel lighting (137 lines)
+    - Pixel shader combines: finalBrightness = max(outdoor * OutdoorBrightness, indoor) * directional
+    - cbuffer WorldConstants : register(b8) for day/night modulation
+    - World.cpp loads shader, creates constant buffer, binds before rendering chunks
+  - ✅ Task 9: Day/Night Cycle (World.cpp:125-141)
+    - 240-second (4-minute) day/night cycle using cosine wave
+    - Outdoor brightness: 1.0 at noon, 0.2 at midnight
+    - Lightning strikes using Perlin noise (threshold 0.95 for rare flashes)
+    - Constant buffer updated every frame with current OutdoorBrightness
+  - 🎯 Phase 3 Complete: Visual lighting system ready for validation
+- **2025-11-16**: Assignment 5 Phase 5-6 Lighting System Bug Fixes and Validation
+  - ✅ Fixed infinite propagation loop in Phase 5 (RecalculateBlockLighting)
+    - Root cause: Adding ALL 6 neighbors to dirty queue regardless of opacity caused infinite cascade through solid blocks
+    - Fix: Added opacity check - only add NON-OPAQUE neighbors to dirty queue (World.cpp:1956-1986)
+    - Per spec: "Mark all 6 non-opaque neighbors as dirty"
+  - ✅ Re-enabled Phase 6 OnActivate() chunk activation lighting
+    - Removed early return statement that disabled edge block processing (Chunk.cpp:3224-3326)
+    - Surface-level optimization prevents queue explosion (±16 blocks from surface height)
+  - ✅ Validated cross-chunk light propagation
+    - Debug output confirmed correct behavior: light values decay 15→14→13→...→1
+    - Algorithm converges (no infinite loops), cross-chunk blocks processed correctly
+    - No game freezing during chunk activation
+  - 📝 Updated A5 spec tasks.md with implementation notes and verification completion
 - **2025-11-09**: Critical bug fixes and system improvements (Phase 5B progress)
   - ✅ Fixed shutdown crashes and DirectX 11 memory leaks (App.cpp)
     - Implemented three-stage shutdown: Stop workers → Delete chunks → Destroy Renderer
