@@ -130,13 +130,15 @@ void ChunkMeshJob::GenerateMeshData()
             -Vec3::Y_BASIS      // South
         };
 
-        Rgba8 faceTints[6] = {
-            Rgba8::WHITE,               // Top
-            Rgba8::WHITE,               // Bottom
-            Rgba8(230, 230, 230),       // East
-            Rgba8(180, 180, 180),       // West
-            Rgba8(200, 200, 200),       // North
-            Rgba8(160, 160, 160)        // South
+        // Assignment 5 Phase 7: Directional shading values for b channel
+        // Top = 1.0 (255), Sides = 0.8 (204), Bottom = 0.6 (153)
+        float directionalShading[6] = {
+            1.0f,    // Top
+            0.6f,    // Bottom
+            0.8f,    // East
+            0.8f,    // West
+            0.8f,    // North
+            0.8f     // South
         };
 
         // Check each of the 6 faces
@@ -154,8 +156,40 @@ void ChunkMeshJob::GenerateMeshData()
             else if (faceIndex == 1) uvs = def->GetBottomUVs(); // Bottom
             else                     uvs = def->GetSideUVs();    // Sides (East, West, North, South)
 
-            // Add the visible face to our local vertex/index buffers
-            AddBlockFaceToJob(blockCenter, faceNormals[faceIndex], uvs, faceTints[faceIndex]);
+            // Assignment 5 Phase 7 FIX: Get lighting from NEIGHBOR block in face direction
+            // This matches Chunk.cpp behavior - each face uses the light from the neighbor
+            // For example, the top face of grass uses the light from the air block above
+            BlockIterator neighborIter = blockIter.GetNeighbor(faceDirections[faceIndex]);
+            Block* neighborBlock = neighborIter.IsValid() ? neighborIter.GetBlock() : nullptr;
+
+            // Assignment 5: Read lighting from neighbor block
+            // FIX: If neighbor is unavailable (unloaded chunk), use default skylight value
+            // This prevents completely black faces on chunk edges where neighbors aren't loaded yet
+            uint8_t outdoorLight = neighborBlock ? neighborBlock->GetOutdoorLight() : 15;  // Default to full skylight
+            uint8_t indoorLight = neighborBlock ? neighborBlock->GetIndoorLight() : 0;
+
+            // FIX: Apply minimum ambient light as INDOOR light (not outdoor) to prevent black faces
+            // Indoor light is NOT modulated by day/night cycle, providing constant ambient illumination
+            // This matches Minecraft's behavior where shadowed areas remain visible even at night
+            constexpr uint8_t MIN_AMBIENT_LIGHT = 4;  // Minimum light level (4/15 = ~27% brightness)
+            if (outdoorLight < MIN_AMBIENT_LIGHT && indoorLight == 0)
+            {
+                indoorLight = MIN_AMBIENT_LIGHT;  // Use indoor channel to avoid day/night modulation
+            }
+
+            // Normalize lighting to 0.0-1.0 range
+            float outdoorNormalized = (float)outdoorLight / 15.0f;
+            float indoorNormalized = (float)indoorLight / 15.0f;
+
+            // Assignment 5 Phase 7: Encode lighting in vertex colors
+            // r = outdoor light (0-255), g = indoor light (0-255), b = directional shading (0-255)
+            uint8_t r = (uint8_t)(outdoorNormalized * 255.0f);
+            uint8_t g = (uint8_t)(indoorNormalized * 255.0f);
+            uint8_t b = (uint8_t)(directionalShading[faceIndex] * 255.0f);
+            Rgba8 vertexColor = Rgba8(r, g, b, 255);
+
+            // Add the visible face to our local vertex/index buffers with lighting
+            AddBlockFaceToJob(blockCenter, faceNormals[faceIndex], uvs, vertexColor);
         }
     }
 
