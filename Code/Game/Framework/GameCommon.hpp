@@ -301,6 +301,39 @@ struct ChunkFileHeader
 // Chunk-specific RLE entry type alias for Engine's generic RLE system
 using ChunkRLEEntry = sRLEEntry<uint8_t>;
 
+//----------------------------------------------------------------------------------------------------
+// Block Type Constants - Defined in Chunk.cpp, declared here for cross-file access
+//----------------------------------------------------------------------------------------------------
+extern const uint8_t BLOCK_AIR;
+extern const uint8_t BLOCK_WATER;
+extern const uint8_t BLOCK_ICE;
+extern const uint8_t BLOCK_SAND;
+extern const uint8_t BLOCK_STONE;
+extern const uint8_t BLOCK_DIRT;
+extern const uint8_t BLOCK_GRASS;
+extern const uint8_t BLOCK_ACACIA_LEAVES;
+extern const uint8_t BLOCK_OAK_LEAVES;
+extern const uint8_t BLOCK_BIRCH_LEAVES;
+extern const uint8_t BLOCK_JUNGLE_LEAVES;
+extern const uint8_t BLOCK_SPRUCE_LEAVES;
+extern const uint8_t BLOCK_SPRUCE_LEAVES_SNOW;
+// Note: Full list of block types is in Chunk.cpp lines 34-68
+
+//----------------------------------------------------------------------------------------------------
+// Helper function: Check if block should receive outdoor light despite being marked opaque
+//----------------------------------------------------------------------------------------------------
+inline bool IsTransparentForLighting(uint8_t blockType)
+{
+    return blockType == BLOCK_WATER ||
+           blockType == BLOCK_ICE ||
+           blockType == BLOCK_ACACIA_LEAVES ||
+           blockType == BLOCK_OAK_LEAVES ||
+           blockType == BLOCK_BIRCH_LEAVES ||
+           blockType == BLOCK_JUNGLE_LEAVES ||
+           blockType == BLOCK_SPRUCE_LEAVES ||
+           blockType == BLOCK_SPRUCE_LEAVES_SNOW;
+}
+
 //-Forward-Declaration--------------------------------------------------------------------------------
 class App;
 class Game;

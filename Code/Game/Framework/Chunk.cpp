@@ -6,6 +6,7 @@
 #include "Game/Framework/Chunk.hpp"
 
 #include <filesystem>
+#include <unordered_map>
 
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Core/FileUtils.hpp"
@@ -24,6 +25,7 @@
 #include "Game/Framework/WorldGenConfig.hpp"  // For g_worldGenConfig (Assignment 4: Phase 5B.4)
 #include "Game/Framework/BlockIterator.hpp"
 #include "Game/Gameplay/Game.hpp"  // For g_game and visualization mode access
+#include "Game/Gameplay/World.hpp"  // Assignment 5 Phase 6: For OnActivate() method
 #include "ThirdParty/Noise/RawNoise.hpp"
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
@@ -448,9 +450,14 @@ Chunk::Chunk(IntVec2 const& chunkCoords)
     m_worldBounds  = AABB3(worldMins, worldMaxs);
 
     // Initialize all blocks to air (terrain generation happens asynchronously)
+    // CRITICAL FIX (2025-11-16): Initialize ALL Block members to prevent garbage memory values
+    // BUG WAS: Only m_typeIndex initialized, m_lightingData and m_bitFlags contained random values
+    // This caused underground blocks to appear bright if garbage data had high outdoor light bits
     for (int i = 0; i < BLOCKS_PER_CHUNK; ++i)
     {
-        m_blocks[i].m_typeIndex = 0; // BLOCK_AIR
+        m_blocks[i].m_typeIndex = 0;      // BLOCK_AIR
+        m_blocks[i].m_lightingData = 0;   // outdoor=0, indoor=0 (both nibbles zero)
+        m_blocks[i].m_bitFlags = 0;       // isSkyVisible=false, all flags clear
     }
 }
 
@@ -506,8 +513,9 @@ void Chunk::Render()
         g_renderer->SetDepthMode(eDepthMode::READ_WRITE_LESS_EQUAL);
 
         // Phase 1, Task 1.1: Use Assignment 4 Dokucraft High 32px sprite sheet (matches new XML layout)
+        // NOTE: World.hlsl shader already bound by World::Render() with constant buffer for day/night cycle
+        // Do NOT bind shader here - it would require re-binding the constant buffer
         g_renderer->BindTexture(g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/SpriteSheet_Faithful_64x.png"));
-
         // CRITICAL FIX: Use buffer's internal size to avoid race condition during RebuildMesh()
         // RebuildMesh() clears m_indices at line 579, causing m_indices.size() to return 0
         // This results in bright flashing when rendering with 0 indices
@@ -2386,7 +2394,31 @@ void Chunk::GenerateTerrain()
                         // Procedurally generated trees shouldn't trigger chunk saves
                         if (m_blocks[chunkBlockIdx].m_typeIndex == BLOCK_AIR)
                         {
+                            // BUG HUNT: Before placing tree block, log if it has unexpected lighting
+                            static int treeBlockLogCount = 0;
+                            uint8_t oldOutdoor = m_blocks[chunkBlockIdx].GetOutdoorLight();
+                            uint8_t oldIndoor = m_blocks[chunkBlockIdx].GetIndoorLight();
+
+                            if (treeBlockLogCount < 20 && (oldOutdoor > 0 || oldIndoor > 0))
+                            {
+                                DebuggerPrintf("[TREE PLACE] Chunk(%d,%d) replacing AIR at (%d,%d,%d) with tree block type=%d, AIR had outdoor=%d indoor=%d!\n",
+                                              m_chunkCoords.x, m_chunkCoords.y, worldX, worldY, worldZ,
+                                              stampBlockType, oldOutdoor, oldIndoor);
+                                treeBlockLogCount++;
+                            }
+
                             m_blocks[chunkBlockIdx].m_typeIndex = stampBlockType;
+
+                            // BUG HUNT: After placing, verify lighting is still what we expect
+                            uint8_t newOutdoor = m_blocks[chunkBlockIdx].GetOutdoorLight();
+                            uint8_t newIndoor = m_blocks[chunkBlockIdx].GetIndoorLight();
+
+                            if (treeBlockLogCount < 20 && (newOutdoor != oldOutdoor || newIndoor != oldIndoor))
+                            {
+                                DebuggerPrintf("[TREE PLACE BUG] Lighting changed! outdoor %d->%d, indoor %d->%d\n",
+                                              oldOutdoor, newOutdoor, oldIndoor, newIndoor);
+                                treeBlockLogCount++;
+                            }
                         }
                     }
                 }
@@ -2394,8 +2426,13 @@ void Chunk::GenerateTerrain()
         }
     }
 
-    // Mark mesh as needing regeneration
-    m_isMeshDirty = true;
+    // Assignment 5 Phase 3: Initialize lighting after terrain generation
+    InitializeLighting();
+
+    // NOTE: Do NOT mark mesh as dirty here!
+    // The mesh will be marked dirty AFTER lighting propagates via ProcessDirtyChunkMeshes()
+    // This ensures the mesh is built with correct lighting data, not stale outdoor=0 values
+    // m_isMeshDirty = true;  // DISABLED - mesh will be marked dirty by lighting system
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -2450,7 +2487,7 @@ Block* Chunk::GetBlock(int const localBlockIndexX,
 }
 
 //----------------------------------------------------------------------------------------------------
-void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex)
+void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex, World* world)
 {
     // SAFETY CHECK: Validate chunk is in a valid state before modification
     // This prevents writing to chunks being deleted/deactivated during RegenerateAllChunks()
@@ -2483,6 +2520,38 @@ void Chunk::SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockI
         // Mark chunk as modified - needs saving and mesh regeneration
         SetNeedsSaving(true);
         SetIsMeshDirty(true);
+
+        // Assignment 5 Phase 7 FIX: Recalculate lighting when block changes
+        // This fixes the oscillating lighting bug where placed blocks alternate between bright/dark
+        if (world)
+        {
+            // Create BlockIterator for this block
+            IntVec3 localCoords(localBlockIndexX, localBlockIndexY, localBlockIndexZ);
+            BlockIterator blockIter(this, LocalCoordsToIndex(localCoords), world);
+
+            // Add this block to dirty light queue for recalculation
+            world->AddToDirtyLightQueue(blockIter);
+
+            // Also add all 6 neighbors to propagate lighting changes
+            // This ensures smooth lighting transitions around the modified block
+            IntVec3 neighborOffsets[6] = {
+                IntVec3(1, 0, 0),   // East
+                IntVec3(-1, 0, 0),  // West
+                IntVec3(0, 1, 0),   // North
+                IntVec3(0, -1, 0),  // South
+                IntVec3(0, 0, 1),   // Up
+                IntVec3(0, 0, -1)   // Down
+            };
+
+            for (int i = 0; i < 6; i++)
+            {
+                BlockIterator neighborIter = blockIter.GetNeighbor(neighborOffsets[i]);
+                if (neighborIter.IsValid())
+                {
+                    world->AddToDirtyLightQueue(neighborIter);
+                }
+            }
+        }
     }
 }
 
@@ -2778,13 +2847,15 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
         -Vec3::Y_BASIS      // South
     };
 
-    Rgba8 faceTints[6] = {
-        Rgba8::WHITE,               // Top
-        Rgba8::WHITE,               // Bottom
-        Rgba8(230, 230, 230),       // East
-        Rgba8(230, 230, 230),       // West
-        Rgba8(200, 200, 200),       // North
-        Rgba8(200, 200, 200)        // South
+    // Assignment 5 Phase 7: Directional shading values for b channel
+    // Top = 1.0 (255), Sides = 0.8 (204), Bottom = 0.6 (153)
+    float directionalShading[6] = {
+        1.0f,    // Top
+        0.6f,    // Bottom
+        0.8f,    // East
+        0.8f,    // West
+        0.8f,    // North
+        0.8f     // South
     };
 
     // For each face, check if it's visible before adding it
@@ -2797,7 +2868,98 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
             else if (faceIndex == 1) uvs = def->GetBottomUVs();  // Bottom
             else uvs                     = def->GetSideUVs();    // Sides
 
-            AddBlockFace(blockCenter, faceNormals[faceIndex], uvs, faceTints[faceIndex]);
+            // Assignment 5 Phase 7 FIX: Get lighting from NEIGHBOR block in face direction
+            // This is the correct Minecraft behavior - each face uses the light from the neighbor
+            // For example, the top face of grass uses the light from the air block above
+            BlockIterator neighborIter = blockIter.GetNeighbor(faceDirections[faceIndex]);
+            Block* neighborBlock = neighborIter.IsValid() ? neighborIter.GetBlock() : nullptr;
+
+            // Assignment 5: Read lighting from neighbor block
+            // FIX: If neighbor is unavailable (unloaded chunk), use default skylight value
+            // This prevents completely black faces on chunk edges where neighbors aren't loaded yet
+            uint8_t outdoorLight = neighborBlock ? neighborBlock->GetOutdoorLight() : 15;  // Default to full skylight
+            uint8_t indoorLight = neighborBlock ? neighborBlock->GetIndoorLight() : 0;
+
+            // FIX: Apply minimum ambient light as INDOOR light (not outdoor) to prevent black faces
+            // Indoor light is NOT modulated by day/night cycle, providing constant ambient illumination
+            // This matches Minecraft's behavior where shadowed areas remain visible even at night
+            constexpr uint8_t MIN_AMBIENT_LIGHT = 4;  // Minimum light level (4/15 = ~27% brightness)
+            if (outdoorLight < MIN_AMBIENT_LIGHT && indoorLight == 0)
+            {
+                indoorLight = MIN_AMBIENT_LIGHT;  // Use indoor channel to avoid day/night modulation
+            }
+
+            // BUG HUNT: Log if we're reading HIGH outdoor light from UNDERGROUND neighbors
+            // Works in both Debug and Release builds
+            static int logCount = 0;
+            Block* block = blockIter.GetBlock();
+            IntVec3 blockCoords = blockIter.GetLocalCoords();
+
+            // Log if UNDERGROUND block (z < 100) is reading outdoor > 5 from ANY neighbor
+            if (logCount < 50 && blockCoords.z < 100 && outdoorLight > 5)
+            {
+                IntVec3 neighborCoords = neighborIter.IsValid() ? neighborIter.GetLocalCoords() : IntVec3::ZERO;
+                IntVec2 chunkCoords = m_chunkCoords;
+                IntVec2 neighborChunkCoords = neighborIter.IsValid() && neighborIter.GetChunk() ? neighborIter.GetChunk()->GetChunkCoords() : IntVec2::ZERO;
+                uint8_t neighborType = neighborBlock ? neighborBlock->m_typeIndex : 255;
+                uint8_t blockType = block ? block->m_typeIndex : 255;
+                bool neighborIsSkyVisible = neighborBlock ? neighborBlock->IsSkyVisible() : false;
+
+                DebuggerPrintf("[MESH BRIGHT] Block type=%d Chunk(%d,%d) Pos(%d,%d,%d) Face#%d reading outdoor=%d from neighbor type=%d at Chunk(%d,%d) Pos(%d,%d,%d) isSkyVisible=%d\n",
+                              blockType, chunkCoords.x, chunkCoords.y, blockCoords.x, blockCoords.y, blockCoords.z,
+                              faceIndex, outdoorLight, neighborType,
+                              neighborChunkCoords.x, neighborChunkCoords.y, neighborCoords.x, neighborCoords.y, neighborCoords.z,
+                              neighborIsSkyVisible ? 1 : 0);
+                logCount++;
+            }
+
+            // BUG HUNT: Log if TOP FACE of SURFACE block reads LOW outdoor light (should be 15)
+            // This is the critical bug - surface block's top face should read from sky-visible air block
+            static int lowLightLogCount = 0;
+            if (lowLightLogCount < 20 && faceIndex == 0 && outdoorLight < 10 && blockCoords.z >= 80 && blockCoords.z <= 150)
+            {
+                IntVec3 neighborCoords = neighborIter.IsValid() ? neighborIter.GetLocalCoords() : IntVec3::ZERO;
+                IntVec2 chunkCoords = m_chunkCoords;
+                uint8_t neighborType = neighborBlock ? neighborBlock->m_typeIndex : 255;
+                uint8_t blockType = block ? block->m_typeIndex : 255;
+                bool neighborIsSkyVisible = neighborBlock ? neighborBlock->IsSkyVisible() : false;
+
+                DebuggerPrintf("[MESH LOW LIGHT BUG] Block type=%d Chunk(%d,%d) Pos(%d,%d,%d) TOP FACE reading outdoor=%d from neighbor type=%d at Pos(%d,%d,%d) isSkyVisible=%d\n",
+                              blockType, chunkCoords.x, chunkCoords.y, blockCoords.x, blockCoords.y, blockCoords.z,
+                              outdoorLight, neighborType,
+                              neighborCoords.x, neighborCoords.y, neighborCoords.z,
+                              neighborIsSkyVisible ? 1 : 0);
+                lowLightLogCount++;
+            }
+
+            // Normalize lighting to 0.0-1.0 range
+            float outdoorNormalized = (float)outdoorLight / 15.0f;
+            float indoorNormalized = (float)indoorLight / 15.0f;
+
+            // Assignment 5 Phase 7: Encode lighting in vertex colors
+            // r = outdoor light (0-255), g = indoor light (0-255), b = directional shading (0-255)
+            uint8_t r = (uint8_t)(outdoorNormalized * 255.0f);
+            uint8_t g = (uint8_t)(indoorNormalized * 255.0f);
+            uint8_t b = (uint8_t)(directionalShading[faceIndex] * 255.0f);
+            Rgba8 vertexColor = Rgba8(r, g, b, 255);
+
+            // DEBUG: Log first 3 surface blocks per chunk (showing BOTH outdoor and indoor)
+            static std::unordered_map<IntVec2, int> chunkFaceCount;  // Track faces per chunk
+            int& faceCount = chunkFaceCount[m_chunkCoords];
+            if (faceCount < 3 && blockCoords.z >= 80)  // Only log surface blocks
+            {
+                // If indoor > 0, mark it clearly for debugging "bright green" chunks
+                const char* indoorNote = (indoorLight > 0) ? " ← INDOOR LIGHT!" : "";
+                // CRITICAL BUG HUNT: Also log if outdoor is LESS than 15 (shouldn't happen for surface blocks!)
+                const char* outdoorNote = (outdoorLight < 15) ? " ← LOW OUTDOOR!" : "";
+                DebuggerPrintf("[MESH VERTEX] Chunk(%d,%d) Block(%d,%d,%d) Face#%d: outdoor=%d indoor=%d → RGB=(%d,%d,%d)%s%s\n",
+                              m_chunkCoords.x, m_chunkCoords.y,
+                              blockCoords.x, blockCoords.y, blockCoords.z,
+                              faceIndex, outdoorLight, indoorLight, r, g, b, indoorNote, outdoorNote);
+                faceCount++;
+            }
+
+            AddBlockFace(blockCenter, faceNormals[faceIndex], uvs, vertexColor);
         }
     }
 }
@@ -3105,7 +3267,10 @@ void Chunk::PlaceCrossChunkTrees()
     if (!m_crossChunkTrees.empty())
     {
         m_crossChunkTrees.clear();
-        SetIsMeshDirty(true); // Mark mesh as dirty since we've added blocks
+        // NOTE: Do NOT call SetIsMeshDirty(true) here!
+        // Tree blocks trigger lighting changes via RecalculateBlockLighting(),
+        // which adds chunk to m_chunksNeedingMeshRebuild automatically.
+        // ProcessDirtyChunkMeshes() will mark it dirty AFTER lighting stabilizes.
     }
 }
 
@@ -3154,8 +3319,488 @@ void Chunk::PlaceTreeInNeighborChunk(Chunk* neighborChunk, TreeStamp* treeStamp,
         }
     }
 
-    // Mark neighbor chunk mesh as dirty since we've added blocks
-    // NOTE: We don't call SetNeedsSaving(true) because cross-chunk trees are procedurally generated
-    // They will be regenerated when the neighbor chunk loads, even if this chunk isn't active
-    neighborChunk->SetIsMeshDirty(true);
+    // NOTE: Do NOT call SetIsMeshDirty(true) on neighbor chunk here!
+    // Tree blocks trigger lighting changes via RecalculateBlockLighting(),
+    // which adds neighbor chunk to m_chunksNeedingMeshRebuild automatically.
+    // ProcessDirtyChunkMeshes() will mark it dirty AFTER lighting stabilizes.
+    //
+    // NOTE: We also don't call SetNeedsSaving(true) because cross-chunk trees are
+    // procedurally generated and will be regenerated when the neighbor chunk loads.
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 5 Phase 3: Initialize lighting after terrain generation
+//----------------------------------------------------------------------------------------------------
+void Chunk::InitializeLighting()
+{
+    // DEBUG: Log that InitializeLighting is being called
+    static int callCount = 0;
+    callCount++;
+
+    // Log first few calls for debugging
+    if (callCount <= 3)
+    {
+        DebuggerPrintf("[INIT LIGHTING #%d] Chunk(%d,%d) InitializeLighting() called\n",
+                      callCount, m_chunkCoords.x, m_chunkCoords.y);
+    }
+
+    int airBlocksSetToSky = 0;  // Count how many air blocks we set to sky visible
+
+    // CRITICAL FIX (2025-11-16): ALWAYS update m_surfaceHeight[] to reflect ACTUAL top solid block
+    // GenerateTerrain() sets m_surfaceHeight to ground level BEFORE tree placement,
+    // so tree leaves are not accounted for. We must rescan to find true surface (including trees).
+    // This ensures OnActivate() adds air ABOVE trees to dirty queue, not leaves inside canopy.
+    bool needsSurfaceHeightInit = true;  // Always update to account for trees
+
+    // Scan each (x,y) column from top to bottom
+    for (int x = 0; x < CHUNK_SIZE_X; x++)
+    {
+        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        {
+            int surfaceHeightForColumn = -1;  // Track surface height for m_surfaceHeight[] initialization (-1 = not found yet)
+
+            // CRITICAL FIX (2025-11-16): Two-pass approach to correctly identify sky-visible blocks
+            // Pass 1: Scan from top to bottom, mark blocks as sky-visible if no opaque block above
+            // Pass 2: Scan from top to bottom, set outdoor=15 ONLY for sky-visible blocks until first opaque
+
+            // Pass 1: Find the TRUE surface height (HIGHEST SOLID TERRAIN, not trees/leaves)
+            // CORRECT ALGORITHM: Find the LAST transition from AIR → OPAQUE when descending from sky
+            // This handles all cases: trees touching ground, trees with air gaps, no trees at all
+            int lastAirZ = -1;  // Track the last AIR block we saw
+
+            // First scan: Descend from sky and find the last AIR → OPAQUE transition
+            for (int z = CHUNK_SIZE_Z - 1; z >= 0; z--)
+            {
+                Block* block = GetBlock(x, y, z);
+                if (!block) continue;
+
+                sBlockDefinition* blockDef = sBlockDefinition::GetDefinitionByIndex(block->m_typeIndex);
+                if (!blockDef) continue;
+
+                if (blockDef->IsOpaque())
+                {
+                    // Found an opaque block. If we just saw AIR above, this is a surface transition.
+                    if (lastAirZ != -1 && lastAirZ == z + 1)
+                    {
+                        // This is an AIR → OPAQUE transition, update surface height
+                        surfaceHeightForColumn = z;
+                        // Don't break! Keep searching for deeper transitions (caves, overhangs, etc.)
+                    }
+                    else if (surfaceHeightForColumn == -1)
+                    {
+                        // First opaque from top with no air above (e.g., bedrock column)
+                        surfaceHeightForColumn = z;
+                    }
+                }
+                else  // Non-opaque (AIR, WATER, etc.)
+                {
+                    lastAirZ = z;  // Remember this AIR block
+                }
+            }
+
+            // If we never found any opaque blocks, surface is at -1 (all air column)
+            // This is handled by the sky-visible scan below
+
+            // Second scan: Mark sky-visible blocks (only blocks ABOVE surface get sky-visible=true)
+            for (int z = CHUNK_SIZE_Z - 1; z >= 0; z--)
+            {
+                Block* block = GetBlock(x, y, z);
+                if (!block) continue;
+
+                sBlockDefinition* blockDef = sBlockDefinition::GetDefinitionByIndex(block->m_typeIndex);
+                if (!blockDef) continue;
+
+                // Blocks ABOVE the true surface (including tree leaves/logs and air) can see sky
+                if (z > surfaceHeightForColumn)
+                {
+                    if (!blockDef->IsOpaque())  // Only non-opaque blocks get sky-visible flag
+                    {
+                        block->SetIsSkyVisible(true);
+                    }
+                    else
+                    {
+                        block->SetIsSkyVisible(false);  // Tree leaves/logs above surface don't see sky
+                    }
+                }
+                else
+                {
+                    // Blocks AT or BELOW surface cannot see sky
+                    block->SetIsSkyVisible(false);
+                }
+            }
+
+            // Pass 2: Set outdoor light based on sky visibility
+            // CRITICAL FIX: Don't break at FIRST opaque - break at SURFACE HEIGHT from Pass 1!
+            // This handles tree leaves above the terrain surface correctly.
+            for (int z = CHUNK_SIZE_Z - 1; z >= 0; z--)
+            {
+                Block* block = GetBlock(x, y, z);
+                if (!block)
+                    continue;
+
+                sBlockDefinition* blockDef = sBlockDefinition::GetDefinitionByIndex(block->m_typeIndex);
+                if (!blockDef)
+                    continue;
+
+                // Process blocks ABOVE and AT the surface
+                if (z >= surfaceHeightForColumn || surfaceHeightForColumn == -1)
+                {
+                    if (blockDef->IsOpaque())
+                    {
+                        // A5 SPEC COMPLIANT: ALL opaque blocks get outdoor=0 (NO EXCEPTIONS)
+                        // Per spec Task 3 (lines 154-155): "if (!foundSolid) outdoor=15 else outdoor=0"
+                        // Water/ice/leaves are marked isOpaque="true" for gameplay collision,
+                        // so InitializeLighting() treats them as opaque → outdoor=0
+                        // RecalculateBlockLighting() will handle light propagation THROUGH them
+                        block->SetOutdoorLight(0);
+
+                        // Check if emissive (glowstone, lava, etc.)
+                        if (blockDef->IsEmissive())
+                        {
+                            block->SetIndoorLight(blockDef->GetEmissiveValue());
+                        }
+                        else
+                        {
+                            block->SetIndoorLight(0);
+                        }
+                    }
+                    else  // Non-opaque block (AIR, WATER, etc.)
+                    {
+                        // Only sky-visible blocks get outdoor=15
+                        if (block->IsSkyVisible())
+                        {
+                            block->SetOutdoorLight(15);
+                            block->SetIndoorLight(0);
+                            airBlocksSetToSky++;
+                        }
+                        else
+                        {
+                            // Non-sky-visible air (shouldn't happen above surface, but handle it)
+                            block->SetOutdoorLight(0);
+                            block->SetIndoorLight(0);
+                        }
+                    }
+                }
+                else
+                {
+                    // Blocks BELOW surface - set to darkness
+                    // A5 SPEC COMPLIANT: ALL blocks below surface get outdoor=0 (NO EXCEPTIONS)
+                    block->SetOutdoorLight(0);
+
+                    // Check if emissive (glowstone, lava, etc.)
+                    if (blockDef->IsEmissive())
+                    {
+                        block->SetIndoorLight(blockDef->GetEmissiveValue());
+                    }
+                    else
+                    {
+                        block->SetIndoorLight(0);
+                    }
+                }
+            }
+
+            // CRITICAL FIX: Populate m_surfaceHeight[] for chunks loaded from disk
+            // This is essential for OnActivate() to add correct blocks to dirty light queue
+            if (needsSurfaceHeightInit)
+            {
+                m_surfaceHeight[x + y * CHUNK_SIZE_X] = surfaceHeightForColumn;
+            }
+        }
+    }
+
+    if (needsSurfaceHeightInit && callCount <= 3)
+    {
+        DebuggerPrintf("  [INIT LIGHTING] Populated m_surfaceHeight[] - sample: (0,0)=%d, (15,15)=%d\n",
+                      m_surfaceHeight[0], m_surfaceHeight[15 + 15 * CHUNK_SIZE_X]);
+    }
+
+    // DEBUG: Log surface blocks with high lighting for debugging bright chunks
+    static int chunkLightingDebugCount = 0;
+    if (chunkLightingDebugCount < 3)
+    {
+        int brightBlockCount = 0;
+        for (int x = 0; x < CHUNK_SIZE_X; x++)
+        {
+            for (int y = 0; y < CHUNK_SIZE_Y; y++)
+            {
+                int surfaceZ = m_surfaceHeight[x + y * CHUNK_SIZE_X];
+                if (surfaceZ >= 0)
+                {
+                    Block* surfaceBlock = GetBlock(x, y, surfaceZ);
+                    if (surfaceBlock)
+                    {
+                        uint8_t outdoor = surfaceBlock->GetOutdoorLight();
+                        uint8_t indoor = surfaceBlock->GetIndoorLight();
+
+                        // Log if block has ANY light (should help identify bright chunks)
+                        if (outdoor > 0 || indoor > 0)
+                        {
+                            brightBlockCount++;
+                            if (brightBlockCount <= 5)  // Log first 5 bright surface blocks
+                            {
+                                DebuggerPrintf("[BRIGHT BLOCK] Chunk(%d,%d) Surface(%d,%d,%d) Type=%d outdoor=%d indoor=%d\n",
+                                              m_chunkCoords.x, m_chunkCoords.y, x, y, surfaceZ,
+                                              surfaceBlock->m_typeIndex, outdoor, indoor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        DebuggerPrintf("[CHUNK LIGHTING] Chunk(%d,%d) has %d surface blocks with light\n",
+                      m_chunkCoords.x, m_chunkCoords.y, brightBlockCount);
+        chunkLightingDebugCount++;
+    }
+
+    // NOTE: We don't queue all sky-visible blocks here because:
+    // 1. InitializeLighting() doesn't have access to World* parameter
+    // 2. OnActivate() will queue edge blocks which propagates lighting naturally
+    // 3. ProcessDirtyLighting() will see IsSkyVisible flag and set outdoor=15
+    // This approach matches the reference implementation
+
+
+    // DEBUG: Log results AND check for inconsistencies
+    if (callCount <= 10)  // Log first 10 chunks instead of 3
+    {
+        DebuggerPrintf("[INIT #%d] Chunk(%d,%d) Set %d air blocks to outdoor=15\n",
+                      callCount, m_chunkCoords.x, m_chunkCoords.y, airBlocksSetToSky);
+
+        // CRITICAL: Sample a few blocks to verify correct initialization
+        int sampleX = 8, sampleY = 8;  // Center column
+        int surfaceZ = m_surfaceHeight[sampleX + sampleY * CHUNK_SIZE_X];
+        if (surfaceZ >= 0 && surfaceZ < CHUNK_SIZE_Z - 1)
+        {
+            Block* surfaceBlock = GetBlock(sampleX, sampleY, surfaceZ);
+            Block* airAbove = GetBlock(sampleX, sampleY, surfaceZ + 1);
+
+            if (surfaceBlock && airAbove)
+            {
+                DebuggerPrintf("  Sample(%d,%d): Surface block type=%d outdoor=%d indoor=%d, Air above outdoor=%d indoor=%d isSky=%d\n",
+                              sampleX, sampleY,
+                              surfaceBlock->m_typeIndex, surfaceBlock->GetOutdoorLight(), surfaceBlock->GetIndoorLight(),
+                              airAbove->GetOutdoorLight(), airAbove->GetIndoorLight(), airAbove->IsSkyVisible() ? 1 : 0);
+            }
+        }
+    }
+
+    // CRITICAL BUG HUNT: Check if ANY blocks have INCORRECT indoor light values
+    // We expect indoor=0 for all blocks except emissive ones
+    if (callCount <= 3)
+    {
+        int indoorBugCount = 0;
+        for (int z = 80; z < CHUNK_SIZE_Z; z++)  // Check high blocks (surface level)
+        {
+            for (int y = 0; y < CHUNK_SIZE_Y; y++)
+            {
+                for (int x = 0; x < CHUNK_SIZE_X; x++)
+                {
+                    Block* block = GetBlock(x, y, z);
+                    if (block)
+                    {
+                        uint8_t outdoor = block->GetOutdoorLight();
+                        uint8_t indoor = block->GetIndoorLight();
+
+                        // If block has indoor>0 and it's NOT emissive, that's a bug!
+                        sBlockDefinition* def = sBlockDefinition::GetDefinitionByIndex(block->m_typeIndex);
+                        bool isEmissive = def ? def->IsEmissive() : false;
+
+                        if (indoor > 0 && !isEmissive && indoorBugCount < 10)
+                        {
+                            DebuggerPrintf("[INIT BUG] Chunk(%d,%d) Block(%d,%d,%d) type=%d has indoor=%d but NOT emissive! (outdoor=%d)\n",
+                                          m_chunkCoords.x, m_chunkCoords.y, x, y, z, block->m_typeIndex, indoor, outdoor);
+                            indoorBugCount++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (indoorBugCount > 0)
+        {
+            DebuggerPrintf("  [INIT BUG] Found %d blocks with incorrect indoor light!\n", indoorBugCount);
+        }
+    }
+
+    // CRITICAL BUG HUNT: Verify that air blocks above surface ACTUALLY have outdoor=15
+    // Check first few columns to see if they were set correctly
+    if (callCount <= 3)
+    {
+        int bugCount = 0;
+        for (int y = 0; y < 4; y++)  // Check first 4 rows
+        {
+            for (int x = 0; x < 4; x++)  // Check first 4 columns
+            {
+                int surfaceZ = m_surfaceHeight[x + y * CHUNK_SIZE_X];
+                if (surfaceZ >= 0 && surfaceZ < CHUNK_SIZE_Z - 1)
+                {
+                    Block* airAbove = GetBlock(x, y, surfaceZ + 1);
+                    if (airAbove && airAbove->GetOutdoorLight() == 0)
+                    {
+                        DebuggerPrintf("  [POST-INIT BUG] Column(%d,%d) surfaceZ=%d: AIR at z=%d has outdoor=%d! (Expected 15)\n",
+                                      x, y, surfaceZ, surfaceZ + 1, airAbove->GetOutdoorLight());
+                        bugCount++;
+                    }
+                }
+            }
+        }
+        if (bugCount == 0)
+        {
+            DebuggerPrintf("  [POST-INIT OK] All checked air blocks above surface have outdoor=15\n");
+        }
+    }
+}
+
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 5 Phase 6: Populate dirty light queue with edge blocks on chunk activation
+// RE-ENABLED: Phase 5 algorithm fixed to only propagate through non-opaque neighbors
+//----------------------------------------------------------------------------------------------------
+void Chunk::OnActivate(World* world)
+{
+    if (!world)
+        return;
+
+    // Assignment 5 Phase 6 FIX: Queue ONE surface block per column to trigger lighting propagation
+    // CRITICAL: Only queue the air block directly above surface, not all sky-visible blocks
+    int blocksQueued = 0;
+    for (int x = 0; x < CHUNK_SIZE_X; x++)
+    {
+        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        {
+            int surfaceZ = m_surfaceHeight[x + y * CHUNK_SIZE_X];
+            if (surfaceZ >= 0 && surfaceZ < CHUNK_SIZE_Z - 1)
+            {
+                // Queue ONLY the air block just above the surface (surfaceZ + 1)
+                // Don't check IsSkyVisible - just queue it
+                int airBlockIndex = LocalCoordsToIndex(x, y, surfaceZ + 1);
+                BlockIterator airIter(this, airBlockIndex, world);
+                if (airIter.IsValid())
+                {
+                    world->AddToDirtyLightQueue(airIter);
+                    blocksQueued++;
+                }
+            }
+        }
+    }
+
+    // DEBUG: Log how many blocks were queued
+    static int activationCount = 0;
+    activationCount++;
+    if (activationCount <= 5)
+    {
+        DebuggerPrintf("[ONACTIVATE] Chunk(%d,%d) queued %d surface blocks for lighting\n",
+                      m_chunkCoords.x, m_chunkCoords.y, blocksQueued);
+    }
+
+    // CRITICAL FIX: Force mark this chunk for mesh rebuild
+    // InitializeLighting() set outdoor=15 directly without going through RecalculateBlockLighting()
+    // So the chunk wasn't added to m_chunksNeedingMeshRebuild
+    // We need to ensure the mesh rebuilds with the correct lighting data
+    world->MarkChunkForMeshRebuild(this);
+
+    // Assignment 5 Phase 6: Mark edge blocks as dirty ONLY if neighbor chunks exist
+    // Per spec line 147: "Mark non-opaque boundary blocks touching any existing neighboring chunk as light dirty"
+    // This prevents underground blocks from brightening when there's no light source
+
+    int const SURFACE_RANGE = 16;  // Distance above/below surface to check
+
+    //----------------------------------------------------------------------------------------------------
+    // North edge (y = CHUNK_SIZE_Y - 1) - ONLY if north neighbor exists
+    //----------------------------------------------------------------------------------------------------
+    if (m_northNeighbor != nullptr)
+    {
+        for (int x = 0; x < CHUNK_SIZE_X; x++)
+        {
+            // Find surface height for this column
+            int surfaceZ = m_surfaceHeight[x + 0 * CHUNK_SIZE_X];  // y=0 for north edge lookup
+
+            // Only add blocks near surface
+            int minZ = surfaceZ - SURFACE_RANGE;
+            int maxZ = surfaceZ + SURFACE_RANGE;
+            if (minZ < 0) minZ = 0;
+            if (maxZ >= CHUNK_SIZE_Z) maxZ = CHUNK_SIZE_Z - 1;
+
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                int const blockIndex = LocalCoordsToIndex(x, CHUNK_SIZE_Y - 1, z);
+                BlockIterator iter(this, blockIndex, world);
+                world->AddToDirtyLightQueue(iter);
+            }
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // South edge (y = 0) - ONLY if south neighbor exists
+    //----------------------------------------------------------------------------------------------------
+    if (m_southNeighbor != nullptr)
+    {
+        for (int x = 0; x < CHUNK_SIZE_X; x++)
+        {
+            // Find surface height for this column
+            int surfaceZ = m_surfaceHeight[x + 0 * CHUNK_SIZE_X];
+
+            // Only add blocks near surface
+            int minZ = surfaceZ - SURFACE_RANGE;
+            int maxZ = surfaceZ + SURFACE_RANGE;
+            if (minZ < 0) minZ = 0;
+            if (maxZ >= CHUNK_SIZE_Z) maxZ = CHUNK_SIZE_Z - 1;
+
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                int const blockIndex = LocalCoordsToIndex(x, 0, z);
+                BlockIterator iter(this, blockIndex, world);
+                world->AddToDirtyLightQueue(iter);
+            }
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // East edge (x = CHUNK_SIZE_X - 1) - ONLY if east neighbor exists
+    //----------------------------------------------------------------------------------------------------
+    if (m_eastNeighbor != nullptr)
+    {
+        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        {
+            // Find surface height for this column
+            int surfaceZ = m_surfaceHeight[(CHUNK_SIZE_X - 1) + y * CHUNK_SIZE_X];
+
+            // Only add blocks near surface
+            int minZ = surfaceZ - SURFACE_RANGE;
+            int maxZ = surfaceZ + SURFACE_RANGE;
+            if (minZ < 0) minZ = 0;
+            if (maxZ >= CHUNK_SIZE_Z) maxZ = CHUNK_SIZE_Z - 1;
+
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                int const blockIndex = LocalCoordsToIndex(CHUNK_SIZE_X - 1, y, z);
+                BlockIterator iter(this, blockIndex, world);
+                world->AddToDirtyLightQueue(iter);
+            }
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------------
+    // West edge (x = 0) - ONLY if west neighbor exists
+    //----------------------------------------------------------------------------------------------------
+    if (m_westNeighbor != nullptr)
+    {
+        for (int y = 0; y < CHUNK_SIZE_Y; y++)
+        {
+            // Find surface height for this column
+            int surfaceZ = m_surfaceHeight[0 + y * CHUNK_SIZE_X];
+
+            // Only add blocks near surface
+            int minZ = surfaceZ - SURFACE_RANGE;
+            int maxZ = surfaceZ + SURFACE_RANGE;
+            if (minZ < 0) minZ = 0;
+            if (maxZ >= CHUNK_SIZE_Z) maxZ = CHUNK_SIZE_Z - 1;
+
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                int const blockIndex = LocalCoordsToIndex(0, y, z);
+                BlockIterator iter(this, blockIndex, world);
+                world->AddToDirtyLightQueue(iter);
+            }
+        }
+    }
 }

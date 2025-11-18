@@ -38,6 +38,19 @@ struct sBlockDefinition
     bool IsSolid() const { return m_isSolid; }
     bool IsOpaque() const { return m_isOpaque; }
 
+    // Assignment 5 Phase 3: Emissive lighting support
+    bool    IsEmissive() const { return m_indoorLighting > 0.f; }
+    uint8_t GetEmissiveValue() const
+    {
+        // Convert 0.0-1.0 to 0-15
+        // CRITICAL FIX: Clamp to 15 to prevent overflow during light propagation
+        // Without clamping, XML value "15" becomes 15.0f * 15.0f = 225, which causes
+        // indoor light to propagate as 225->224->223... instead of 15->14->13...
+        float calculated = m_indoorLighting * 15.f;
+        if (calculated > 15.f) calculated = 15.f;
+        return static_cast<uint8_t>(calculated);
+    }
+
 private:
     String  m_name               = "DEFAULT";
     bool    m_isVisible          = false;

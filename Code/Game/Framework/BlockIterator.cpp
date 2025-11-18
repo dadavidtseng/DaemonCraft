@@ -6,12 +6,15 @@
 #include "Game/Framework/BlockIterator.hpp"
 #include "Game/Framework/Block.hpp"
 #include "Game/Framework/Chunk.hpp"
+#include "Game/Gameplay/World.hpp"  // Assignment 5 Phase 2: For cross-chunk navigation
 
 //----------------------------------------------------------------------------------------------------
 BlockIterator::BlockIterator(Chunk*    chunk,
-                             int const blockIndex)
+                             int const blockIndex,
+                             World*    world)
     : m_chunk(chunk),
-      m_blockIndex(blockIndex)
+      m_blockIndex(blockIndex),
+      m_world(world)
 {
 }
 
@@ -90,18 +93,56 @@ bool BlockIterator::MoveByOffset(IntVec3 const& offset)
 }
 
 //----------------------------------------------------------------------------------------------------
+// Assignment 5 Phase 2: Enhanced GetNeighbor() with cross-chunk navigation support
+//----------------------------------------------------------------------------------------------------
 BlockIterator BlockIterator::GetNeighbor(IntVec3 const& offset) const
 {
-    if (!IsValid()) return BlockIterator(nullptr, -1);
+    if (!IsValid()) return BlockIterator(nullptr, -1, m_world);
 
-    int const newIndex = CalculateIndexFromOffset(offset);
+    IntVec3 const currentCoords = GetLocalCoords();
+    IntVec3 const newCoords     = currentCoords + offset;
 
-    if (IsIndexValid(newIndex))
+    // Check if neighbor is within same chunk
+    if (newCoords.x >= 0 && newCoords.x < CHUNK_SIZE_X &&
+        newCoords.y >= 0 && newCoords.y < CHUNK_SIZE_Y &&
+        newCoords.z >= 0 && newCoords.z < CHUNK_SIZE_Z)
     {
-        return BlockIterator(m_chunk, newIndex);
+        int const newIndex = Chunk::LocalCoordsToIndex(newCoords);
+        return BlockIterator(m_chunk, newIndex, m_world);
     }
 
-    return BlockIterator(nullptr, -1);  // Invalid iterator
+    // Neighbor is in adjacent chunk - need cross-chunk navigation
+    if (!m_world) return BlockIterator(nullptr, -1, m_world);  // No world reference available
+
+    // Calculate which neighboring chunk we need
+    IntVec2 const currentChunkCoords = m_chunk->GetChunkCoords();
+    IntVec2       neighborChunkOffset(0, 0);
+
+    // Determine chunk offset based on which boundary we crossed
+    if (newCoords.x < 0)                  neighborChunkOffset.x = -1;  // Crossed west boundary
+    if (newCoords.x >= CHUNK_SIZE_X)      neighborChunkOffset.x = 1;   // Crossed east boundary
+    if (newCoords.y < 0)                  neighborChunkOffset.y = -1;  // Crossed south boundary
+    if (newCoords.y >= CHUNK_SIZE_Y)      neighborChunkOffset.y = 1;   // Crossed north boundary
+
+    IntVec2 const neighborChunkCoords = currentChunkCoords + neighborChunkOffset;
+    Chunk*  const neighborChunk       = m_world->GetChunk(neighborChunkCoords);
+
+    if (!neighborChunk) return BlockIterator(nullptr, -1, m_world);  // Neighbor chunk not loaded
+
+    // Calculate local coordinates within neighbor chunk (wrap around using modulo)
+    IntVec3 neighborLocalCoords;
+    neighborLocalCoords.x = (newCoords.x + CHUNK_SIZE_X) % CHUNK_SIZE_X;  // Wrap negative/overflow X
+    neighborLocalCoords.y = (newCoords.y + CHUNK_SIZE_Y) % CHUNK_SIZE_Y;  // Wrap negative/overflow Y
+    neighborLocalCoords.z = newCoords.z;                                   // Z never crosses chunk boundary
+
+    // Vertical out of bounds check (no neighbor chunk in Z direction)
+    if (neighborLocalCoords.z < 0 || neighborLocalCoords.z >= CHUNK_SIZE_Z)
+    {
+        return BlockIterator(nullptr, -1, m_world);
+    }
+
+    int const neighborIndex = Chunk::LocalCoordsToIndex(neighborLocalCoords);
+    return BlockIterator(neighborChunk, neighborIndex, m_world);
 }
 
 //----------------------------------------------------------------------------------------------------

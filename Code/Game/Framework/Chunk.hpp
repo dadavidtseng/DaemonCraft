@@ -23,6 +23,7 @@ struct sBlockDefinition;
 class IndexBuffer;
 class VertexBuffer;
 class BlockIterator;
+class World;  // Assignment 5 Phase 6: For OnActivate() method
 
 //----------------------------------------------------------------------------------------------------
 // Phase 0, Task 0.5: Larger chunk sizes for Assignment 4 (World Generation)
@@ -169,6 +170,9 @@ public:
     void GenerateTerrain();
     void RebuildMesh();
 
+    // Assignment 5 Phase 6: Chunk activation lighting
+    void OnActivate(World* world);
+
     // Thread-safe mesh data operations for ChunkMeshJob
     void SetMeshData(VertexList_PCU const& vertices, IndexList const& indices,
                      VertexList_PCU const& debugVertices, IndexList const& debugIndices);
@@ -180,7 +184,7 @@ public:
     friend class ChunkMeshJob;
 
     Block* GetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ);
-    void   SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex);
+    void   SetBlock(int localBlockIndexX, int localBlockIndexY, int localBlockIndexZ, uint8_t blockTypeIndex, World* world = nullptr);
 
     // Static utility functions for chunk coordinate management
     static int     LocalCoordsToIndex(IntVec3 const& localCoords);
@@ -235,6 +239,10 @@ public:
     // Disk I/O operations (thread-safe, called by I/O worker thread)
     bool LoadFromDisk();
     bool SaveToDisk() const;
+
+    // Assignment 5 Phase 3: Initial lighting setup (called after terrain generation or disk load)
+    // Made public so ChunkLoadJob can call it after loading from disk
+    void InitializeLighting();
 
 private:
     /// @brief 6. Chunk coordinates: 2D, IntVec2 (int x,y), with x and y axes aligned with world axes (above).

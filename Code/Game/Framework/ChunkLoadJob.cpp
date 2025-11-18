@@ -32,6 +32,11 @@ void ChunkLoadJob::Execute()
 
         if (m_wasSuccessful)
         {
+            // Assignment 5: Initialize lighting for loaded chunks
+            // CRITICAL FIX: Chunks loaded from disk have old lighting data (all outdoor=0)
+            // InitializeLighting() sets air blocks to outdoor=15 and opaque blocks to outdoor=0
+            m_chunk->InitializeLighting();
+
             // Transition to load complete state using atomic operation
             m_chunk->SetState(ChunkState::LOAD_COMPLETE);
         }
