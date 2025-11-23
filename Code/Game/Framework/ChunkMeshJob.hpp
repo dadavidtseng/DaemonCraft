@@ -12,6 +12,7 @@
 //----------------------------------------------------------------------------------------------------
 class Chunk;
 class BlockIterator;
+class World;
 
 //----------------------------------------------------------------------------------------------------
 // ChunkMeshJob - Asynchronous mesh generation for chunk rendering
@@ -40,8 +41,8 @@ class BlockIterator;
 class ChunkMeshJob : public Job
 {
 public:
-    // Constructor: Takes chunk pointer that will be processed
-    explicit ChunkMeshJob(Chunk* chunk);
+    // Constructor: Takes chunk and world pointers for cross-chunk neighbor access
+    explicit ChunkMeshJob(Chunk* chunk, World* world);
 
     // Destructor: Cleanup any resources
     ~ChunkMeshJob() override = default;
@@ -70,6 +71,9 @@ public:
 private:
     // Target chunk for mesh generation
     Chunk* m_chunk = nullptr;
+
+    // World pointer for cross-chunk neighbor access (Assignment 5 Phase 0: Hidden Surface Removal)
+    World* m_world = nullptr;
 
     // Success flag for error handling
     bool m_wasSuccessful = false;

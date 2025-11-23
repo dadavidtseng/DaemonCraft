@@ -8,6 +8,7 @@
 #include "Game/Framework/BlockIterator.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Definition/BlockDefinition.hpp"
+#include "Game/Gameplay/World.hpp"  // Assignment 5 Phase 0: For cross-chunk neighbor access
 #include "Engine/Core/ErrorWarningAssert.hpp"
 #include "Engine/Math/AABB2.hpp"
 #include "Engine/Math/Vec2.hpp"
@@ -15,10 +16,11 @@
 #include "Engine/Renderer/VertexUtils.hpp"
 
 //----------------------------------------------------------------------------------------------------
-ChunkMeshJob::ChunkMeshJob(Chunk* chunk)
-    : m_chunk(chunk)
+ChunkMeshJob::ChunkMeshJob(Chunk* chunk, World* world)
+    : m_chunk(chunk), m_world(world)
 {
     GUARANTEE_OR_DIE(m_chunk != nullptr, "ChunkMeshJob created with null chunk pointer");
+    GUARANTEE_OR_DIE(m_world != nullptr, "ChunkMeshJob created with null world pointer");
 
     // Verify chunk is in the correct state for mesh generation
     ChunkState currentState = m_chunk->GetState();
@@ -107,8 +109,9 @@ void ChunkMeshJob::GenerateMeshData()
                                (float)localCoords.y + 0.5f,
                                (float)localCoords.z + 0.5f) + chunkWorldOffset;
 
-        // Create block iterator for efficient neighbor access
-        BlockIterator blockIter(m_chunk, blockIndex);
+        // Assignment 5 Phase 0 FIX: Create block iterator with World pointer for cross-chunk navigation
+        // This enables GetNeighbor() to access blocks in adjacent chunks for proper hidden surface removal
+        BlockIterator blockIter(m_chunk, blockIndex, m_world);
 
         // Check each face direction and only add visible faces
         // Face directions as offset vectors
@@ -239,39 +242,51 @@ void ChunkMeshJob::ApplyMeshDataToChunk()
 //----------------------------------------------------------------------------------------------------
 bool ChunkMeshJob::IsFaceVisibleForJob(BlockIterator const& blockIter, IntVec3 const& faceDirection) const
 {
-    // Create a copy of the iterator and move it in the face direction
-    BlockIterator neighborIter = blockIter;
+    // Assignment 5 Phase 0 FIX: Use GetNeighbor() instead of Move methods for cross-chunk support
+    // MoveEast()/MoveWest()/etc. only work within the same chunk and return false at chunk boundaries
+    // GetNeighbor() properly navigates across chunk boundaries via World pointer
+    BlockIterator neighborIter = blockIter.GetNeighbor(faceDirection);
 
-    // Try to move to the neighbor block
-    bool hasNeighbor = false;
-    if (faceDirection == IntVec3(1, 0, 0))       hasNeighbor = neighborIter.MoveEast();
-    else if (faceDirection == IntVec3(-1, 0, 0)) hasNeighbor = neighborIter.MoveWest();
-    else if (faceDirection == IntVec3(0, 1, 0))  hasNeighbor = neighborIter.MoveNorth();
-    else if (faceDirection == IntVec3(0, -1, 0)) hasNeighbor = neighborIter.MoveSouth();
-    else if (faceDirection == IntVec3(0, 0, 1))  hasNeighbor = neighborIter.MoveUp();
-    else if (faceDirection == IntVec3(0, 0, -1)) hasNeighbor = neighborIter.MoveDown();
-
-    // If we can't move (edge of chunk or world), the face is visible
-    if (!hasNeighbor)
+    // CRITICAL: If neighbor is invalid, assume it's OPAQUE (hidden face)
+    // This prevents rendering chunk boundary faces when neighbor chunks aren't fully loaded
+    // Only render faces at true world boundaries (z < 0 or z >= CHUNK_SIZE_Z)
+    if (!neighborIter.IsValid())
     {
-        return true;
+        // Check if we're at vertical world boundaries (top/bottom of world)
+        IntVec3 currentCoords = blockIter.GetLocalCoords();
+        IntVec3 neighborCoords = currentCoords + faceDirection;
+
+        // Convert to world Z coordinate
+        int worldZ = neighborCoords.z;
+
+        // Only render face if at vertical world boundaries
+        if (worldZ < 0 || worldZ >= CHUNK_SIZE_Z)
+        {
+            return true;  // At vertical world boundaries, render face
+        }
+
+        // Horizontal chunk boundary with unloaded neighbor - assume opaque (hide face)
+        return false;
     }
 
     // Get the neighbor block
     Block* neighborBlock = neighborIter.GetBlock();
     if (!neighborBlock)
     {
-        return true; // No block means face is visible
+        // No block data means assume opaque (safer for hidden surface removal)
+        return false;
     }
 
     // Get neighbor block definition
     sBlockDefinition* neighborDef = sBlockDefinition::GetDefinitionByIndex(neighborBlock->m_typeIndex);
     if (!neighborDef)
     {
-        return true; // Invalid definition means face is visible
+        // Invalid definition - assume opaque
+        return false;
     }
 
-    // Face is hidden if neighbor is opaque
+    // Face is VISIBLE if neighbor is NOT opaque
+    // Face is HIDDEN if neighbor is opaque
     return !neighborDef->IsOpaque();
 }
 
