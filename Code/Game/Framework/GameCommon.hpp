@@ -285,6 +285,44 @@ int constexpr OBSIDIAN_Z = 1;
 int constexpr LAVA_Z     = 0;
 
 //----------------------------------------------------------------------------------------------------
+// Assignment 6: Physics System Constants (Player, Camera, and Physics)
+//----------------------------------------------------------------------------------------------------
+// All physics simulation parameters for Newtonian movement, collision detection,
+// and camera behavior. Tuned for responsive feel and realistic movement.
+
+// Gravity and Forces
+constexpr float GRAVITY_ACCELERATION = -20.0f;           // Gravity acceleration (m/s²), negative = downward
+constexpr float PLAYER_WALK_ACCELERATION = 40.0f;        // Ground acceleration rate (m/s²)
+constexpr float PLAYER_JUMP_VELOCITY = 8.5f;             // Initial upward velocity when jumping (m/s)
+
+// Friction Coefficients
+constexpr float FRICTION_GROUND = 10.0f;                 // Strong friction when on ground (drag coefficient)
+constexpr float FRICTION_AIR = 1.0f;                     // Minimal friction when airborne (drag coefficient)
+
+// Movement Speed Limits
+constexpr float PLAYER_MAX_HORIZONTAL_SPEED = 20.0f;     // Base max XY speed (m/s)
+constexpr float PLAYER_SPRINT_MULTIPLIER = 20.0f;        // Speed multiplier when Shift held
+
+// Player Physical Dimensions (Assignment 6 specification)
+constexpr float PLAYER_HEIGHT = 1.80f;                   // Player collision box height (meters)
+constexpr float PLAYER_WIDTH = 0.60f;                    // Player collision box width (meters)
+constexpr float PLAYER_EYE_HEIGHT = 1.65f;               // Eye position above feet (meters)
+
+// Collision Detection Parameters
+constexpr float RAYCAST_OFFSET = 0.01f;                  // Small offset to prevent false positives
+constexpr float GROUND_CHECK_DISTANCE = 0.02f;           // Distance below AABB to check for ground
+constexpr int   MAX_PUSH_ITERATIONS = 3;                 // Max iterations for iterative depenetration
+
+// Camera Configuration
+constexpr float CAMERA_OVER_SHOULDER_DISTANCE = 4.0f;    // Distance behind player in over-shoulder mode (meters)
+constexpr float CAMERA_MOUSE_SENSITIVITY = 0.075f;       // Mouse delta to degrees conversion
+constexpr float CAMERA_PITCH_CLAMP_MIN = -85.0f;         // Minimum pitch angle (degrees)
+constexpr float CAMERA_PITCH_CLAMP_MAX = 85.0f;          // Maximum pitch angle (degrees)
+
+// Physics Simulation
+constexpr float PHYSICS_FIXED_TIMESTEP = 1.0f / 120.0f;  // Fixed timestep for collision (120 Hz)
+
+//----------------------------------------------------------------------------------------------------
 // Chunk File Format Structures
 //----------------------------------------------------------------------------------------------------
 
