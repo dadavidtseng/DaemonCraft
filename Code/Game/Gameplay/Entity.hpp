@@ -4,12 +4,24 @@
 
 //----------------------------------------------------------------------------------------------------
 #pragma once
+#include <cstdint>
+
 #include "Engine/Core/Rgba8.hpp"
+#include "Engine/Math/AABB3.hpp"
 #include "Engine/Math/EulerAngles.hpp"
 #include "Engine/Math/Vec3.hpp"
 
 //----------------------------------------------------------------------------------------------------
 class Game;
+
+//----------------------------------------------------------------------------------------------------
+// Physics mode determines entity movement and collision behavior
+enum class ePhysicsMode : uint8_t
+{
+    WALKING,  // Full physics with gravity, can jump when grounded
+    FLYING,   // No gravity, can fly up/down, collides with solid blocks
+    NOCLIP    // No gravity, no collision, passes through solid blocks
+};
 
 //----------------------------------------------------------------------------------------------------
 class Entity
@@ -28,4 +40,13 @@ public:
     EulerAngles m_orientation     = EulerAngles::ZERO;
     EulerAngles m_angularVelocity = EulerAngles::ZERO;
     Rgba8       m_color           = Rgba8::WHITE;
+
+    // Assignment 6: Physics system fields
+    AABB3        m_physicsAABB        = AABB3::ZERO_TO_ONE;   // Collision bounds in local space (centered on entity position)
+    Vec3         m_acceleration       = Vec3::ZERO;           // Accumulated forces per frame (m/s²)
+    bool         m_isOnGround         = false;                // True if solid blocks detected below entity
+    ePhysicsMode m_physicsMode        = ePhysicsMode::WALKING; // Current physics behavior mode
+    bool         m_physicsEnabled     = true;                 // Enable/disable physics for static objects
+    float        m_gravityCoefficient = 1.0f;                 // Gravity multiplier (1.0 = full gravity)
+    float        m_frictionCoefficient = 1.0f;                // Friction multiplier (1.0 = full friction)
 };
