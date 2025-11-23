@@ -11,6 +11,7 @@
 #include <deque>
 #include <mutex>
 
+#include "Engine/Core/Rgba8.hpp"
 #include "Engine/Math/Vec3.hpp"
 #include "Game/Framework/GameCommon.hpp"  // For DebugVisualizationMode
 #include "Game/Framework/BlockIterator.hpp"  // Assignment 5 Phase 4: Required for std::deque<BlockIterator>
@@ -18,6 +19,7 @@
 struct IntVec2;
 struct IntVec3;
 struct Vec3;
+struct Rgba8;
 class Camera;
 class Chunk;
 class ChunkGenerateJob;
@@ -139,6 +141,9 @@ public:
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
     Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
 
+    // Assignment 5 Stage 8: Get computed sky/fog color for rendering clear screen
+    Rgba8   GetSkyColor() const { return m_skyColor; }
+
     // Debug information getters
     int GetActiveChunkCount() const;
     int GetTotalVertexCount() const;
@@ -250,6 +255,11 @@ private:
     ConstantBuffer* m_worldConstantBuffer   = nullptr;  // CBO for OutdoorBrightness (register b8)
     float           m_outdoorBrightness     = 1.0f;     // Day/night modulation (1.0=noon, 0.2=midnight)
     float           m_gameTime              = 0.0f;     // Game time in seconds for day/night cycle
+
+    // Assignment 5 Stage 8: Computed lighting colors (persist from Update to Render)
+    Rgba8           m_skyColor              = Rgba8::WHITE;              // Sky/fog clear color with day/night + lightning
+    Rgba8           m_finalIndoorColor      = Rgba8(255, 230, 204, 255); // Indoor light with glowstone flicker
+    Rgba8           m_finalOutdoorColor     = Rgba8::WHITE;              // Outdoor light with day/night + lightning
 
     // Chunk management helper methods
     bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;

@@ -174,9 +174,19 @@ void App::Update()
 //
 void App::Render() const
 {
-    Rgba8 const clearColor = Rgba8::GREY;
+    // Assignment 5 Stage 8: Use World's computed sky color for clear screen
+    Rgba8 skyColor = Rgba8::WHITE;  // Default fallback (white sky if World unavailable)
 
-    g_renderer->ClearScreen(clearColor, Rgba8::BLACK);
+    if (g_game != nullptr)  // Null-check g_game
+    {
+        World* world = g_game->GetWorld();
+        if (world != nullptr)  // Null-check World pointer
+        {
+            skyColor = world->GetSkyColor();  // Get computed sky color with day/night + lightning
+        }
+    }
+
+    g_renderer->ClearScreen(skyColor, Rgba8::BLACK);
     g_game->Render();
 
     AABB2 const box = AABB2(Vec2::ZERO, Vec2(1600.f, 30.f));
