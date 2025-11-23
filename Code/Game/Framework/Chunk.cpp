@@ -141,6 +141,91 @@ static TreeStamp g_oakTreeSmall = {
     }
 };
 
+// Oak Tree (Medium Variant) - 5x5x8
+static TreeStamp g_oakTreeMedium = {
+    5, 5, 8,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY (trunk at center)
+    {
+        // Layer z=0-3 (trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=4 (trunk + leaves begin)
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 (trunk + full leaves)
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=6 (leaves only)
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,L,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=7 (top leaves)
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,L,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+    }
+};
+
+// Oak Tree (Large Variant) - 5x5x11
+static TreeStamp g_oakTreeLarge = {
+    5, 5, 11,   // sizeX, sizeY, sizeZ (increased height)
+    2, 2,       // trunkOffsetX, trunkOffsetY (trunk at center)
+    {
+        // Layer z=0-6 (trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=7 (trunk + leaves begin)
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=8 (trunk + full leaves)
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=9 (leaves only)
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,L,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=10 (top leaves)
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,L,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+    }
+};
+
 #undef L
 #undef W
 #define L BLOCK_SPRUCE_LEAVES
@@ -194,6 +279,127 @@ static TreeStamp g_spruceTreeSmall = {
     }
 };
 
+// Spruce Tree (Medium Variant) - 5x5x10
+static TreeStamp g_spruceTreeMedium = {
+    5, 5, 10,   // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-3 (bottom trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=4 - trunk + wide leaves base
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=5 - trunk + leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=6 - trunk + narrower leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=7 - trunk + leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=8 - narrower leaves
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=9 (top) - leaves only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+    }
+};
+
+// Spruce Tree (Large Variant) - 5x5x15
+static TreeStamp g_spruceTreeLarge = {
+    5, 5, 15,   // sizeX, sizeY, sizeZ (increased height)
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-7 (bottom trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=8 - trunk + wide leaves base
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=9 - trunk + leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,W,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+
+        // Layer z=10 - trunk + narrower leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=11 - trunk + leaves
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,L,W,L,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+
+        // Layer z=12 - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=13 - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=14 (top) - leaves only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,L,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+    }
+};
+
 #undef L
 #undef W
 #define L BLOCK_JUNGLE_LEAVES
@@ -227,6 +433,109 @@ static TreeStamp g_jungleTreeBush = {
         A,L,L,L,A,
 
         // Layer z=3 (top) - leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,L,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+    }
+};
+
+// Jungle Tree (Medium Variant) - 5x5x6
+static TreeStamp g_jungleTreeMedium = {
+    5, 5, 6,    // sizeX, sizeY, sizeZ
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0 (bottom) - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=1 - trunk only
+        A,A,A,A,A,
+        A,A,A,A,A,
+        A,A,W,A,A,
+        A,A,A,A,A,
+        A,A,A,A,A,
+
+        // Layer z=2 - trunk + leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=3 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=4 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=5 (top) - leaves
+        A,A,L,A,A,
+        A,L,L,L,A,
+        L,L,L,L,L,
+        A,L,L,L,A,
+        A,A,L,A,A,
+    }
+};
+
+// Jungle Tree (Large Variant) - 5x5x9
+static TreeStamp g_jungleTreeLarge = {
+    5, 5, 9,    // sizeX, sizeY, sizeZ (increased height)
+    2, 2,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-2 (bottom trunk)
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+        A,A,A,A,A,  A,A,A,A,A,  A,A,W,A,A,  A,A,A,A,A,  A,A,A,A,A,
+
+        // Layer z=3 - trunk + leaves begin
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,W,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=4 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=5 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=6 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=7 - leaves
+        A,L,L,L,A,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        L,L,L,L,L,
+        A,L,L,L,A,
+
+        // Layer z=8 (top) - leaves
         A,A,L,A,A,
         A,L,L,L,A,
         L,L,L,L,L,
@@ -280,6 +589,125 @@ static TreeStamp g_acaciaTree = {
         A,L,L,L,L,L,A,
 
         // Layer z=6 (top) - leaves only
+        A,A,A,A,A,A,A,
+        A,A,L,L,L,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,L,L,L,A,A,
+        A,A,A,A,A,A,A,
+    }
+};
+
+// Acacia Tree (Medium Variant) - 7x7x9
+static TreeStamp g_acaciaTreeMedium = {
+    7, 7, 9,    // sizeX, sizeY, sizeZ
+    3, 3,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-3 (trunk)
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+
+        // Layer z=4 - trunk + leaves start
+        A,A,A,A,A,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,W,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,A,A,A,A,A,
+
+        // Layer z=5 - trunk + wide canopy
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,W,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=6 - leaves
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=7 - leaves
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=8 (top) - leaves only
+        A,A,A,A,A,A,A,
+        A,A,L,L,L,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,L,L,L,A,A,
+        A,A,A,A,A,A,A,
+    }
+};
+
+// Acacia Tree (Large Variant) - 7x7x12
+static TreeStamp g_acaciaTreeLarge = {
+    7, 7, 12,   // sizeX, sizeY, sizeZ
+    3, 3,       // trunkOffsetX, trunkOffsetY
+    {
+        // Layer z=0-6 (trunk)
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+        A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,W,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,  A,A,A,A,A,A,A,
+
+        // Layer z=7 - trunk + leaves start
+        A,A,A,A,A,A,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,W,L,L,A,
+        A,L,L,L,L,L,A,
+        A,L,L,L,L,L,A,
+        A,A,A,A,A,A,A,
+
+        // Layer z=8 - trunk + wide canopy
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,W,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=9 - leaves
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=10 - leaves
+        A,L,L,L,L,L,A,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        L,L,L,L,L,L,L,
+        A,L,L,L,L,L,A,
+
+        // Layer z=11 (top) - leaves only
         A,A,A,A,A,A,A,
         A,A,L,L,L,A,A,
         A,L,L,L,L,L,A,
@@ -437,6 +865,40 @@ static TreeStamp g_cactus = {
     }
 };
 
+// Cactus (Medium Variant) - 3x3x6
+static TreeStamp g_cactusMedium = {
+    3, 3, 6,    // sizeX, sizeY, sizeZ
+    1, 1,       // trunkOffsetX, trunkOffsetY (center column)
+    {
+        // Layer z=0-5 (6 blocks tall)
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+    }
+};
+
+// Cactus (Large Variant) - 3x3x9
+static TreeStamp g_cactusLarge = {
+    3, 3, 9,    // sizeX, sizeY, sizeZ
+    1, 1,       // trunkOffsetX, trunkOffsetY (center column)
+    {
+        // Layer z=0-8 (9 blocks tall)
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+        A,A,A,  A,C,A,  A,A,A,
+    }
+};
+
 #undef A
 #undef C
 
@@ -464,10 +926,19 @@ Chunk::Chunk(IntVec2 const& chunkCoords)
 //----------------------------------------------------------------------------------------------------
 Chunk::~Chunk()
 {
+    // DebuggerPrintf("[CHUNK DESTRUCTOR] Chunk(%d,%d) deleting buffers...\n",
+    //               m_chunkCoords.x, m_chunkCoords.y);
+    // DebuggerPrintf("[CHUNK DESTRUCTOR]   m_vertexBuffer = %p\n", m_vertexBuffer);
+    // DebuggerPrintf("[CHUNK DESTRUCTOR]   m_indexBuffer = %p\n", m_indexBuffer);
+    // DebuggerPrintf("[CHUNK DESTRUCTOR]   m_debugVertexBuffer = %p\n", m_debugVertexBuffer);
+
     GAME_SAFE_RELEASE(m_vertexBuffer);
     GAME_SAFE_RELEASE(m_indexBuffer);
     GAME_SAFE_RELEASE(m_debugVertexBuffer);
     // GAME_SAFE_RELEASE(m_debugBuffer);
+
+    // DebuggerPrintf("[CHUNK DESTRUCTOR] Chunk(%d,%d) buffers released\n",
+    //               m_chunkCoords.x, m_chunkCoords.y);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -2298,7 +2769,155 @@ void Chunk::GenerateTerrain()
             // Convert noise from [-1, 1] to [0, 1] for threshold comparison
             float treeNoise01 = (treeNoise + 1.0f) * 0.5f;
 
+            // Assignment 5 Phase 12: Tree Height/Radius Variation using Perlin noise
+            // Generate height variation noise (scale 0.05, 3 octaves)
+            unsigned int heightNoiseSeed = GAME_SEED + 54321;
+            float heightNoise = Compute2dPerlinNoise(
+                (float)globalX * 0.05f, (float)globalY * 0.05f,
+                1.0f,  // scale
+                3,     // octaves
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to -1..1
+                heightNoiseSeed
+            );
+            // Normalize to [0, 1] for range mapping
+            float heightNoise01 = (heightNoise + 1.0f) * 0.5f;
 
+            // Generate radius variation noise (scale 0.07, different channel via offset)
+            unsigned int radiusNoiseSeed = GAME_SEED + 98765;
+            float radiusNoise = Compute2dPerlinNoise(
+                (float)globalX * 0.07f + 1000.0f, (float)globalY * 0.07f + 1000.0f,
+                1.0f,  // scale
+                3,     // octaves
+                DEFAULT_OCTAVE_PERSISTANCE,
+                DEFAULT_NOISE_OCTAVE_SCALE,
+                true,  // renormalize to -1..1
+                radiusNoiseSeed
+            );
+            // Normalize to [0, 1] for range mapping
+            float radiusNoise01 = (radiusNoise + 1.0f) * 0.5f;
+
+            // Calculate biome-specific height and radius ranges using noise
+            // These values represent what the tree WOULD be if procedurally generated
+            // Current TreeStamp system uses hardcoded sizes, but noise is calculated
+            // for future procedural tree generation implementation.
+            //
+            // Biome-specific tree variation ranges:
+            // - FOREST/PLAINS (Oak): height 4-7 blocks, radius 2-4 blocks
+            // - TAIGA/SNOWY_TAIGA (Spruce): height 6-10 blocks, radius 1-3 blocks
+            // - JUNGLE (Jungle Bush): height 3-5 blocks, radius 2-3 blocks
+            // - DESERT (Cactus): height 2-5 blocks, no canopy
+            // - SAVANNA (Acacia): height 5-8 blocks, radius 2-4 blocks
+            //
+            // NOTE: TreeStamp system currently uses fixed sizes.
+            // This noise-based variation is ready for integration when procedural
+            // tree generation is implemented (e.g., dynamic TreeStamp creation).
+            int treeHeight = 0;
+            int canopyRadius = 0;
+
+            switch (biome)
+            {
+                case BiomeType::FOREST:
+                case BiomeType::PLAINS:
+                    // Oak trees: 3-9 blocks tall, 1-5 radius canopy (EXPANDED RANGES)
+                    treeHeight = 3 + (int)(heightNoise01 * 6.0f);      // 3-9
+                    canopyRadius = 1 + (int)(radiusNoise01 * 4.0f);   // 1-5
+                    break;
+
+                case BiomeType::TAIGA:
+                case BiomeType::SNOWY_TAIGA:
+                case BiomeType::SNOWY_PLAINS:
+                    // Spruce trees: 5-13 blocks tall, 1-4 radius narrow canopy (EXPANDED RANGES)
+                    treeHeight = 5 + (int)(heightNoise01 * 8.0f);      // 5-13
+                    canopyRadius = 1 + (int)(radiusNoise01 * 3.0f);   // 1-4
+                    break;
+
+                case BiomeType::JUNGLE:
+                    // Jungle bushes: 2-7 blocks tall, 1-4 radius (EXPANDED RANGES)
+                    treeHeight = 2 + (int)(heightNoise01 * 5.0f);      // 2-7
+                    canopyRadius = 1 + (int)(radiusNoise01 * 3.0f);   // 1-4
+                    break;
+
+                case BiomeType::DESERT:
+                    // Cactus: 1-7 blocks tall, no canopy (EXPANDED RANGE)
+                    treeHeight = 1 + (int)(heightNoise01 * 6.0f);      // 1-7
+                    canopyRadius = 0;  // Cactus has no canopy
+                    break;
+
+                case BiomeType::SAVANNA:
+                    // Acacia trees: 4-11 blocks tall, 1-5 radius canopy (EXPANDED RANGES)
+                    treeHeight = 4 + (int)(heightNoise01 * 7.0f);      // 4-11
+                    canopyRadius = 1 + (int)(radiusNoise01 * 4.0f);   // 1-5
+                    break;
+
+                default:
+                    treeHeight = 5;
+                    canopyRadius = 2;
+                    break;
+            }
+
+            // Assignment 5 Phase 12: Use heightNoise01 to select tree variant (Small/Medium/Large)
+            // This provides visible tree size variation using existing TreeStamp variants
+            // Threshold: < 0.33 = Small, < 0.67 = Medium, >= 0.67 = Large
+            switch (biome)
+            {
+                case BiomeType::FOREST:
+                case BiomeType::PLAINS:
+                    if (heightNoise01 < 0.33f)
+                        treeStamp = &g_oakTreeSmall;
+                    else if (heightNoise01 < 0.67f)
+                        treeStamp = &g_oakTreeMedium;
+                    else
+                        treeStamp = &g_oakTreeLarge;
+                    break;
+
+                case BiomeType::TAIGA:
+                    if (heightNoise01 < 0.33f)
+                        treeStamp = &g_spruceTreeSmall;
+                    else if (heightNoise01 < 0.67f)
+                        treeStamp = &g_spruceTreeMedium;
+                    else
+                        treeStamp = &g_spruceTreeLarge;
+                    break;
+
+                case BiomeType::SNOWY_TAIGA:
+                case BiomeType::SNOWY_PLAINS:
+                    // Snowy spruces only have one variant currently
+                    treeStamp = &g_snowySpruceTree;
+                    break;
+
+                case BiomeType::JUNGLE:
+                    if (heightNoise01 < 0.33f)
+                        treeStamp = &g_jungleTreeBush;
+                    else if (heightNoise01 < 0.67f)
+                        treeStamp = &g_jungleTreeMedium;
+                    else
+                        treeStamp = &g_jungleTreeLarge;
+                    break;
+
+                case BiomeType::DESERT:
+                    if (heightNoise01 < 0.33f)
+                        treeStamp = &g_cactus;
+                    else if (heightNoise01 < 0.67f)
+                        treeStamp = &g_cactusMedium;
+                    else
+                        treeStamp = &g_cactusLarge;
+                    break;
+
+                case BiomeType::SAVANNA:
+                    if (heightNoise01 < 0.33f)
+                        treeStamp = &g_acaciaTree;
+                    else if (heightNoise01 < 0.67f)
+                        treeStamp = &g_acaciaTreeMedium;
+                    else
+                        treeStamp = &g_acaciaTreeLarge;
+                    break;
+
+                default:
+                    // Keep the already-selected stamp (from initial selection)
+                    break;
+            }
 
             // Check if we should place a tree here
             if (treeNoise01 < g_worldGenConfig->trees.treePlacementThreshold) continue;
@@ -2604,7 +3223,15 @@ void Chunk::AddBlockFace(Vec3 const&  blockCenter,
 //----------------------------------------------------------------------------------------------------
 void Chunk::UpdateVertexBuffer()
 {
-    if (m_vertices.empty()) return;
+    if (m_vertices.empty())
+    {
+        DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) has no vertices, skipping\n",
+                      m_chunkCoords.x, m_chunkCoords.y);
+        return;
+    }
+
+    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) creating new buffers (vertices=%d, indices=%d)...\n",
+                  m_chunkCoords.x, m_chunkCoords.y, (int)m_vertices.size(), (int)m_indices.size());
 
     // CRITICAL FIX: Use atomic buffer swapping to prevent rendering race condition
     // Create new buffers FIRST, then swap atomically to prevent flashing during buffer updates
@@ -2640,10 +3267,16 @@ void Chunk::UpdateVertexBuffer()
                                  newDebugVertexBuffer);
     }
 
+    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) new buffers created: VB=%p, IB=%p, DebugVB=%p\n",
+                  m_chunkCoords.x, m_chunkCoords.y, newVertexBuffer, newIndexBuffer, newDebugVertexBuffer);
+
     // Store old buffers for deletion
     VertexBuffer* oldVertexBuffer = m_vertexBuffer;
     IndexBuffer*  oldIndexBuffer  = m_indexBuffer;
     VertexBuffer* oldDebugBuffer  = m_debugVertexBuffer;
+
+    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) old buffers: VB=%p, IB=%p, DebugVB=%p\n",
+                  m_chunkCoords.x, m_chunkCoords.y, oldVertexBuffer, oldIndexBuffer, oldDebugBuffer);
 
     // ATOMIC SWAP: Replace all buffer pointers simultaneously
     // This prevents Render() from seeing inconsistent buffer state
@@ -2651,11 +3284,17 @@ void Chunk::UpdateVertexBuffer()
     m_indexBuffer       = newIndexBuffer;
     m_debugVertexBuffer = newDebugVertexBuffer;
 
+    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) swapped pointers, deleting old buffers...\n",
+                  m_chunkCoords.x, m_chunkCoords.y);
+
     // Delete old buffers AFTER the swap
     // Render() now uses new buffers, safe to delete old ones
     GAME_SAFE_RELEASE(oldVertexBuffer);
     GAME_SAFE_RELEASE(oldIndexBuffer);
     GAME_SAFE_RELEASE(oldDebugBuffer);
+
+    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) update complete\n",
+                  m_chunkCoords.x, m_chunkCoords.y);
 }
 
 void Chunk::SetMeshClean()
@@ -2970,29 +3609,50 @@ bool Chunk::IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDir
     // Get neighboring block in the face direction
     BlockIterator neighborIter = blockIter.GetNeighbor(faceDirection);
 
-    // If neighbor is outside this chunk, always render face (assignment requirement)
+    // Assignment 5 Phase 0 FIX: Conservative hidden surface removal
+    // CRITICAL: If neighbor is invalid, assume it's OPAQUE (hidden face)
+    // This prevents rendering chunk boundary faces when neighbor chunks aren't fully loaded
+    // Only render faces at true world boundaries (z < 0 or z >= CHUNK_SIZE_Z)
     if (!neighborIter.IsValid())
     {
-        return true;  // Face against neighboring blocks in other chunks are always rendered
+        // Check if we're at vertical world boundaries (top/bottom of world)
+        IntVec3 currentCoords = blockIter.GetLocalCoords();
+        IntVec3 neighborCoords = currentCoords + faceDirection;
+
+        // Convert to world Z coordinate
+        int worldZ = neighborCoords.z;
+
+        // Only render face if at vertical world boundaries
+        if (worldZ < 0 || worldZ >= CHUNK_SIZE_Z)
+        {
+            return true;  // At vertical world boundaries, render face
+        }
+
+        // Horizontal chunk boundary with unloaded neighbor - assume opaque (hide face)
+        return false;
     }
 
     // Get the neighboring block
     Block* neighborBlock = neighborIter.GetBlock();
     if (!neighborBlock)
     {
-        return true;  // No block = air, so face is visible
+        // No block data means assume opaque (safer for hidden surface removal)
+        return false;
     }
 
     // Get neighbor block definition
     sBlockDefinition* neighborDef = sBlockDefinition::GetDefinitionByIndex(neighborBlock->m_typeIndex);
     if (!neighborDef)
     {
-        return true;  // No definition = air, so face is visible
+        // Invalid definition - assume opaque
+        return false;
     }
 
-    // Face is hidden if neighbor is opaque (not visible = air, visible = solid)
-    // Hidden surface removal: skip faces whose neighboring block is opaque
-    return !neighborDef->IsVisible() || !neighborDef->IsOpaque();
+    // Assignment 5: Hidden Surface Removal Logic
+    // Face is VISIBLE if neighbor is NOT opaque (air, transparent, etc.)
+    // Face is HIDDEN if neighbor is opaque (solid block)
+    // Pattern matches reference: if (!neighborBlock->IsOpaque()) { AddQuadToMesh(); }
+    return !neighborDef->IsOpaque();
 }
 
 //----------------------------------------------------------------------------------------------------

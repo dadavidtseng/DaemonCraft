@@ -23,6 +23,8 @@
 #include "Engine/Renderer/Renderer.hpp"  // Assignment 5 Phase 8: For shader and constant buffer
 #include "Engine/Renderer/Shader.hpp"    // Assignment 5 Phase 8: For Shader class
 #include "Engine/Renderer/ConstantBuffer.hpp"  // Assignment 5 Phase 8: For ConstantBuffer class
+#include "Engine/Renderer/VertexBuffer.hpp"  // For leak tracking
+#include "Engine/Renderer/IndexBuffer.hpp"   // For leak tracking
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/Block.hpp"  // Assignment 5 Phase 4: For BlockIterator
 #include "Game/Framework/BlockIterator.hpp"  // Assignment 5 Phase 4: For dirty light queue
@@ -68,77 +70,198 @@ World::World()
     // Assignment 5 Phase 8: Load World shader and create constant buffer
     m_worldShader = g_renderer->CreateOrGetShaderFromFile("Data/Shaders/World");
     m_worldConstantBuffer = g_renderer->CreateConstantBuffer(sizeof(WorldConstants));
-
-    // BUG HUNT: Verify shader was loaded successfully
-    if (m_worldShader == nullptr)
-    {
-        DebuggerPrintf("[SHADER ERROR] World.hlsl FAILED to load! Will fall back to Default.hlsl\n");
-    }
-    else
-    {
-        DebuggerPrintf("[SHADER OK] World.hlsl loaded successfully at 0x%p\n", m_worldShader);
-    }
-
-    if (m_worldConstantBuffer == nullptr)
-    {
-        DebuggerPrintf("[SHADER ERROR] World constant buffer FAILED to create!\n");
-    }
-    else
-    {
-        DebuggerPrintf("[SHADER OK] World constant buffer created successfully\n");
-    }
 }
 
 //----------------------------------------------------------------------------------------------------
 World::~World()
 {
-    // CRITICAL: Cancel all pending save jobs BEFORE deactivating chunks
-    // During shutdown, async save jobs will never complete, causing memory leaks
+    // DEBUG: Count active chunks before cleanup
+    int activeChunkCount = 0;
+    int nonActiveChunkCount = 0;
+    int meshRebuildCount = 0;
+
     {
-        std::lock_guard<std::mutex> lock(m_jobListsMutex);
-        for (ChunkSaveJob* saveJob : m_chunkSaveJobs)
+        std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+        activeChunkCount = (int)m_activeChunks.size();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+        nonActiveChunkCount = (int)m_nonActiveChunks.size();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_meshRebuildSetMutex);
+        meshRebuildCount = (int)m_chunksNeedingMeshRebuild.size();
+    }
+
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Starting cleanup:\n");
+    // DebuggerPrintf("[WORLD DESTRUCTOR]   Active chunks: %d\n", activeChunkCount);
+    // DebuggerPrintf("[WORLD DESTRUCTOR]   Non-active chunks: %d\n", nonActiveChunkCount);
+    // DebuggerPrintf("[WORLD DESTRUCTOR]   Chunks needing mesh rebuild: %d\n", meshRebuildCount);
+
+    // CRITICAL FIX: Wait for all executing jobs to finish BEFORE retrieving completed jobs
+    // This prevents DirectX buffer leaks from ChunkMeshJobs that created buffers but didn't
+    // finish applying them to chunks before shutdown.
+    //
+    // Problem: Previously, we retrieved completed jobs immediately (line 104), which returned 0 jobs
+    // because the 16 pending ChunkMeshJobs were still executing on worker threads.
+    // When chunks were deleted, their buffers (created by incomplete jobs) leaked.
+    //
+    // Solution: Wait for worker threads to finish executing ALL jobs, then retrieve completed jobs.
+    // This ensures ApplyMeshDataToChunk() and UpdateVertexBuffer() are called for all mesh jobs.
+    int executingJobCount = g_jobSystem->GetExecutingJobCount();
+    if (executingJobCount > 0)
+    {
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Waiting for %d executing jobs to complete...\n", executingJobCount);
+        
+        int waitIterations = 0;
+        while (g_jobSystem->GetExecutingJobCount() > 0)
         {
-            if (saveJob != nullptr)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            waitIterations++;
+            
+            // Safety timeout: prevent infinite loop if jobs are stuck
+            if (waitIterations > 500) // 5 seconds timeout (500 * 10ms)
             {
-                Chunk* chunk = saveJob->GetChunk();
-                if (chunk != nullptr)
-                {
-                    // Force synchronous save before deleting job
-                    chunk->SaveToDisk();
-                    delete chunk;
-                }
-                delete saveJob;
+                // DebuggerPrintf("[WORLD DESTRUCTOR] WARNING: Timeout waiting for jobs (still %d executing)\n",
+                //               g_jobSystem->GetExecutingJobCount());
+                break;
             }
         }
+        
+        executingJobCount = g_jobSystem->GetExecutingJobCount();
+        if (executingJobCount == 0)
+        {
+            // DebuggerPrintf("[WORLD DESTRUCTOR] All jobs completed successfully (waited %dms)\n", waitIterations * 10);
+        }
+    }
+
+    // NOW retrieve all completed jobs from JobSystem BEFORE deleting chunks
+    // This should now include all the ChunkMeshJobs that just finished executing
+    std::vector<Job*> completedJobs = g_jobSystem->RetrieveAllCompletedJobs();
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Retrieved %d completed jobs from JobSystem\n", (int)completedJobs.size());
+
+    // CRITICAL: Process completed ChunkMeshJobs
+    // If we don't call UpdateVertexBuffer() for completed mesh jobs, the DirectX buffers leak!
+    //
+    // NOTE: After the wait loop above, all jobs SHOULD be completed and in the completedJobs list.
+    // The "late retrieval" at line ~235 is now only a safety fallback for timeout edge cases.
+    int meshJobsProcessed = 0;
+    {
+        std::lock_guard<std::mutex> lock(m_jobListsMutex);
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Processing %d ChunkMeshJobs (%d completed)...\n",
+        //               (int)m_chunkMeshJobs.size(), (int)completedJobs.size());
+
+        for (ChunkMeshJob* meshJob : m_chunkMeshJobs)
+        {
+            if (meshJob != nullptr)
+            {
+                // Check if this job is in the completed list
+                bool isCompleted = std::find(completedJobs.begin(), completedJobs.end(), meshJob) != completedJobs.end();
+
+                if (isCompleted)
+                {
+                    Chunk* chunk = meshJob->GetChunk();
+                    if (chunk && meshJob->WasSuccessful())
+                    {
+                        // DebuggerPrintf("[WORLD DESTRUCTOR]   Processing completed ChunkMeshJob for Chunk(%d,%d)\n",
+                        //               chunk->GetChunkCoords().x, chunk->GetChunkCoords().y);
+                        meshJob->ApplyMeshDataToChunk();
+                        chunk->UpdateVertexBuffer();
+                        chunk->SetMeshClean();
+                        meshJobsProcessed++;
+                    }
+                    // NOTE: Don't delete here - will be deleted with completedJobs list below
+                }
+                // If job is NOT completed, it's still pending or running
+                // We cannot safely delete it here - leave it for late retrieval
+            }
+        }
+
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Processed %d ChunkMeshJobs successfully\n", meshJobsProcessed);
+
+        // Now clear job tracking lists (but don't delete the jobs yet)
+        m_chunkMeshJobs.clear();
+        m_chunkGenerationJobs.clear();
+        m_chunkLoadJobs.clear();
         m_chunkSaveJobs.clear();
     }
 
-    // Clean up orphaned chunks in m_nonActiveChunks (being processed by workers)
+    // Delete all completed jobs
+    for (Job* job : completedJobs)
+    {
+        delete job;
+    }
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Deleted %d completed jobs\n", (int)completedJobs.size());
+
+    // Clean up chunks in m_nonActiveChunks (being processed by workers)
     {
         std::lock_guard<std::mutex> lock(m_nonActiveChunksMutex);
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Deleting %d non-active chunks...\n", (int)m_nonActiveChunks.size());
         for (Chunk* chunk : m_nonActiveChunks)
         {
             if (chunk != nullptr)
             {
-                // Save if needed, then delete
                 if (chunk->GetNeedsSaving())
                 {
                     chunk->SaveToDisk();
                 }
-                delete chunk;  // Releases DirectX resources in ~Chunk() destructor
+                delete chunk;
             }
         }
         m_nonActiveChunks.clear();
     }
 
-    // Assignment 5 Phase 10: Clear mesh rebuild tracking set to prevent dangling pointers
+    // Clear mesh rebuild tracking set
     {
         std::lock_guard<std::mutex> lock(m_meshRebuildSetMutex);
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Clearing %d chunks from mesh rebuild set\n", (int)m_chunksNeedingMeshRebuild.size());
         m_chunksNeedingMeshRebuild.clear();
     }
 
-    // Deactivate all active chunks (saves modified chunks synchronously during shutdown)
-    DeactivateAllChunks(true);  // forceSynchronousSave=true prevents async jobs during shutdown
+    // CRITICAL: Retrieve any jobs that completed AFTER the first retrieval
+    // This catches pending jobs that finished while we were processing the first batch
+    // MUST retrieve jobs BEFORE deleting active chunks (jobs hold chunk pointers!)
+    std::vector<Job*> lateCompletedJobs = g_jobSystem->RetrieveAllCompletedJobs();
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Retrieved %d late completed jobs\n", (int)lateCompletedJobs.size());
+
+    // Process late ChunkMeshJobs to prevent DirectX buffer leaks
+    int lateProcessed = 0;
+    for (Job* job : lateCompletedJobs)
+    {
+        ChunkMeshJob* meshJob = dynamic_cast<ChunkMeshJob*>(job);
+        if (meshJob != nullptr)
+        {
+            Chunk* chunk = meshJob->GetChunk();
+            if (chunk && meshJob->WasSuccessful())
+            {
+                // DebuggerPrintf("[WORLD DESTRUCTOR]   Processing LATE ChunkMeshJob for Chunk(%d,%d)\n",
+                //               chunk->GetChunkCoords().x, chunk->GetChunkCoords().y);
+                meshJob->ApplyMeshDataToChunk();
+                chunk->UpdateVertexBuffer();
+                chunk->SetMeshClean();
+                lateProcessed++;
+            }
+        }
+        delete job;
+    }
+
+    if (lateProcessed > 0)
+    {
+        // DebuggerPrintf("[WORLD DESTRUCTOR] Processed %d late ChunkMeshJobs to prevent DirectX leaks\n", lateProcessed);
+    }
+
+    // NOW safe to delete active chunks (all jobs that reference them have been processed)
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Deactivating %d active chunks...\n", activeChunkCount);
+    DeactivateAllChunks(true);
+    // DebuggerPrintf("[WORLD DESTRUCTOR] Deactivation complete\n");
+
+    // Print buffer leak reports
+    DebuggerPrintf("\n");
+    VertexBuffer::PrintLeakReport();
+    IndexBuffer::PrintLeakReport();
+    DebuggerPrintf("\n");
 
     // Assignment 5 Phase 8: Clean up shader resources
     // Note: Shader is owned by Renderer (CreateOrGetShaderFromFile uses a cache), don't delete it
@@ -173,13 +296,56 @@ void World::Update(float const deltaSeconds)
     float cosValue = cosf(cyclePosition * 2.0f * LOCAL_PI);  // Range [-1, 1], peaks at midnight
     m_outdoorBrightness = RangeMap(cosValue, 1.0f, -1.0f, 0.2f, 1.0f);  // Map to [0.2, 1.0]
 
-    // Lightning strikes (Perlin noise based on time)
-    // Very rare: only trigger when noise > 0.95 (approximately 5% of time during storms)
-    float lightningNoise = Compute2dPerlinNoise(m_gameTime * 10.0f, 0.0f, 2.0f, 3);
-    if (lightningNoise > 0.95f)
-    {
-        m_outdoorBrightness = 1.5f;  // Bright flash (exceeds normal max for dramatic effect)
-    }
+    // Assignment 5 Stage 8: Day/night sky and outdoor light color modulation
+    // m_outdoorBrightness already computed above (lines 174): ranges from 0.2 (midnight) to 1.0 (noon)
+
+    // Sky/fog color: dark blue at night, light blue at day
+    Rgba8 nightSkyColor(20, 20, 40, 255);      // Dark blue - midnight sky
+    Rgba8 daySkyColor(200, 230, 255, 255);     // Light blue - noon sky
+    Rgba8 baseSkyColor = Interpolate(nightSkyColor, daySkyColor, m_outdoorBrightness);
+
+    // Outdoor light color: dark blue-grey at night, white at day
+    Rgba8 nightOutdoorColor(50, 50, 80, 255);  // Dark blue-grey - dim moonlight
+    Rgba8 dayOutdoorColor(255, 255, 255, 255); // Pure white - bright sunlight
+    Rgba8 baseOutdoorColor = Interpolate(nightOutdoorColor, dayOutdoorColor, m_outdoorBrightness);
+
+    // Assignment 5 Stage 8: Lightning strikes (1D Perlin, 9 octaves, scale 50 - FASTER)
+    // Spec: Use 1D Perlin noise based on world time, range-map [0.6, 0.9] to [0, 1]
+    // Effect: Lerp sky and outdoor colors toward white for dramatic flashes
+    // Modified: Reduced scale from 200→50 for 4× faster lightning frequency (~5-15s intervals)
+    unsigned int lightningSeed = GAME_SEED + 1000;  // Unique seed for lightning (avoid collision with terrain)
+    float lightningPerlin = Compute1dPerlinNoise(m_gameTime, 5.0f, 9, 0.5f, 2.0f, true, lightningSeed);
+
+    // Range-map [0.6, 0.9] to lightningStrength [0, 1]
+    // Values below 0.6 clamp to 0 (no lightning), above 0.9 clamp to 1 (full white)
+    float lightningStrength = RangeMapClamped(lightningPerlin, 0.6f, 0.9f, 0.0f, 1.0f);
+
+    // Lerp sky and outdoor colors toward pure white based on lightning strength
+    Rgba8 lightningWhite(255, 255, 255, 255);
+    m_skyColor = Interpolate(baseSkyColor, lightningWhite, lightningStrength);
+    m_finalOutdoorColor = Interpolate(baseOutdoorColor, lightningWhite, lightningStrength);
+
+    // Assignment 5 Stage 8: Glowstone flicker (1D Perlin, 9 octaves, scale 100 - FASTER)
+    // Spec: Use 1D Perlin noise based on world time, range-map [-1, 1] to [0.8, 1.0]
+    // Effect: Multiply base indoor light color by glow strength for subtle pulsing
+    // Modified: Reduced scale from 500→100 for 5× faster pulse frequency (~2-3min cycles)
+    unsigned int glowstoneSeed = GAME_SEED + 2000;  // Unique seed for glowstone (different from lightning)
+    float glowPerlin = Compute1dPerlinNoise(m_gameTime, 1.0f, 9, 0.5f, 2.0f, true, glowstoneSeed);
+
+    // Range-map [-1, 1] to glowStrength [0.8, 1.0]
+    // Full Perlin range used: -1 maps to 0.8 (80% brightness), +1 maps to 1.0 (100% brightness)
+    float glowStrength = RangeMapClamped(glowPerlin, -1.0f, 1.0f, 0.8f, 1.0f);
+
+    // Base indoor light color from spec (warm orange-ish light)
+    Rgba8 baseIndoorColor(255, 230, 204, 255);
+
+    // Multiply color by glow strength (component-wise scalar multiplication)
+    m_finalIndoorColor = Rgba8(
+        (uint8_t)(baseIndoorColor.r * glowStrength),
+        (uint8_t)(baseIndoorColor.g * glowStrength),
+        (uint8_t)(baseIndoorColor.b * glowStrength),
+        255  // Alpha always 255 (fully opaque)
+    );
 
     // Update all active chunks first
     {
@@ -228,7 +394,6 @@ void World::Update(float const deltaSeconds)
         if (!m_initialWorldGenComplete && activeChunkCount >= 256)
         {
             m_initialWorldGenComplete = true;
-            DebuggerPrintf("[WORLD GEN COMPLETE] All 256 chunks activated, enabling mesh rebuilding\n");
         }
 
         // 2. Only rebuild meshes after initial world gen is complete AND light queue is empty
@@ -253,26 +418,8 @@ void World::Update(float const deltaSeconds)
             Chunk* nearestDirtyChunk = FindNearestDirtyChunk(cameraPos);
             if (nearestDirtyChunk != nullptr)
             {
-                // DEBUG: Log WHY mesh is being rebuilt
-                static int rebuildCount = 0;
-                rebuildCount++;
-                if (rebuildCount <= 20)  // Log first 20 rebuilds
-                {
-                    IntVec2 coords = nearestDirtyChunk->GetChunkCoords();
-                    DebuggerPrintf("[MESH REBUILD #%d] Chunk(%d,%d) rebuilding mesh\n", rebuildCount, coords.x, coords.y);
-                }
                 nearestDirtyChunk->RebuildMesh();
                 nearestDirtyChunk->SetIsMeshDirty(false);
-            }
-        }
-        else if (!m_initialWorldGenComplete)
-        {
-            static int deferCount = 0;
-            deferCount++;
-            if (deferCount <= 10)  // Log first 10 deferrals
-            {
-                DebuggerPrintf("[MESH DEFER] Waiting for world gen complete (%zu/256 chunks), queue size=%zu\n",
-                              activeChunkCount, m_dirtyLightQueue.size());
             }
         }
 
@@ -370,25 +517,8 @@ void World::Update(float const deltaSeconds)
 
         if (nearestDirtyChunk != nullptr)
         {
-            static int rebuildCount = 0;
-            rebuildCount++;
-            if (rebuildCount <= 20)  // Log first 20 rebuilds
-            {
-                IntVec2 coords = nearestDirtyChunk->GetChunkCoords();
-                DebuggerPrintf("[MESH REBUILD #%d] Chunk(%d,%d) rebuilding mesh\n", rebuildCount, coords.x, coords.y);
-            }
             nearestDirtyChunk->RebuildMesh();
             nearestDirtyChunk->SetIsMeshDirty(false);
-            // Continue to other operations (removed early return)
-        }
-    }
-    else
-    {
-        static int deferCount = 0;
-        deferCount++;
-        if (deferCount <= 10)  // Log first 10 deferrals
-        {
-            DebuggerPrintf("[MESH DEFER] Skipping mesh rebuild, dirty light queue size=%zu\n", m_dirtyLightQueue.size());
         }
     }
 
@@ -419,45 +549,10 @@ void World::Update(float const deltaSeconds)
 //----------------------------------------------------------------------------------------------------
 void World::Render() const
 {
-    // BUG HUNT: Log shader binding status every 300 frames (every ~5 seconds at 60fps)
-    static int renderCallCount = 0;
-    renderCallCount++;
-    if (renderCallCount % 300 == 1)
-    {
-        if (m_worldShader == nullptr)
-        {
-            DebuggerPrintf("[RENDER WARNING] m_worldShader is NULL! Using Default.hlsl fallback!\n");
-        }
-        else
-        {
-            DebuggerPrintf("[RENDER OK] Binding World.hlsl shader (call #%d)\n", renderCallCount);
-        }
-    }
-
     // Assignment 5 Phase 8: Bind World shader and update lighting constants
     if (m_worldShader != nullptr && m_worldConstantBuffer != nullptr)
     {
         g_renderer->BindShader(m_worldShader);
-
-        // DEBUG: Verify shader is actually being used
-        static int verifyCount = 0;
-        if (++verifyCount == 1)
-        {
-            DebuggerPrintf("[SHADER VERIFY] m_worldShader=%p, m_worldConstantBuffer=%p\n", m_worldShader, m_worldConstantBuffer);
-        }
-    }
-    else
-    {
-        // BUG HUNT: Log when shader binding FAILS (World shader/CB is null)
-        static int failCount = 0;
-        if (failCount < 10)
-        {
-            DebuggerPrintf("[SHADER BIND FAIL #%d] m_worldShader=%p, m_worldConstantBuffer=%p - chunks will use Default.hlsl!\n",
-                          failCount, m_worldShader, m_worldConstantBuffer);
-            failCount++;
-        }
-        // Chunks will render with whatever shader was previously bound (likely Default.hlsl)
-        // This causes "bright chunks" bug because Default.hlsl doesn't read WorldConstants CB
     }
 
     // Continue with constant buffer update ONLY if shader was bound successfully
@@ -474,38 +569,23 @@ void World::Render() const
         worldConstants.cameraPosition[2] = cameraPos3.z;
         worldConstants.cameraPosition[3] = 1.0f;
 
-        // Indoor light color: warm white (255, 230, 204) normalized to [0, 1]
-        worldConstants.indoorLightColor[0] = 1.0f;
-        worldConstants.indoorLightColor[1] = 0.902f;
-        worldConstants.indoorLightColor[2] = 0.8f;
+        // Assignment 5 Stage 8: Use computed indoor light color with glowstone flicker
+        worldConstants.indoorLightColor[0] = m_finalIndoorColor.r / 255.0f;
+        worldConstants.indoorLightColor[1] = m_finalIndoorColor.g / 255.0f;
+        worldConstants.indoorLightColor[2] = m_finalIndoorColor.b / 255.0f;
         worldConstants.indoorLightColor[3] = 1.0f;
 
-        // Outdoor light color: varies with day/night cycle
-        // At noon (brightness=1.0): pure white (255, 255, 255)
-        // At midnight (brightness=0.2): dim blue (51, 51, 76) = 0.2 * white blended with blue tint
-        // Interpolate between dim blue-ish color at night and white at day
-        float dayFactor = (m_outdoorBrightness - 0.2f) / 0.8f;  // 0.0 at midnight, 1.0 at noon
-        dayFactor = fmaxf(0.0f, fminf(1.0f, dayFactor));  // Clamp to [0, 1]
-
-        // Night color: VERY DARK blue - matches reference (only glowstone visible at night)
-        // Reference has almost black outdoor lighting, only indoor lights visible
-        // Day color: pure white (1.0, 1.0, 1.0)
-        Vec3 nightColor(0.02f, 0.02f, 0.04f);  // Changed from (0.2, 0.2, 0.3) - was too bright
-        Vec3 dayColor(1.0f, 1.0f, 1.0f);
-        Vec3 outdoorRGB = nightColor + (dayColor - nightColor) * dayFactor;
-        worldConstants.outdoorLightColor[0] = outdoorRGB.x;
-        worldConstants.outdoorLightColor[1] = outdoorRGB.y;
-        worldConstants.outdoorLightColor[2] = outdoorRGB.z;
+        // Assignment 5 Stage 8: Use computed outdoor light color with day/night + lightning
+        worldConstants.outdoorLightColor[0] = m_finalOutdoorColor.r / 255.0f;
+        worldConstants.outdoorLightColor[1] = m_finalOutdoorColor.g / 255.0f;
+        worldConstants.outdoorLightColor[2] = m_finalOutdoorColor.b / 255.0f;
         worldConstants.outdoorLightColor[3] = 1.0f;
 
-        // Sky/fog color: light blue during day, dark blue at night
-        Vec3 daySkyColor(0.6f, 0.75f, 0.95f);   // Light blue sky
-        Vec3 nightSkyColor(0.15f, 0.15f, 0.25f); // Brightened: was (0.05, 0.05, 0.15), now more visible at night
-        Vec3 skyRGB = nightSkyColor + (daySkyColor - nightSkyColor) * dayFactor;
+        // Assignment 5 Stage 8: Use computed sky color with day/night + lightning
         // Store fog max alpha in skyColor.a (0.8 = 80% fog blending at max distance)
-        worldConstants.skyColor[0] = skyRGB.x;
-        worldConstants.skyColor[1] = skyRGB.y;
-        worldConstants.skyColor[2] = skyRGB.z;
+        worldConstants.skyColor[0] = m_skyColor.r / 255.0f;
+        worldConstants.skyColor[1] = m_skyColor.g / 255.0f;
+        worldConstants.skyColor[2] = m_skyColor.b / 255.0f;
         worldConstants.skyColor[3] = 0.8f;
 
         // Fog distances based on chunk activation range
@@ -520,36 +600,6 @@ void World::Render() const
 
         g_renderer->CopyCPUToGPU(&worldConstants, sizeof(WorldConstants), m_worldConstantBuffer);
         g_renderer->BindConstantBuffer(8, m_worldConstantBuffer);  // Register b8 for WorldConstants
-
-        // DEBUG: Verify constant buffer operations every 60 frames (~1 second at 60fps)
-        static int cbVerifyCount = 0;
-        if (++cbVerifyCount % 60 == 0)
-        {
-            DebuggerPrintf("[CB UPDATE #%d] Time=%.2f CyclePos=%.3f DayFactor=%.3f OutdoorBright=%.3f OutdoorColor=(%.2f,%.2f,%.2f) → CB=%p\n",
-                          cbVerifyCount,
-                          m_gameTime,
-                          fmod(m_gameTime, 240.0f) / 240.0f,
-                          dayFactor,
-                          m_outdoorBrightness,
-                          worldConstants.outdoorLightColor[0],
-                          worldConstants.outdoorLightColor[1],
-                          worldConstants.outdoorLightColor[2],
-                          m_worldConstantBuffer);
-        }
-
-        // DEBUG: Log current outdoor brightness value every 2 seconds
-        static float lastLogTime = 0.0f;
-        if (m_gameTime - lastLogTime >= 2.0f)
-        {
-            DebuggerPrintf("RENDER DEBUG: Time=%.2f, OutdoorColor=(%.2f,%.2f,%.2f), DayFactor=%.3f, CyclePos=%.3f\n",
-                          m_gameTime,
-                          worldConstants.outdoorLightColor[0],
-                          worldConstants.outdoorLightColor[1],
-                          worldConstants.outdoorLightColor[2],
-                          dayFactor,
-                          fmodf(m_gameTime, 240.0f) / 240.0f);
-            lastLogTime = m_gameTime;
-        }
     }
 
     std::lock_guard<std::mutex> lock(m_activeChunksMutex);
@@ -617,12 +667,16 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSav
 
         if (it == m_activeChunks.end())
         {
+            // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) not in active chunks map\n",
+            //               localChunkCoords.x, localChunkCoords.y);
             return; // Chunk not active
         }
 
         chunk = it->second;
         if (chunk == nullptr)
         {
+            // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) pointer is NULL, removing from map\n",
+            //               localChunkCoords.x, localChunkCoords.y);
             m_activeChunks.erase(it);
             return;
         }
@@ -630,6 +684,9 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSav
         // Remove from active chunks map
         m_activeChunks.erase(it);
     }
+
+    // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) found, processing deactivation...\n",
+    //               localChunkCoords.x, localChunkCoords.y);
 
     // Clear neighbor pointers (outside mutex - only affects this chunk's members)
     chunk->ClearNeighborPointers();
@@ -646,21 +703,24 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSav
     // Save to disk if needed
     if (chunk->GetNeedsSaving())
     {
+        // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) needs saving\n",
+        //               localChunkCoords.x, localChunkCoords.y);
         if (forceSynchronousSave)
         {
-            // Synchronous save during shutdown - don't use async jobs
             chunk->SaveToDisk();
+            // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) saved, deleting...\n",
+            //               localChunkCoords.x, localChunkCoords.y);
             delete chunk;
         }
         else
         {
-            // Normal async save using I/O worker thread
             SubmitChunkForSaving(chunk);
         }
     }
     else
     {
-        // No need to save, delete immediately
+        // DebuggerPrintf("[DEACTIVATE] Chunk(%d,%d) doesn't need saving, deleting...\n",
+        //               localChunkCoords.x, localChunkCoords.y);
         delete chunk;
     }
 }
@@ -668,11 +728,9 @@ void World::DeactivateChunk(IntVec2 const& chunkCoords, bool forceSynchronousSav
 //----------------------------------------------------------------------------------------------------
 void World::DeactivateAllChunks(bool forceSynchronousSave)
 {
-    // Save all modified chunks before deactivating
     while (!m_activeChunks.empty())
     {
         auto const it = m_activeChunks.begin();
-
         DeactivateChunk(it->first, forceSynchronousSave);
     }
 }
@@ -2029,12 +2087,6 @@ void World::ProcessDirtyChunkMeshes()
     // as light propagates from neighboring chunks
     if (!m_dirtyLightQueue.empty())
     {
-        static int skipCount = 0;
-        skipCount++;
-        if (skipCount <= 10)  // Log first 10 skips
-        {
-            DebuggerPrintf("[MESH DEFER] Skipping mesh rebuild, dirty light queue size=%zu\n", m_dirtyLightQueue.size());
-        }
         return;  // Don't rebuild any meshes until light queue is empty
     }
 
@@ -2045,15 +2097,6 @@ void World::ProcessDirtyChunkMeshes()
         std::lock_guard<std::mutex> lock(m_meshRebuildSetMutex);
         if (!m_chunksNeedingMeshRebuild.empty())
         {
-            // Log how many chunks are being marked for rebuild (first occurrence only)
-            static bool firstMarkLogged = false;
-            if (!firstMarkLogged)
-            {
-                DebuggerPrintf("[MESH REBUILD FIX] Lighting stabilized, marking %zu chunks as mesh-dirty\n",
-                              m_chunksNeedingMeshRebuild.size());
-                firstMarkLogged = true;
-            }
-
             for (Chunk* chunk : m_chunksNeedingMeshRebuild)
             {
                 if (chunk)
@@ -2097,9 +2140,43 @@ void World::ProcessDirtyChunkMeshes()
 
         Chunk* chunk = pair.second;
 
-        // Submit mesh generation job instead of rebuilding on main thread
-        SubmitChunkForMeshGeneration(chunk);
-        ++meshesRebuilt;
+        // Assignment 5 Phase 0 (Hidden Surface Removal): Only construct meshes for chunks with all 4 neighbors active
+        // This prevents rendering incomplete chunk edges (blackness underwater/underground)
+        // Reference: A5 specification line 97: "Only construct meshes for chunks with all 4 neighbors active"
+        IntVec2 chunkCoords = chunk->GetChunkCoords();
+        bool allNeighborsActive = true;
+        {
+            std::lock_guard<std::mutex> lock(m_activeChunksMutex);
+
+            // Check all 4 horizontal neighbors (East, West, North, South)
+            IntVec2 neighborOffsets[4] = {
+                IntVec2(1, 0),   // East
+                IntVec2(-1, 0),  // West
+                IntVec2(0, 1),   // North
+                IntVec2(0, -1)   // South
+            };
+
+            for (int i = 0; i < 4; ++i)
+            {
+                IntVec2 neighborCoords = chunkCoords + neighborOffsets[i];
+                auto iter = m_activeChunks.find(neighborCoords);
+                if (iter == m_activeChunks.end() || iter->second == nullptr ||
+                    iter->second->GetState() != ChunkState::COMPLETE)
+                {
+                    allNeighborsActive = false;
+                    break;
+                }
+            }
+        }
+
+        // Only submit chunk for mesh generation if all 4 neighbors are active
+        if (allNeighborsActive)
+        {
+            // Submit mesh generation job instead of rebuilding on main thread
+            SubmitChunkForMeshGeneration(chunk);
+            ++meshesRebuilt;
+        }
+        // If neighbors not ready, leave chunk marked as dirty - it will be retried next frame
     }
 }
 
@@ -2267,8 +2344,9 @@ void World::SubmitChunkForMeshGeneration(Chunk* chunk)
         }
     }
 
-    // Create and submit mesh generation job
-    ChunkMeshJob* job = new ChunkMeshJob(chunk);
+    // Assignment 5 Phase 0 FIX: Pass World pointer for cross-chunk neighbor access
+    // This enables BlockIterator::GetNeighbor() to properly navigate across chunk boundaries
+    ChunkMeshJob* job = new ChunkMeshJob(chunk, this);
 
     // Add job to tracking lists
     {
@@ -2299,26 +2377,6 @@ void World::AddToDirtyLightQueue(BlockIterator const& blockIter)
 
     // Add to tracking set for O(1) duplicate detection
     m_dirtyLightSet.insert(blockIter);
-
-    // BUG HUNT: Log when ANY blocks are added to dirty light queue
-    // Works in both Debug and Release builds for performance testing
-    static int queueLogCount = 0;
-    Block* block = blockIter.GetBlock();
-    if (queueLogCount < 50 && block)
-    {
-        IntVec3 localCoords = blockIter.GetLocalCoords();
-        IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-        uint8_t outdoor = block->GetOutdoorLight();
-
-        // Only log underground blocks (z < 100) to reduce spam
-        if (localCoords.z < 100)
-        {
-            DebuggerPrintf("[QUEUE] Block type=%d added to dirty queue: Chunk(%d,%d) Pos(%d,%d,%d) outdoor=%d queueSize=%d setSize=%d\n",
-                          block->m_typeIndex, chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z,
-                          outdoor, (int)m_dirtyLightQueue.size(), (int)m_dirtyLightSet.size());
-            queueLogCount++;
-        }
-    }
 
     // Add to back of queue (FIFO order)
     m_dirtyLightQueue.push_back(blockIter);
@@ -2360,7 +2418,6 @@ void World::ProcessDirtyLighting(float const maxTimeSeconds)
     // Assignment 5 Phase 7: Safety check - if queue is empty, set should also be empty
     if (m_dirtyLightQueue.empty() && !m_dirtyLightSet.empty())
     {
-        DebuggerPrintf("[WARNING] Lighting queue empty but set has %d items - clearing set\n", (int)m_dirtyLightSet.size());
         m_dirtyLightSet.clear();
     }
 }
@@ -2395,17 +2452,6 @@ void World::RecalculateBlockLighting(BlockIterator const& blockIter)
     {
         // Direct skylight - always full brightness
         newOutdoor = 15;
-
-        // DIAGNOSTIC: Verify sky-visible blocks maintain outdoor=15
-        static int skyVisibleCheckCount = 0;
-        if (skyVisibleCheckCount < 10 && oldOutdoor != 15)
-        {
-            IntVec3 localCoords = blockIter.GetLocalCoords();
-            IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-            DebuggerPrintf("[SKY-VIS BUG] Block type=%d Chunk(%d,%d) Pos(%d,%d,%d) isSkyVisible=TRUE but oldOutdoor=%d (fixing to 15)\n",
-                          block->m_typeIndex, chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z, oldOutdoor);
-            skyVisibleCheckCount++;
-        }
     }
     else if (!blockDef->IsOpaque())
     {
@@ -2478,12 +2524,6 @@ void World::RecalculateBlockLighting(BlockIterator const& blockIter)
             IntVec3(0, 0, -1)   // Down
         };
 
-        // BUG HUNT: Track which neighbor is providing indoor light
-        static int indoorPropagationLogCount = 0;
-        Block* block = blockIter.GetBlock();
-        IntVec3 localCoords = blockIter.GetLocalCoords();
-        IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-
         for (int i = 0; i < 6; i++)
         {
             BlockIterator neighborIter = blockIter.GetNeighbor(neighborOffsets[i]);
@@ -2495,21 +2535,6 @@ void World::RecalculateBlockLighting(BlockIterator const& blockIter)
                     uint8_t neighborLight = neighborBlock->GetIndoorLight();
                     if (neighborLight > 0)
                     {
-                        // BUG HUNT: Log FIRST 20 cases of indoor light propagation from neighbors
-                        if (indoorPropagationLogCount < 20)
-                        {
-                            IntVec3 neighborCoords = neighborIter.GetLocalCoords();
-                            IntVec2 neighborChunkCoords = neighborIter.GetChunk() ? neighborIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-                            sBlockDefinition* neighborDef = sBlockDefinition::GetDefinitionByIndex(neighborBlock->m_typeIndex);
-                            bool neighborIsEmissive = neighborDef ? neighborDef->IsEmissive() : false;
-
-                            DebuggerPrintf("[INDOOR PROPAGATION #%d] Block Chunk(%d,%d) Pos(%d,%d,%d) type=%d receiving indoor=%d from neighbor Chunk(%d,%d) Pos(%d,%d,%d) type=%d isEmissive=%d\n",
-                                          indoorPropagationLogCount, chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z, block->m_typeIndex,
-                                          neighborLight - 1, neighborChunkCoords.x, neighborChunkCoords.y, neighborCoords.x, neighborCoords.y, neighborCoords.z,
-                                          neighborBlock->m_typeIndex, neighborIsEmissive ? 1 : 0);
-                            indoorPropagationLogCount++;
-                        }
-
                         // Influence map: Take max of (neighbor - 1)
                         uint8_t propagatedLight = neighborLight - 1;
                         if (propagatedLight > newIndoor)
@@ -2524,54 +2549,8 @@ void World::RecalculateBlockLighting(BlockIterator const& blockIter)
     //----------------------------------------------------------------------------------------------------
     // Update block lighting values
     //----------------------------------------------------------------------------------------------------
-    // BUG HUNT: Log when ANY blocks get BRIGHTENED unexpectedly
-    // CRITICAL: Log ALL brightening events to catch the propagation cascade
-    static int brightenLogCount = 0;
-    if (brightenLogCount < 100 && newOutdoor > oldOutdoor)
-    {
-        IntVec3 localCoords = blockIter.GetLocalCoords();
-        IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-        bool isSkyVisible = block->IsSkyVisible();
-        bool isOpaque = blockDef ? blockDef->IsOpaque() : false;
-
-        // Log ALL brightening events, not just underground
-        DebuggerPrintf("[BRIGHTEN] Block type=%d Chunk(%d,%d) Pos(%d,%d,%d) outdoor %d->%d, isSkyVisible=%d, isOpaque=%d\n",
-                      block->m_typeIndex, chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z,
-                      oldOutdoor, newOutdoor, isSkyVisible ? 1 : 0, isOpaque ? 1 : 0);
-        brightenLogCount++;
-    }
-
-    // BUG HUNT: Log when outdoor light is DIMMED (15 -> lower) - this should NOT happen for sky-visible blocks
-    static int dimLogCount = 0;
-    if (dimLogCount < 10 && oldOutdoor > newOutdoor && oldOutdoor == 15)
-    {
-        IntVec3 localCoords = blockIter.GetLocalCoords();
-        IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-        bool isSkyVisible = block->IsSkyVisible();
-        bool isOpaque = blockDef ? blockDef->IsOpaque() : false;
-        DebuggerPrintf("[DIM BUG] Block type=%d Chunk(%d,%d) Pos(%d,%d,%d) outdoor 15->%d, isSkyVisible=%d, isOpaque=%d\n",
-                      block->m_typeIndex, chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z,
-                      newOutdoor, isSkyVisible ? 1 : 0, isOpaque ? 1 : 0);
-        dimLogCount++;
-    }
-
     block->SetOutdoorLight(newOutdoor);
     block->SetIndoorLight(newIndoor);
-
-    // BUG HUNT: Log when indoor light is SET to non-zero value
-    static int indoorSetLogCount = 0;
-    if (indoorSetLogCount < 50 && newIndoor > 0 && oldIndoor == 0)
-    {
-        IntVec3 localCoords = blockIter.GetLocalCoords();
-        IntVec2 chunkCoords = blockIter.GetChunk() ? blockIter.GetChunk()->GetChunkCoords() : IntVec2(0, 0);
-        sBlockDefinition* def = sBlockDefinition::GetDefinitionByIndex(block->m_typeIndex);
-        bool isEmissive = def ? def->IsEmissive() : false;
-
-        DebuggerPrintf("[INDOOR SET] Chunk(%d,%d) Block(%d,%d,%d) type=%d indoor 0->%d, isEmissive=%d, outdoor=%d\n",
-                      chunkCoords.x, chunkCoords.y, localCoords.x, localCoords.y, localCoords.z,
-                      block->m_typeIndex, newIndoor, isEmissive ? 1 : 0, newOutdoor);
-        indoorSetLogCount++;
-    }
 
     //----------------------------------------------------------------------------------------------------
     // If lighting changed, propagate to neighbors by adding them to dirty queue
