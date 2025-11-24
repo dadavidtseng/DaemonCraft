@@ -22,6 +22,7 @@ struct Vec3;
 struct Rgba8;
 class Camera;
 class Chunk;
+class Entity;
 class ChunkGenerateJob;
 class ChunkLoadJob;
 class ChunkMeshJob;
@@ -139,6 +140,9 @@ public:
     DebugVisualizationMode GetDebugVisualizationMode() const { return m_debugVisualizationMode; }
     bool    SetBlockAtGlobalCoords(IntVec3 const& globalCoords, uint8_t blockTypeIndex); // Set block at world position
     uint8_t GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const; // Get block type at world position
+    bool    IsBlockSolid(IntVec3 const& globalCoords) const; // Assignment 6: Check if block is solid (for collision)
+    bool    IsEntityOnGround(Entity const* entity) const;    // Assignment 6: 4-corner raycast ground detection
+    void    PushEntityOutOfBlocks(Entity* entity);           // Assignment 6: Iterative collision resolution
     Chunk*  GetChunk(IntVec2 const& chunkCoords) const;
 
     // Assignment 5 Stage 8: Get computed sky/fog color for rendering clear screen

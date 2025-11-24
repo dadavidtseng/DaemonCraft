@@ -30,9 +30,15 @@ public:
     explicit Entity(Game* owner);
     virtual  ~Entity();
 
-    virtual void  Update(float deltaSeconds) = 0;
+    virtual void  Update(float deltaSeconds);  // Assignment 6: Core physics integration loop (can be overridden)
     virtual void  Render() const = 0;
     virtual Mat44 GetModelToWorldTransform() const;
+
+    // Assignment 6: Physics simulation
+    void   UpdatePhysics(float deltaSeconds);  // Newtonian integration: gravity, friction, velocity
+    void   UpdateIsGrounded();                 // Update m_isOnGround state using World raycast
+    void   ResolveCollisionWithWorld(Vec3& deltaPosition);  // 12-corner raycast collision detection
+    AABB3  GetWorldAABB() const;               // Get physics AABB transformed to world space (m_physicsAABB + m_position)
 
     Game*       m_game            = nullptr;
     Vec3        m_position        = Vec3::ZERO;

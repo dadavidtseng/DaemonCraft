@@ -35,6 +35,7 @@
 #include "Game/Framework/ChunkMeshJob.hpp"
 #include "Game/Framework/ChunkSaveJob.hpp"
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Gameplay/Entity.hpp"  // Assignment 6: For GetWorldAABB() in IsEntityOnGround()
 #include "Game/Gameplay/Game.hpp"
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
@@ -1046,6 +1047,190 @@ uint8_t World::GetBlockTypeAtGlobalCoords(IntVec3 const& globalCoords) const
     }
 
     return block->m_typeIndex;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 6: Check if block at global coordinates is solid (opaque) for collision detection
+// Returns false for air (type 0) and transparent blocks like glass/water
+// Returns true for opaque blocks that should block player movement
+//----------------------------------------------------------------------------------------------------
+bool World::IsBlockSolid(IntVec3 const& globalCoords) const
+{
+    // Get block type at this position
+    uint8_t blockType = GetBlockTypeAtGlobalCoords(globalCoords);
+
+    // Air (type 0) is never solid
+    if (blockType == 0)
+    {
+        return false;
+    }
+
+    // Get the block definition to check opacity
+    sBlockDefinition* blockDef = sBlockDefinition::GetDefinitionByIndex(blockType);
+
+    // If no definition, treat as non-solid (safe default)
+    if (blockDef == nullptr)
+    {
+        return false;
+    }
+
+    // Opaque blocks are solid for collision purposes
+    return blockDef->IsOpaque();
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 6: Check if entity is standing on solid ground using 4-corner raycast
+// Casts 4 short downward rays from AABB bottom corners to detect ground contact
+// Returns true if ANY corner ray hits a solid block (handles edges and slopes)
+//----------------------------------------------------------------------------------------------------
+bool World::IsEntityOnGround(Entity const* entity) const
+{
+    // Get entity AABB in world space
+    AABB3 worldAABB = entity->GetWorldAABB();
+
+    // Get 4 bottom corners of the AABB
+    Vec3 corners[4];
+    corners[0] = Vec3(worldAABB.m_mins.x, worldAABB.m_mins.y, worldAABB.m_mins.z); // Bottom-left-front
+    corners[1] = Vec3(worldAABB.m_maxs.x, worldAABB.m_mins.y, worldAABB.m_mins.z); // Bottom-right-front
+    corners[2] = Vec3(worldAABB.m_mins.x, worldAABB.m_maxs.y, worldAABB.m_mins.z); // Bottom-left-back
+    corners[3] = Vec3(worldAABB.m_maxs.x, worldAABB.m_maxs.y, worldAABB.m_mins.z); // Bottom-right-back
+
+    // Check each corner with a short downward raycast
+    for (int i = 0; i < 4; ++i)
+    {
+        // Start ray slightly above corner to avoid self-collision
+        Vec3 rayStart = corners[i] + Vec3(0.0f, 0.0f, RAYCAST_OFFSET);
+
+        // Raycast straight down
+        Vec3 rayDirection = Vec3(0.0f, 0.0f, -1.0f);
+
+        // Ray length: twice the offset to check just below the AABB
+        // GROUND_CHECK_DISTANCE + RAYCAST_OFFSET = total downward distance
+        float rayLength = GROUND_CHECK_DISTANCE + RAYCAST_OFFSET;
+
+        // Perform raycast
+        RaycastResult result = RaycastVoxel(rayStart, rayDirection, rayLength);
+
+        // If ray hit something and it's a solid block, entity is grounded
+        if (result.m_didImpact && IsBlockSolid(result.m_impactBlockCoords))
+        {
+            return true;
+        }
+    }
+
+    // No corner detected solid ground
+    return false;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 6: Iteratively resolve entity-block overlaps by pushing along minimum penetration axis
+// Uses up to MAX_PUSH_ITERATIONS to resolve complex multi-block overlaps
+// Zeros velocity on pushed axes to prevent entity from continuing into blocks
+//----------------------------------------------------------------------------------------------------
+void World::PushEntityOutOfBlocks(Entity* entity)
+{
+    // Iteratively resolve overlaps (pushing on one axis may create overlap on another)
+    for (int iteration = 0; iteration < MAX_PUSH_ITERATIONS; ++iteration)
+    {
+        // Get entity's current world-space AABB
+        AABB3 worldAABB = entity->GetWorldAABB();
+
+        // Calculate block coordinate bounds that entity AABB spans
+        IntVec3 minBlockCoords(
+            static_cast<int>(floorf(worldAABB.m_mins.x)),
+            static_cast<int>(floorf(worldAABB.m_mins.y)),
+            static_cast<int>(floorf(worldAABB.m_mins.z))
+        );
+        IntVec3 maxBlockCoords(
+            static_cast<int>(floorf(worldAABB.m_maxs.x)),
+            static_cast<int>(floorf(worldAABB.m_maxs.y)),
+            static_cast<int>(floorf(worldAABB.m_maxs.z))
+        );
+
+        // Track if we found any overlaps this iteration
+        bool foundOverlap = false;
+
+        // Check all blocks that entity AABB spans
+        for (int z = minBlockCoords.z; z <= maxBlockCoords.z; ++z)
+        {
+            for (int y = minBlockCoords.y; y <= maxBlockCoords.y; ++y)
+            {
+                for (int x = minBlockCoords.x; x <= maxBlockCoords.x; ++x)
+                {
+                    IntVec3 blockCoords(x, y, z);
+
+                    // Skip non-solid blocks
+                    if (!IsBlockSolid(blockCoords))
+                    {
+                        continue;
+                    }
+
+                    // Create AABB for this solid block (1x1x1 cube at block position)
+                    AABB3 blockAABB;
+                    blockAABB.m_mins = Vec3(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+                    blockAABB.m_maxs = blockAABB.m_mins + Vec3(1.0f, 1.0f, 1.0f);
+
+                    // Check if entity AABB overlaps this block AABB using separating axis test
+                    // Boxes overlap if they overlap on ALL three axes
+                    bool overlapsX = !(worldAABB.m_maxs.x <= blockAABB.m_mins.x || worldAABB.m_mins.x >= blockAABB.m_maxs.x);
+                    bool overlapsY = !(worldAABB.m_maxs.y <= blockAABB.m_mins.y || worldAABB.m_mins.y >= blockAABB.m_maxs.y);
+                    bool overlapsZ = !(worldAABB.m_maxs.z <= blockAABB.m_mins.z || worldAABB.m_mins.z >= blockAABB.m_maxs.z);
+
+                    if (!overlapsX || !overlapsY || !overlapsZ)
+                    {
+                        continue; // No overlap
+                    }
+
+                    // Calculate penetration depth on each axis
+                    float penetrationX1 = blockAABB.m_maxs.x - worldAABB.m_mins.x; // Push entity +X
+                    float penetrationX2 = worldAABB.m_maxs.x - blockAABB.m_mins.x; // Push entity -X
+                    float penetrationY1 = blockAABB.m_maxs.y - worldAABB.m_mins.y; // Push entity +Y
+                    float penetrationY2 = worldAABB.m_maxs.y - blockAABB.m_mins.y; // Push entity -Y
+                    float penetrationZ1 = blockAABB.m_maxs.z - worldAABB.m_mins.z; // Push entity +Z
+                    float penetrationZ2 = worldAABB.m_maxs.z - blockAABB.m_mins.z; // Push entity -Z
+
+                    // Find minimum penetration (smallest push distance)
+                    float minPenetration = penetrationX1;
+                    int   pushAxis       = 0; // 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z
+
+                    if (penetrationX2 < minPenetration) { minPenetration = penetrationX2; pushAxis = 1; }
+                    if (penetrationY1 < minPenetration) { minPenetration = penetrationY1; pushAxis = 2; }
+                    if (penetrationY2 < minPenetration) { minPenetration = penetrationY2; pushAxis = 3; }
+                    if (penetrationZ1 < minPenetration) { minPenetration = penetrationZ1; pushAxis = 4; }
+                    if (penetrationZ2 < minPenetration) { minPenetration = penetrationZ2; pushAxis = 5; }
+
+                    // Push entity position along minimum penetration axis
+                    switch (pushAxis)
+                    {
+                        case 0: entity->m_position.x += penetrationX1; entity->m_velocity.x = 0.0f; break; // Push +X
+                        case 1: entity->m_position.x -= penetrationX2; entity->m_velocity.x = 0.0f; break; // Push -X
+                        case 2: entity->m_position.y += penetrationY1; entity->m_velocity.y = 0.0f; break; // Push +Y
+                        case 3: entity->m_position.y -= penetrationY2; entity->m_velocity.y = 0.0f; break; // Push -Y
+                        case 4: entity->m_position.z += penetrationZ1; entity->m_velocity.z = 0.0f; break; // Push +Z
+                        case 5: entity->m_position.z -= penetrationZ2; entity->m_velocity.z = 0.0f; break; // Push -Z
+                    }
+
+                    // Mark that we found and resolved an overlap
+                    foundOverlap = true;
+
+                    // Break to outer loop to recalculate AABB and check for new overlaps
+                    goto next_iteration;
+                }
+            }
+        }
+
+    next_iteration:
+        // If no overlaps found, entity is fully resolved
+        if (!foundOverlap)
+        {
+            return;
+        }
+    }
+
+    // If we reach here, max iterations exceeded (shouldn't happen often)
+    // This can occur with very complex overlaps or entity spawning deep inside geometry
+    DebuggerPrintf("WARNING: PushEntityOutOfBlocks() exceeded MAX_PUSH_ITERATIONS=%d for entity at (%.2f, %.2f, %.2f)\n",
+                   MAX_PUSH_ITERATIONS, entity->m_position.x, entity->m_position.y, entity->m_position.z);
 }
 
 //----------------------------------------------------------------------------------------------------
