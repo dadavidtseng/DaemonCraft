@@ -102,16 +102,31 @@ void Game::Update()
     // Assignment 5 Phase 10: Continuously raycast from camera for visual feedback
     if (m_world != nullptr && m_player != nullptr)
     {
-        Camera* camera = m_player->GetCamera();
-        Vec3 const cameraPos = camera->GetPosition();
-        EulerAngles const orientation = camera->GetOrientation();
+        // In INDEPENDENT mode: Use player eye position and orientation (not camera)
+        // In other modes: Use camera position and orientation
+        Vec3 raycastOrigin;
+        EulerAngles raycastOrientation;
 
-        // Get forward vector from camera orientation
+        if (m_player->GetCameraMode() == eCameraMode::INDEPENDENT)
+        {
+            // INDEPENDENT mode: Raycast from player's eye position in player's facing direction
+            raycastOrigin = m_player->GetEyePosition();
+            raycastOrientation = m_player->m_orientation;  // Entity::m_orientation is public
+        }
+        else
+        {
+            // All other modes: Raycast from camera position in camera's facing direction
+            Camera* camera = m_player->GetCamera();
+            raycastOrigin = camera->GetPosition();
+            raycastOrientation = camera->GetOrientation();
+        }
+
+        // Get forward vector from raycast orientation
         Vec3 forwardIBasis, leftJBasis, upKBasis;
-        orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+        raycastOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
 
         // Perform raycast every frame to highlight block at crosshair
-        m_lastRaycastHit = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+        m_lastRaycastHit = m_world->RaycastVoxel(raycastOrigin, forwardIBasis, 20.0f);
     }
 
     ShowTerrainDebugWindow();
@@ -196,6 +211,26 @@ void Game::Render() const
             g_renderer->BindShader(g_renderer->CreateOrGetShaderFromFile("Data/Shaders/Default"));
             g_renderer->BindTexture(nullptr); // Disable texture for wireframe
             g_renderer->DrawVertexArray(wireframeVerts);
+
+            // Draw arrow from player eye position (or camera position) to face center
+            // Determine raycast origin based on camera mode (same logic as Update())
+            Vec3 raycastOrigin;
+            if (m_player->GetCameraMode() == eCameraMode::INDEPENDENT)
+            {
+                // INDEPENDENT mode: Arrow from player's eye position
+                raycastOrigin = m_player->GetEyePosition();
+            }
+            else
+            {
+                // All other modes: Arrow from camera position
+                raycastOrigin = m_player->GetCamera()->GetPosition();
+            }
+
+            // Draw arrow: yellow color, thin radius, always visible (no depth test)
+            Rgba8 arrowColor = Rgba8::GREY;
+            float arrowRadius = 0.02f;
+            float arrowDuration = 0.0f; // Single frame
+            DebugAddWorldArrow(raycastOrigin, faceCenter, arrowRadius, arrowDuration, arrowColor, arrowColor, eDebugRenderMode::X_RAY);
         }
     }
 
@@ -304,16 +339,31 @@ void Game::UpdateFromKeyBoard()
         {
             if (m_world != nullptr && m_player != nullptr)
             {
-                Camera*       camera         = m_player->GetCamera();
-                Vec3 const    cameraPos      = camera->GetPosition();
-                EulerAngles const orientation = camera->GetOrientation();
+                // In INDEPENDENT mode: Use player eye position and orientation (not camera)
+                // In other modes: Use camera position and orientation
+                Vec3 raycastOrigin;
+                EulerAngles raycastOrientation;
 
-                // Get forward vector from camera orientation
+                if (m_player->GetCameraMode() == eCameraMode::INDEPENDENT)
+                {
+                    // INDEPENDENT mode: Raycast from player's eye position in player's facing direction
+                    raycastOrigin = m_player->GetEyePosition();
+                    raycastOrientation = m_player->m_orientation;  // Entity::m_orientation is public
+                }
+                else
+                {
+                    // All other modes: Raycast from camera position in camera's facing direction
+                    Camera* camera = m_player->GetCamera();
+                    raycastOrigin = camera->GetPosition();
+                    raycastOrientation = camera->GetOrientation();
+                }
+
+                // Get forward vector from raycast orientation
                 Vec3 forwardIBasis, leftJBasis, upKBasis;
-                orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+                raycastOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
 
                 // Assignment 5 Phase 10: Use RaycastVoxel to find block at crosshair
-                RaycastResult rayResult = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+                RaycastResult rayResult = m_world->RaycastVoxel(raycastOrigin, forwardIBasis, 20.0f);
 
                 if (rayResult.m_didImpact)
                 {
@@ -339,16 +389,31 @@ void Game::UpdateFromKeyBoard()
         {
             if (m_world != nullptr && m_player != nullptr)
             {
-                Camera*       camera         = m_player->GetCamera();
-                Vec3 const    cameraPos      = camera->GetPosition();
-                EulerAngles const orientation = camera->GetOrientation();
+                // In INDEPENDENT mode: Use player eye position and orientation (not camera)
+                // In other modes: Use camera position and orientation
+                Vec3 raycastOrigin;
+                EulerAngles raycastOrientation;
 
-                // Get forward vector from camera orientation
+                if (m_player->GetCameraMode() == eCameraMode::INDEPENDENT)
+                {
+                    // INDEPENDENT mode: Raycast from player's eye position in player's facing direction
+                    raycastOrigin = m_player->GetEyePosition();
+                    raycastOrientation = m_player->m_orientation;  // Entity::m_orientation is public
+                }
+                else
+                {
+                    // All other modes: Raycast from camera position in camera's facing direction
+                    Camera* camera = m_player->GetCamera();
+                    raycastOrigin = camera->GetPosition();
+                    raycastOrientation = camera->GetOrientation();
+                }
+
+                // Get forward vector from raycast orientation
                 Vec3 forwardIBasis, leftJBasis, upKBasis;
-                orientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+                raycastOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
 
                 // Assignment 5 Phase 10: Use RaycastVoxel to find block at crosshair
-                RaycastResult rayResult = m_world->RaycastVoxel(cameraPos, forwardIBasis, 20.0f);
+                RaycastResult rayResult = m_world->RaycastVoxel(raycastOrigin, forwardIBasis, 20.0f);
 
                 if (rayResult.m_didImpact)
                 {
