@@ -3,367 +3,604 @@
 <!-- Game.vcxproj - Application(.exe) Project Configuration -->
 <!-- //////////////////////////////////////////////////////////////////////////////////////////////////// -->
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Project Configurations -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <ItemGroup Label="ProjectConfigurations">
-        <ProjectConfiguration Include="Debug|Win32">
-            <Configuration>Debug</Configuration>
-            <Platform>Win32</Platform>
-        </ProjectConfiguration>
-        <ProjectConfiguration Include="Release|Win32">
-            <Configuration>Release</Configuration>
-            <Platform>Win32</Platform>
-        </ProjectConfiguration>
-        <ProjectConfiguration Include="Debug|x64">
-            <Configuration>Debug</Configuration>
-            <Platform>x64</Platform>
-        </ProjectConfiguration>
-        <ProjectConfiguration Include="Release|x64">
-            <Configuration>Release</Configuration>
-            <Platform>x64</Platform>
-        </ProjectConfiguration>
-    </ItemGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Global Project Properties-->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <PropertyGroup Label="Globals">
-        <VCProjectVersion>17.0</VCProjectVersion>
-        <Keyword>Win32Proj</Keyword>
-        <ProjectGuid>{1c6046c0-acfa-4ab7-b8d2-670ad463b3ef}</ProjectGuid>
-        <RootNamespace>Game</RootNamespace>
-        <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-        <ProjectName>SimpleMiner</ProjectName>
-    </PropertyGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Module Configuration -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <PropertyGroup>
-        <V8LibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/lib/$(Configuration)/</V8LibPath>
-        <V8RedistLibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/lib/$(Configuration)/</V8RedistLibPath>
-        <!-- Script Module Configuration: Enable/disable V8 JavaScript integration -->
-        <!-- Set to 'true' to include V8 runtime deployment, 'false' to deploy executable only -->
-        <EnableScriptModule>false</EnableScriptModule>
-    </PropertyGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Configuration-Specific Properties -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Debug Win32 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="DebugWin32">
-        <ConfigurationType>Application</ConfigurationType>
-        <UseDebugLibraries>true</UseDebugLibraries>
-        <PlatformToolset>v143</PlatformToolset>
-        <CharacterSet>Unicode</CharacterSet>
-        <LanguageStandard>stdcpp20</LanguageStandard>
-        <ConformanceMode>true</ConformanceMode>
-    </PropertyGroup>
-    <!-- Release Win32 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="ReleaseWin32">
-        <ConfigurationType>Application</ConfigurationType>
-        <UseDebugLibraries>false</UseDebugLibraries>
-        <PlatformToolset>v143</PlatformToolset>
-        <WholeProgramOptimization>true</WholeProgramOptimization>
-        <CharacterSet>Unicode</CharacterSet>
-        <LanguageStandard>stdcpp20</LanguageStandard>
-        <ConformanceMode>true</ConformanceMode>
-    </PropertyGroup>
-    <!-- Debug x64 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="DebugX64">
-        <ConfigurationType>Application</ConfigurationType>
-        <UseDebugLibraries>true</UseDebugLibraries>
-        <PlatformToolset>v143</PlatformToolset>
-        <CharacterSet>Unicode</CharacterSet>
-        <LanguageStandard>stdcpp20</LanguageStandard>
-        <ConformanceMode>true</ConformanceMode>
-    </PropertyGroup>
-    <!-- Release x64 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="ReleaseX64">
-        <ConfigurationType>Application</ConfigurationType>
-        <UseDebugLibraries>false</UseDebugLibraries>
-        <PlatformToolset>v143</PlatformToolset>
-        <WholeProgramOptimization>true</WholeProgramOptimization>
-        <CharacterSet>Unicode</CharacterSet>
-        <LanguageStandard>stdcpp20</LanguageStandard>
-        <ConformanceMode>true</ConformanceMode>
-    </PropertyGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- MSBuild Imports-->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <Import Project="$(VCTargetsPath)/Microsoft.Cpp.Default.props"/>
-    <Import Project="$(VCTargetsPath)/Microsoft.Cpp.props"/>
-    <!-- V8 JavaScript Engine NuGet Package Integration -->
-    <!-- These imports provide V8 path variables for PostBuildEvent DLL deployment -->
-    <Import Project="$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/build/native/v8-v143-x64.props"/>
-    <Import Project="$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/build/native/v8.redist-v143-x64.props"/>
-    <ImportGroup Label="ExtensionSettings">
-    </ImportGroup>
-    <!-- Property Sheets Integration -->
-    <ImportGroup Label="ExtensionSettings">
-    </ImportGroup>
-    <ImportGroup Label="Shared">
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-        <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-        <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-        <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-        <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
-    </ImportGroup>
-    <PropertyGroup Label="UserMacros"/>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Output Directories and Debugging Configuration -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Application builds to Temporary/ then PostBuildEvent deploys to Run/ for execution -->
-    <!-- Debug Win32 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-        <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
-        <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
-        <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
-        <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
-        <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
-    </PropertyGroup>
-    <!-- Release Win32 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-        <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
-        <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
-        <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
-        <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
-        <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
-    </PropertyGroup>
-    <!-- Debug x64 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-        <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
-        <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
-        <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
-        <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
-        <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
-    </PropertyGroup>
-    <!-- Release x64 Configuration -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-        <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
-        <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
-        <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
-        <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
-        <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
-    </PropertyGroup>
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-        <ClCompile>
-            <MultiProcessorCompilation>true</MultiProcessorCompilation>
-        </ClCompile>
-    </ItemDefinitionGroup>
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-        <ClCompile>
-            <MultiProcessorCompilation>true</MultiProcessorCompilation>
-        </ClCompile>
-    </ItemDefinitionGroup>
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-        <ClCompile>
-            <MultiProcessorCompilation>true</MultiProcessorCompilation>
-        </ClCompile>
-    </ItemDefinitionGroup>
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-        <ClCompile>
-            <MultiProcessorCompilation>true</MultiProcessorCompilation>
-        </ClCompile>
-    </ItemDefinitionGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Compiler and linker configuration-->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Debug Win32 Configuration Settings -->
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="DebugWin32Settings">
-        <ClCompile>
-            <WarningLevel>Level4</WarningLevel>
-            <SDLCheck>true</SDLCheck>
-            <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-            <ConformanceMode>true</ConformanceMode>
-            <LanguageStandard>stdcpp20</LanguageStandard>
-            <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
-            <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-            <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-        </ClCompile>
-        <Link>
-            <SubSystem>Windows</SubSystem>
-            <GenerateDebugInformation>true</GenerateDebugInformation>
-            <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-            <!-- Windows API libraries required for V8 and game functionality -->
-            <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-        </Link>
-        <!-- Complete application deployment: executable + V8 runtime DLLs -->
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
-        </PostBuildEvent>
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
-        </PostBuildEvent>
-    </ItemDefinitionGroup>
-    <!-- Release Win32 Configuration Settings -->
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="ReleaseWin32Settings">
-        <ClCompile>
-            <WarningLevel>Level4</WarningLevel>
-            <FunctionLevelLinking>true</FunctionLevelLinking>
-            <IntrinsicFunctions>true</IntrinsicFunctions>
-            <SDLCheck>true</SDLCheck>
-            <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-            <ConformanceMode>true</ConformanceMode>
-            <LanguageStandard>stdcpp20</LanguageStandard>
-            <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
-            <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-            <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-        </ClCompile>
-        <Link>
-            <SubSystem>Windows</SubSystem>
-            <EnableCOMDATFolding>true</EnableCOMDATFolding>
-            <OptimizeReferences>true</OptimizeReferences>
-            <GenerateDebugInformation>true</GenerateDebugInformation>
-            <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-            <!-- Windows API libraries required for V8 and game functionality -->
-            <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-        </Link>
-        <!-- Complete application deployment: executable + V8 runtime DLLs -->
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
-        </PostBuildEvent>
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
-        </PostBuildEvent>
-    </ItemDefinitionGroup>
-    <!-- Debug x64 Configuration Settings -->
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="DebugX64Settings">
-        <ClCompile>
-            <WarningLevel>Level4</WarningLevel>
-            <SDLCheck>true</SDLCheck>
-            <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-            <ConformanceMode>true</ConformanceMode>
-            <LanguageStandard>stdcpp20</LanguageStandard>
-            <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
-            <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-            <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-        </ClCompile>
-        <Link>
-            <SubSystem>Windows</SubSystem>
-            <GenerateDebugInformation>true</GenerateDebugInformation>
-            <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-            <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-        </Link>
-        <!-- Complete application deployment: executable + V8 runtime DLLs -->
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
-        </PostBuildEvent>
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
-        </PostBuildEvent>
-    </ItemDefinitionGroup>
-    <!-- Release x64 Configuration Settings -->
-    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="ReleaseX64Settings">
-        <ClCompile>
-            <WarningLevel>Level4</WarningLevel>
-            <FunctionLevelLinking>true</FunctionLevelLinking>
-            <IntrinsicFunctions>true</IntrinsicFunctions>
-            <SDLCheck>true</SDLCheck>
-            <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-            <ConformanceMode>true</ConformanceMode>
-            <LanguageStandard>stdcpp20</LanguageStandard>
-            <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
-            <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-            <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-        </ClCompile>
-        <Link>
-            <SubSystem>Windows</SubSystem>
-            <EnableCOMDATFolding>true</EnableCOMDATFolding>
-            <OptimizeReferences>true</OptimizeReferences>
-            <GenerateDebugInformation>true</GenerateDebugInformation>
-            <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-            <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-        </Link>
-        <!-- Complete application deployment: executable + V8 runtime DLLs -->
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
-        </PostBuildEvent>
-        <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-            <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-            <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
-        </PostBuildEvent>
-    </ItemDefinitionGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Project Dependencies -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Engine static library -->
-    <ItemGroup>
-        <ProjectReference Include="../../../Engine/Code/Engine/Engine.vcxproj">
-            <Project>{d80656f3-b024-489f-b7b3-8bf35b25c423}</Project>
-        </ProjectReference>
-    </ItemGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Source Files -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <ItemGroup>
-        <ClCompile Include="Definition/BlockDefinition.cpp"/>
-        <ClCompile Include="Framework/App.cpp"/>
-        <ClCompile Include="Framework/Block.cpp"/>
-        <ClCompile Include="Framework/BlockIterator.cpp"/>
-        <ClCompile Include="Framework/Chunk.cpp"/>
-        <ClCompile Include="Framework/ChunkGenerateJob.cpp"/>
-        <ClCompile Include="Framework/ChunkLoadJob.cpp"/>
-        <ClCompile Include="Framework/ChunkMeshJob.cpp"/>
-        <ClCompile Include="Framework/ChunkSaveJob.cpp"/>
-        <ClCompile Include="Framework/GameCommon.cpp"/>
-        <ClCompile Include="Framework/Main_Windows.cpp"/>
-        <ClCompile Include="Framework/WorldGenConfig.cpp"/>
-        <ClCompile Include="Gameplay/Entity.cpp"/>
-        <ClCompile Include="Gameplay/Game.cpp"/>
-        <ClCompile Include="Gameplay/Player.cpp"/>
-        <ClCompile Include="Gameplay/World.cpp"/>
-    </ItemGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Header Files -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <ItemGroup>
-        <ClInclude Include="Definition/BlockDefinition.hpp"/>
-        <ClInclude Include="EngineBuildPreferences.hpp"/>
-        <ClInclude Include="Framework/App.hpp"/>
-        <ClInclude Include="Framework/Block.hpp"/>
-        <ClInclude Include="Framework/BlockIterator.hpp"/>
-        <ClInclude Include="Framework/Chunk.hpp"/>
-        <ClInclude Include="Framework/ChunkGenerateJob.hpp"/>
-        <ClInclude Include="Framework/ChunkLoadJob.hpp"/>
-        <ClInclude Include="Framework/ChunkMeshJob.hpp"/>
-        <ClInclude Include="Framework/ChunkSaveJob.hpp"/>
-        <ClInclude Include="Framework/GameCommon.hpp"/>
-        <ClInclude Include="Framework/WorldGenConfig.hpp"/>
-        <ClInclude Include="Gameplay/Entity.hpp"/>
-        <ClInclude Include="Gameplay/Game.hpp"/>
-        <ClInclude Include="Gameplay/Player.hpp"/>
-        <ClInclude Include="Gameplay/World.hpp"/>
-    </ItemGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Documentation -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <ItemGroup>
-        <None Include="../../Docs/README.md"/>
-    </ItemGroup>
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <!-- Build Target and Build Validation -->
-    <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <Import Project="$(VCTargetsPath)/Microsoft.Cpp.targets"/>
-    <ImportGroup Label="ExtensionTargets">
-    </ImportGroup>
-    <!-- Custom Build Information Target -->
-    <Target Name="ShowBuildInfo" BeforeTargets="Build">
-        <Message Text="Building $(ProjectName) Game Application - Configuration | $(Configuration), Platform | $(Platform)" Importance="high"/>
-        <Message Text="Output: $(TargetPath)" Importance="normal"/>
-        <Message Text="Working Directory: $(LocalDebuggerWorkingDirectory)" Importance="normal"/>
-        <Message Text="V8 Runtime will be deployed from: $(V8RedistLibPath)" Importance="normal"/>
-    </Target>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Project Configurations -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="DebugInline|Win32">
+      <Configuration>DebugInline</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DebugInline|x64">
+      <Configuration>DebugInline</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="FastBreak|Win32">
+      <Configuration>FastBreak</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="FastBreak|x64">
+      <Configuration>FastBreak</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Global Project Properties-->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{1c6046c0-acfa-4ab7-b8d2-670ad463b3ef}</ProjectGuid>
+    <RootNamespace>Game</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SimpleMiner</ProjectName>
+  </PropertyGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Module Configuration -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <PropertyGroup>
+    <V8LibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/lib/$(Configuration)/</V8LibPath>
+    <V8RedistLibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/lib/$(Configuration)/</V8RedistLibPath>
+    <!-- Script Module Configuration: Enable/disable V8 JavaScript integration -->
+    <!-- Set to 'true' to include V8 runtime deployment, 'false' to deploy executable only -->
+    <EnableScriptModule>false</EnableScriptModule>
+  </PropertyGroup>
+  <!-- DebugInline configuration override: Use Debug V8 libraries (DebugInline folder doesn't exist) -->
+  <PropertyGroup Condition="'$(Configuration)'=='DebugInline'">
+    <V8LibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/lib/Debug/</V8LibPath>
+    <V8RedistLibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/lib/Debug/</V8RedistLibPath>
+  </PropertyGroup>
+  <!-- FastBreak configuration override: Use Release V8 libraries (FastBreak folder doesn't exist) -->
+  <PropertyGroup Condition="'$(Configuration)'=='FastBreak'">
+    <V8LibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/lib/Release/</V8LibPath>
+    <V8RedistLibPath>$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/lib/Release/</V8RedistLibPath>
+  </PropertyGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Configuration-Specific Properties -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Debug Win32 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="DebugWin32">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'" Label="DebugWin32">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <!-- Release Win32 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="ReleaseWin32">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'" Label="ReleaseWin32">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <!-- Debug x64 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="DebugX64">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'" Label="DebugX64">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <!-- Release x64 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="ReleaseX64">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'" Label="ReleaseX64">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <LanguageStandard>stdcpp20</LanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+  </PropertyGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- MSBuild Imports-->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <Import Project="$(VCTargetsPath)/Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)/Microsoft.Cpp.props" />
+  <!-- V8 JavaScript Engine NuGet Package Integration -->
+  <!-- These imports provide V8 path variables for PostBuildEvent DLL deployment -->
+  <Import Project="$(SolutionDir)../Engine/Code/ThirdParty/packages/v8-v143-x64.13.0.245.25/build/native/v8-v143-x64.props" />
+  <Import Project="$(SolutionDir)../Engine/Code/ThirdParty/packages/v8.redist-v143-x64.13.0.245.25/build/native/v8.redist-v143-x64.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <!-- Property Sheets Integration -->
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)/Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Output Directories and Debugging Configuration -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Application builds to Temporary/ then PostBuildEvent deploys to Run/ for execution -->
+  <!-- Debug Win32 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <!-- Release Win32 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <!-- Debug x64 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <!-- Release x64 Configuration -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'">
+    <OutDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)Temporary/$(ProjectName)_$(PlatformShortName)_$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_$(Configuration)_$(PlatformShortName)</TargetName>
+    <LocalDebuggerCommand>$(TargetFileName)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)Run/</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Compiler and linker configuration-->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Debug Win32 Configuration Settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="DebugWin32Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!-- Windows API libraries required for V8 and game functionality -->
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'" Label="DebugWin32Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <!-- Release Win32 Configuration Settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="ReleaseWin32Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!-- Windows API libraries required for V8 and game functionality -->
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'" Label="ReleaseWin32Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <!-- Debug x64 Configuration Settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="DebugX64Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'" Label="DebugX64Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <!-- Release x64 Configuration Settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="ReleaseX64Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'" Label="ReleaseX64Settings">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus /std:c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(SolutionDir)../Engine/Code/ThirdParty/imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+    </PostBuildEvent>
+    <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Project Dependencies -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Engine static library -->
+  <ItemGroup>
+    <ProjectReference Include="../../../Engine/Code/Engine/Engine.vcxproj">
+      <Project>{d80656f3-b024-489f-b7b3-8bf35b25c423}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Source Files -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <ItemGroup>
+    <ClCompile Include="Definition/BlockDefinition.cpp" />
+    <ClCompile Include="Framework/App.cpp" />
+    <ClCompile Include="Framework/Block.cpp" />
+    <ClCompile Include="Framework/BlockIterator.cpp" />
+    <ClCompile Include="Framework/Chunk.cpp" />
+    <ClCompile Include="Framework/ChunkGenerateJob.cpp" />
+    <ClCompile Include="Framework/ChunkLoadJob.cpp" />
+    <ClCompile Include="Framework/ChunkMeshJob.cpp" />
+    <ClCompile Include="Framework/ChunkSaveJob.cpp" />
+    <ClCompile Include="Framework/GameCommon.cpp" />
+    <ClCompile Include="Framework/Main_Windows.cpp" />
+    <ClCompile Include="Framework/WorldGenConfig.cpp" />
+    <ClCompile Include="Gameplay/Entity.cpp" />
+    <ClCompile Include="Gameplay/Game.cpp" />
+    <ClCompile Include="Gameplay/Player.cpp" />
+    <ClCompile Include="Gameplay/World.cpp" />
+  </ItemGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Header Files -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <ItemGroup>
+    <ClInclude Include="Definition/BlockDefinition.hpp" />
+    <ClInclude Include="EngineBuildPreferences.hpp" />
+    <ClInclude Include="Framework/App.hpp" />
+    <ClInclude Include="Framework/Block.hpp" />
+    <ClInclude Include="Framework/BlockIterator.hpp" />
+    <ClInclude Include="Framework/Chunk.hpp" />
+    <ClInclude Include="Framework/ChunkGenerateJob.hpp" />
+    <ClInclude Include="Framework/ChunkLoadJob.hpp" />
+    <ClInclude Include="Framework/ChunkMeshJob.hpp" />
+    <ClInclude Include="Framework/ChunkSaveJob.hpp" />
+    <ClInclude Include="Framework/GameCommon.hpp" />
+    <ClInclude Include="Framework/WorldGenConfig.hpp" />
+    <ClInclude Include="Gameplay/Entity.hpp" />
+    <ClInclude Include="Gameplay/Game.hpp" />
+    <ClInclude Include="Gameplay/Player.hpp" />
+    <ClInclude Include="Gameplay/World.hpp" />
+  </ItemGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Documentation -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <ItemGroup>
+    <None Include="../../Docs/README.md" />
+  </ItemGroup>
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <!-- Build Target and Build Validation -->
+  <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
+  <Import Project="$(VCTargetsPath)/Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <!-- Custom Build Information Target -->
+  <Target Name="ShowBuildInfo" BeforeTargets="Build">
+    <Message Text="Building $(ProjectName) Game Application - Configuration | $(Configuration), Platform | $(Platform)" Importance="high" />
+    <Message Text="Output: $(TargetPath)" Importance="normal" />
+    <Message Text="Working Directory: $(LocalDebuggerWorkingDirectory)" Importance="normal" />
+    <Message Text="V8 Runtime will be deployed from: $(V8RedistLibPath)" Importance="normal" />
+  </Target>
 </Project>
