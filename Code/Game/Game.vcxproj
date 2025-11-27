@@ -318,14 +318,14 @@
       <!-- Windows API libraries required for V8 and game functionality -->
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Debug runtime, and FMOD audio runtime (Win32) to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and FMOD audio runtime (Win32, no V8 runtime) to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|Win32'" Label="DebugWin32Settings">
@@ -345,13 +345,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Debug runtime, and FMOD audio runtime (Win32) to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and FMOD audio runtime (Win32, no V8 runtime) to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Release Win32 Configuration Settings -->
@@ -377,14 +378,14 @@
       <!-- Windows API libraries required for V8 and game functionality -->
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Release runtime, and FMOD audio runtime (Win32) to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and FMOD audio runtime (Win32, no V8 runtime) to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|Win32'" Label="ReleaseWin32Settings">
@@ -408,13 +409,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Release runtime, and FMOD audio runtime (Win32) to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName) and FMOD audio runtime (Win32, no V8 runtime) to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Debug x64 Configuration Settings -->
@@ -435,14 +437,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs + OpenSSL runtime DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/$(Configuration)/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Debug runtime, FMOD audio runtime (x64), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/$(Configuration)/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), FMOD audio runtime (x64, no V8 runtime), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugInline|x64'" Label="DebugX64Settings">
@@ -462,13 +464,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs + OpenSSL runtime DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Debug runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/Debug/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Debug runtime, FMOD audio runtime (x64), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/Debug/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), FMOD audio runtime (x64, no V8 runtime), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Release x64 Configuration Settings -->
@@ -493,14 +496,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <!-- Complete application deployment: executable + V8 runtime DLLs -->
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs + OpenSSL runtime DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/$(Configuration)/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Release runtime, FMOD audio runtime (x64), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/$(Configuration)/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), FMOD audio runtime (x64, no V8 runtime), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FastBreak|x64'" Label="ReleaseX64Settings">
@@ -524,13 +527,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Code/;$(SolutionDir)../Engine/Code/;$(V8LibPath);$(SolutionDir)../Engine/Code/ThirdParty/openssl/lib/x64/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dbghelp.lib;shlwapi.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <!-- Complete application deployment: executable + V8 runtime DLLs + FMOD audio DLLs + OpenSSL runtime DLLs -->
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='true'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) and V8 Release runtime to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(V8RedistLibPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/Release/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), V8 Release runtime, FMOD audio runtime (x64), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
     <PostBuildEvent Condition="'$(EnableScriptModule)'=='false'">
-      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/"</Command>
-      <Message>Deploying $(TargetFileName) (no V8 runtime) to game directory...</Message>
+      <Command>xcopy /Y /F /I "$(TargetPath)" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/fmod/fmod64.dll" "$(SolutionDir)Run/" &amp; xcopy /Y /F "$(SolutionDir)../Engine/Code/ThirdParty/openssl/bin/x64/Release/*.dll" "$(SolutionDir)Run/"</Command>
+      <Message>Deploying $(TargetFileName), FMOD audio runtime (x64, no V8 runtime), and OpenSSL runtime to game directory...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- //////////////////////////////////////////////////////////////////////////////////////////////// -->
