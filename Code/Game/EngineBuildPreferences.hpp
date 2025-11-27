@@ -21,7 +21,7 @@
 
 // Enable Debug Rendering System
 #define ENGINE_DEBUG_RENDER
-// #define CONSOLE_HANDLER
+#define CONSOLE_HANDLER
 //
 // V8 JavaScript Engine Configuration:
 // V8 linking is controlled by <EnableV8ScriptEngine> in Engine/Code/Engine/Engine.vcxproj (line 87)
