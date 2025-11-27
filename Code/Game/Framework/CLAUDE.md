@@ -16,11 +16,18 @@
 
 ---
 
-## Assignment 4: World Generation - PRIMARY IMPLEMENTATION LOCATION
+## Current Status
 
-**Status:** Phase 5A - Carvers (Ravines/Rivers) ✅ MOSTLY COMPLETED (Date Unknown)
+**✅ Assignment 4, 5, 6 (World Generation, Lighting, Physics) - COMPLETED**
+**🔄 Assignment 7 (Registry, Inventory, UI, AI Agents) - Prerequisites Phase**
 
-**CRITICAL:** This module contains the primary implementation files for Assignment 4's world generation system. The `Chunk.cpp::GenerateTerrain()` method has been completely restructured with Phases 1-5A implementations.
+This module will undergo significant changes for Assignment 7:
+- **Chunk.cpp**: GenerateTerrain() will be enhanced with new block types from JSON registries
+- **Block.hpp**: Will remain 1-byte flyweight but reference new BlockRegistry instead of static s_definitions
+- **New Files**: WorldGenConfig migration from XML to JSON for A7 consistency
+
+**Previous Assignment (A4-A6) Implementation:**
+This module was the primary location for Assignment 4-6 world generation, lighting, and physics systems. The `Chunk.cpp::GenerateTerrain()` method contains the complete Phases 1-5A implementation with biomes, 3D density terrain, caves, and carvers.
 
 ### Completed Modifications (Phases 1-5A)
 

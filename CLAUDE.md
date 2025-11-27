@@ -14,13 +14,57 @@
 - **[Runtime Assets](Run/CLAUDE.md)** - Executables, shaders, models, configurations
 - **[Documentation](Docs/CLAUDE.md)** - Development resources and analysis
 
-### Development Planning (Assignment 4: World Generation)
-- **[Development Plan](.claude/plan/development.md)** - Comprehensive world generation implementation guide
-- **[Task Pointer](.claude/plan/task-pointer.md)** - Quick reference task index
+### Development Planning
+- **[Development Plan](.claude/plan/development.md)** - Comprehensive world generation implementation guide (Assignment 4)
+- **[Task Pointer](.claude/plan/task-pointer.md)** - Quick reference task index (Assignment 4)
+
+---
+
+## Current Assignment: A7 - Registry System, Inventory, UI, and AI Agent Integration
+
+**Status:** Prerequisites Phase (P-2: CLAUDE.md Updates IN PROGRESS)
+**Due Date:** December 12, 2025
+**Spec Location:** `.spec-workflow/specs/A7/requirements.md`
+
+**Assignment 7 Overview:**
+SimpleMiner is implementing a comprehensive gameplay and AI integration system with 7 major systems:
+1. **Registry System** - JSON-based data-driven architecture (blocks, items, recipes)
+2. **Inventory System** - Minecraft-style player item storage with hotbar
+3. **Mining & Placement Mechanics** - Progressive block breaking, item drops, placement
+4. **Minecraft-authentic UI** - HUD, inventory screen, crafting interface (using Engine WidgetSubsystem)
+5. **AI Agent Framework** - KADI WebSocket-integrated agents (using Engine KADIWebSocketSubsystem)
+6. **Menu System** - Save/Load/Create game functionality
+7. **Sound Effects** - Minecraft-style audio for mining/placing/crafting (using Engine AudioSystem)
+
+**Prerequisites (Must Complete Before A7 Implementation):**
+- ✅ **P-1**: Fix hidden surface removal bug (will be addressed in design.md)
+- 🔄 **P-2**: Update all CLAUDE.md files in Engine and SimpleMiner (IN PROGRESS)
+- ⏳ **P-3**: Create steering documents (product.md, tech.md, structure.md)
+
+**Key Engine Systems for A7:**
+- `Engine\Code\Engine\Widget\WidgetSubsystem` - UI rendering (needs refinement)
+- `Engine\Code\Engine\Network\KADIWebSocketSubsystem` - KADI broker integration
+- `Engine\Code\Engine\Audio\AudioSystem` - FMOD-based sound effects
+- `Engine\Code\ThirdParty\json\json.hpp` - JSON library for registries
+
+**Previous Assignment (A4-A6):** World Generation, Physics, Camera, and Lighting - ✅ COMPLETED
 
 ---
 
 ## Changelog
+- **2025-11-24**: Assignment 7 Prerequisites Phase Started
+  - ✅ Created requirements.md v3 with prerequisites and sound effects (FR-7)
+  - 🔄 **P-2 IN PROGRESS**: Updating all CLAUDE.md documentation for A7 readiness
+    - ✅ Created `Engine\Code\Engine\Widget\CLAUDE.md` (WidgetSubsystem documentation)
+    - ✅ Updated `Engine\Code\Engine\Network\CLAUDE.md` (added KADI WebSocketSubsystem docs)
+    - 🔄 Updating `SimpleMiner\CLAUDE.md` (root, adding A7 scope)
+    - ⏳ Remaining: Audio, SimpleMiner modules (Framework, Gameplay, Definition)
+  - ⏳ P-3: Create steering documents pending
+  - ⏳ Create design.md pending (will include P-1: rendering bug fix)
+- **2025-11-24**: Assignment 6 (Physics & Camera) Archived
+  - Archived A6 specification to `.spec-workflow/archive/specs/A6`
+  - Created completion summary and implementation logs
+  - Physics system, camera modes, and lighting fully functional
 - **2025-11-16**: Assignment 5 Phase 3 Visual Rendering - Tasks 7, 8, 9 Complete
   - ✅ Task 7: Mesh Building with Vertex Lighting (Chunk.cpp:2758-2825)
     - Modified AddBlockFacesWithHiddenSurfaceRemoval() to encode lighting in vertex colors
