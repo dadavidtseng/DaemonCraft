@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "shrimp-SimpleMiner": {
+      "command": "node",
+      "args": ["C:\\GitHub\\mcp-shrimp-task-manager\\dist\\index.js"],
+      "env": {
+        "DATA_DIR": "C:\\p4\\Personal\\SD\\SimpleMiner\\.claude\\shrimp_data",
+        "TEMPLATES_USE": "en",
+        "ENABLE_GUI": "true",
+        "WEB_PORT": "3002"
+      }
+    },
+    "spec-workflow-SimpleMiner": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@pimzino/spec-workflow-mcp@latest",
+        "C:\\p4\\Personal\\SD\\SimpleMiner"
+      ],
+      "env": {}
+    }
+  }
+}
