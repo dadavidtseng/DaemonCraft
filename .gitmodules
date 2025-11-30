@@ -1,0 +1,3 @@
+[submodule ".claude/shrimp_data"]
+	path = .claude/shrimp_data
+	url = https://github.com/dadavidtseng/shrimp_data_DaemonCraft.git
