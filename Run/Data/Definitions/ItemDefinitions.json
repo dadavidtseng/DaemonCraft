@@ -1,0 +1,226 @@
+{
+  "items": [
+    {
+      "name": "stone_block",
+      "displayName": "Stone Block",
+      "type": "BLOCK",
+      "spriteCoords": [5, 0],
+      "maxStackSize": 64,
+      "blockType": "Stone"
+    },
+    {
+      "name": "dirt_block",
+      "displayName": "Dirt Block",
+      "type": "BLOCK",
+      "spriteCoords": [4, 0],
+      "maxStackSize": 64,
+      "blockType": "Dirt"
+    },
+    {
+      "name": "grass_block",
+      "displayName": "Grass Block",
+      "type": "BLOCK",
+      "spriteCoords": [1, 2],
+      "maxStackSize": 64,
+      "blockType": "Grass"
+    },
+    {
+      "name": "sand_block",
+      "displayName": "Sand Block",
+      "type": "BLOCK",
+      "spriteCoords": [1, 0],
+      "maxStackSize": 64,
+      "blockType": "Sand"
+    },
+    {
+      "name": "cobblestone_block",
+      "displayName": "Cobblestone Block",
+      "type": "BLOCK",
+      "spriteCoords": [5, 1],
+      "maxStackSize": 64,
+      "blockType": "Cobblestone"
+    },
+    {
+      "name": "oak_planks_block",
+      "displayName": "Oak Planks",
+      "type": "BLOCK",
+      "spriteCoords": [2, 4],
+      "maxStackSize": 64,
+      "blockType": "OakPlanks"
+    },
+    {
+      "name": "oak_log_block",
+      "displayName": "Oak Log",
+      "type": "BLOCK",
+      "spriteCoords": [0, 4],
+      "maxStackSize": 64,
+      "blockType": "OakLog"
+    },
+    {
+      "name": "coal_ore_block",
+      "displayName": "Coal Ore",
+      "type": "BLOCK",
+      "spriteCoords": [6, 0],
+      "maxStackSize": 64,
+      "blockType": "Coal"
+    },
+    {
+      "name": "iron_ore_block",
+      "displayName": "Iron Ore",
+      "type": "BLOCK",
+      "spriteCoords": [7, 0],
+      "maxStackSize": 64,
+      "blockType": "Iron"
+    },
+    {
+      "name": "gold_ore_block",
+      "displayName": "Gold Ore",
+      "type": "BLOCK",
+      "spriteCoords": [0, 1],
+      "maxStackSize": 64,
+      "blockType": "Gold"
+    },
+    {
+      "name": "diamond_ore_block",
+      "displayName": "Diamond Ore",
+      "type": "BLOCK",
+      "spriteCoords": [1, 1],
+      "maxStackSize": 64,
+      "blockType": "Diamond"
+    },
+    {
+      "name": "stick",
+      "displayName": "Stick",
+      "type": "RESOURCE",
+      "spriteCoords": [0, 8],
+      "maxStackSize": 64
+    },
+    {
+      "name": "coal",
+      "displayName": "Coal",
+      "type": "RESOURCE",
+      "spriteCoords": [1, 8],
+      "maxStackSize": 64
+    },
+    {
+      "name": "iron_ingot",
+      "displayName": "Iron Ingot",
+      "type": "RESOURCE",
+      "spriteCoords": [2, 8],
+      "maxStackSize": 64
+    },
+    {
+      "name": "gold_ingot",
+      "displayName": "Gold Ingot",
+      "type": "RESOURCE",
+      "spriteCoords": [3, 8],
+      "maxStackSize": 64
+    },
+    {
+      "name": "diamond",
+      "displayName": "Diamond",
+      "type": "RESOURCE",
+      "spriteCoords": [4, 8],
+      "maxStackSize": 64
+    },
+    {
+      "name": "wooden_pickaxe",
+      "displayName": "Wooden Pickaxe",
+      "type": "TOOL",
+      "spriteCoords": [0, 9],
+      "maxStackSize": 1,
+      "miningSpeed": 2.0,
+      "maxDurability": 60
+    },
+    {
+      "name": "stone_pickaxe",
+      "displayName": "Stone Pickaxe",
+      "type": "TOOL",
+      "spriteCoords": [1, 9],
+      "maxStackSize": 1,
+      "miningSpeed": 4.0,
+      "maxDurability": 132
+    },
+    {
+      "name": "iron_pickaxe",
+      "displayName": "Iron Pickaxe",
+      "type": "TOOL",
+      "spriteCoords": [2, 9],
+      "maxStackSize": 1,
+      "miningSpeed": 6.0,
+      "maxDurability": 251
+    },
+    {
+      "name": "golden_pickaxe",
+      "displayName": "Golden Pickaxe",
+      "type": "TOOL",
+      "spriteCoords": [3, 9],
+      "maxStackSize": 1,
+      "miningSpeed": 12.0,
+      "maxDurability": 33
+    },
+    {
+      "name": "diamond_pickaxe",
+      "displayName": "Diamond Pickaxe",
+      "type": "TOOL",
+      "spriteCoords": [4, 9],
+      "maxStackSize": 1,
+      "miningSpeed": 8.0,
+      "maxDurability": 1562
+    },
+    {
+      "name": "wooden_shovel",
+      "displayName": "Wooden Shovel",
+      "type": "TOOL",
+      "spriteCoords": [0, 10],
+      "maxStackSize": 1,
+      "miningSpeed": 2.0,
+      "maxDurability": 60
+    },
+    {
+      "name": "stone_shovel",
+      "displayName": "Stone Shovel",
+      "type": "TOOL",
+      "spriteCoords": [1, 10],
+      "maxStackSize": 1,
+      "miningSpeed": 4.0,
+      "maxDurability": 132
+    },
+    {
+      "name": "iron_shovel",
+      "displayName": "Iron Shovel",
+      "type": "TOOL",
+      "spriteCoords": [2, 10],
+      "maxStackSize": 1,
+      "miningSpeed": 6.0,
+      "maxDurability": 251
+    },
+    {
+      "name": "wooden_axe",
+      "displayName": "Wooden Axe",
+      "type": "TOOL",
+      "spriteCoords": [0, 11],
+      "maxStackSize": 1,
+      "miningSpeed": 2.0,
+      "maxDurability": 60
+    },
+    {
+      "name": "stone_axe",
+      "displayName": "Stone Axe",
+      "type": "TOOL",
+      "spriteCoords": [1, 11],
+      "maxStackSize": 1,
+      "miningSpeed": 4.0,
+      "maxDurability": 132
+    },
+    {
+      "name": "iron_axe",
+      "displayName": "Iron Axe",
+      "type": "TOOL",
+      "spriteCoords": [2, 11],
+      "maxStackSize": 1,
+      "miningSpeed": 6.0,
+      "maxDurability": 251
+    }
+  ]
+}

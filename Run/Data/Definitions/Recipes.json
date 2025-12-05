@@ -1,0 +1,157 @@
+{
+  "recipes": [
+    {
+      "name": "oak_planks",
+      "type": "shapeless",
+      "ingredients": ["oak_log_block"],
+      "result": {
+        "item": "oak_planks_block",
+        "count": 4
+      }
+    },
+    {
+      "name": "sticks",
+      "type": "shaped",
+      "pattern": [
+        ["oak_planks_block", "empty"],
+        ["oak_planks_block", "empty"]
+      ],
+      "result": {
+        "item": "stick",
+        "count": 4
+      }
+    },
+    {
+      "name": "wooden_pickaxe",
+      "type": "shaped",
+      "pattern": [
+        ["oak_planks_block", "oak_planks_block"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "wooden_pickaxe",
+        "count": 1
+      }
+    },
+    {
+      "name": "wooden_shovel",
+      "type": "shaped",
+      "pattern": [
+        ["oak_planks_block", "empty"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "wooden_shovel",
+        "count": 1
+      }
+    },
+    {
+      "name": "wooden_axe",
+      "type": "shaped",
+      "pattern": [
+        ["oak_planks_block", "oak_planks_block"],
+        ["oak_planks_block", "stick"]
+      ],
+      "result": {
+        "item": "wooden_axe",
+        "count": 1
+      }
+    },
+    {
+      "name": "stone_pickaxe",
+      "type": "shaped",
+      "pattern": [
+        ["cobblestone_block", "cobblestone_block"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "stone_pickaxe",
+        "count": 1
+      }
+    },
+    {
+      "name": "stone_shovel",
+      "type": "shaped",
+      "pattern": [
+        ["cobblestone_block", "empty"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "stone_shovel",
+        "count": 1
+      }
+    },
+    {
+      "name": "stone_axe",
+      "type": "shaped",
+      "pattern": [
+        ["cobblestone_block", "cobblestone_block"],
+        ["cobblestone_block", "stick"]
+      ],
+      "result": {
+        "item": "stone_axe",
+        "count": 1
+      }
+    },
+    {
+      "name": "iron_pickaxe",
+      "type": "shaped",
+      "pattern": [
+        ["iron_ingot", "iron_ingot"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "iron_pickaxe",
+        "count": 1
+      }
+    },
+    {
+      "name": "iron_shovel",
+      "type": "shaped",
+      "pattern": [
+        ["iron_ingot", "empty"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "iron_shovel",
+        "count": 1
+      }
+    },
+    {
+      "name": "iron_axe",
+      "type": "shaped",
+      "pattern": [
+        ["iron_ingot", "iron_ingot"],
+        ["iron_ingot", "stick"]
+      ],
+      "result": {
+        "item": "iron_axe",
+        "count": 1
+      }
+    },
+    {
+      "name": "golden_pickaxe",
+      "type": "shaped",
+      "pattern": [
+        ["gold_ingot", "gold_ingot"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "golden_pickaxe",
+        "count": 1
+      }
+    },
+    {
+      "name": "diamond_pickaxe",
+      "type": "shaped",
+      "pattern": [
+        ["diamond", "diamond"],
+        ["stick", "empty"]
+      ],
+      "result": {
+        "item": "diamond_pickaxe",
+        "count": 1
+      }
+    }
+  ]
+}
