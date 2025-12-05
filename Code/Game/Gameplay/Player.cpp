@@ -6,8 +6,14 @@
 #include "Game/Gameplay/Player.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "Game/Framework/GameCommon.hpp"
+#include "Game/Framework/Chunk.hpp"      // Assignment 7: For MarkChunkForMeshRebuild()
 #include "Game/Gameplay/Game.hpp"
+#include "Game/Gameplay/ItemStack.hpp"   // Assignment 7: For BreakBlock item drops
+#include "Game/Gameplay/ItemEntity.hpp"  // Assignment 7: For PickupNearbyItems collision detection
 #include "Game/Gameplay/World.hpp"  // Assignment 6: For PushEntityOutOfBlocks() in physics mode cycling
+#include "Game/Definition/BlockDefinition.hpp"  // Assignment 7: For mining break time calculation
+#include "Game/Definition/ItemDefinition.hpp"   // Assignment 7: For tool durability (IsTool check)
+#include "Game/Definition/ItemRegistry.hpp"     // Assignment 7: For tool durability (registry lookup)
 //----------------------------------------------------------------------------------------------------
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Core/ErrorWarningAssert.hpp"
@@ -15,6 +21,8 @@
 #include "Engine/Math/MathUtils.hpp"
 #include "Engine/Renderer/Camera.hpp"
 #include "Engine/Renderer/DebugRenderSystem.hpp"  // Assignment 6: For AABB debug wireframe rendering
+#include "Engine/Renderer/Renderer.hpp"  // Assignment 7: For rendering crack overlay
+#include "Engine/Resource/ResourceSubsystem.hpp"  // Assignment 7: For loading crack texture
 
 //----------------------------------------------------------------------------------------------------
 Player::Player(Game* owner)
@@ -47,6 +55,13 @@ Player::Player(Game* owner)
     // Assignment 6: Enable physics and set default mode to WALKING
     m_physicsMode = ePhysicsMode::WALKING;
     m_physicsEnabled = true;
+
+    // Assignment 7: Initialize mining system
+    m_targetBlockCoords = IntVec3(0, 0, 0);
+
+    // Assignment 7: Load crack overlay texture (10 stages horizontal strip)
+    // NOTE: Cracks.png must exist with 10 crack stages (640x64 pixels, 64x64 per stage)
+    m_crackTexture = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/Cracks.png");
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -73,7 +88,19 @@ void Player::Update(float const deltaSeconds)
     // Only affects player in non-spectator modes (spectator modes have no acceleration)
     Entity::Update(deltaSeconds);
 
-    // Step 3: Update camera transform based on current camera mode
+    // Step 3: Update mining state machine (Assignment 7)
+    // Handles progressive block breaking with left-click
+    UpdateMining(deltaSeconds);
+
+    // Step 3b: Update block placement (Assignment 7)
+    // Handles right-click block placement
+    UpdatePlacement();
+
+    // Step 3c: Pickup nearby ItemEntity objects (Assignment 7)
+    // Handles automatic item collection
+    PickupNearbyItems();
+
+    // Step 4: Update camera transform based on current camera mode
     // Camera positioning depends on final player position after physics
     UpdateCamera();
 }
@@ -161,6 +188,9 @@ void Player::Render() const
         // Draw cyan sphere at player feet position (origin marker)
         DebugAddWorldWireSphere(m_position, 0.1f, lineDuration, wireframeColor, wireframeColor, mode);
     }
+
+    // Assignment 7: Render mining crack overlay on target block
+    RenderMiningProgress();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -269,6 +299,18 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
         }
     }
 
+    // Assignment 7: Hotbar slot selection with number keys (1-9)
+    // Maps keyboard 1-9 to hotbar slots 0-8
+    if (g_input->WasKeyJustPressed(NUMCODE_1)) m_inventory.SetSelectedHotbarSlot(0);
+    if (g_input->WasKeyJustPressed(NUMCODE_2)) m_inventory.SetSelectedHotbarSlot(1);
+    if (g_input->WasKeyJustPressed(NUMCODE_3)) m_inventory.SetSelectedHotbarSlot(2);
+    if (g_input->WasKeyJustPressed(NUMCODE_4)) m_inventory.SetSelectedHotbarSlot(3);
+    if (g_input->WasKeyJustPressed(NUMCODE_5)) m_inventory.SetSelectedHotbarSlot(4);
+    if (g_input->WasKeyJustPressed(NUMCODE_6)) m_inventory.SetSelectedHotbarSlot(5);
+    if (g_input->WasKeyJustPressed(NUMCODE_7)) m_inventory.SetSelectedHotbarSlot(6);
+    if (g_input->WasKeyJustPressed(NUMCODE_8)) m_inventory.SetSelectedHotbarSlot(7);
+    if (g_input->WasKeyJustPressed(NUMCODE_9)) m_inventory.SetSelectedHotbarSlot(8);
+
     // Assignment 6: Spectator camera mode handling
     // In SPECTATOR/SPECTATOR_XY modes: freeze player, move spectator camera instead
     // In INDEPENDENT mode: player moves normally, camera stays frozen
@@ -351,7 +393,7 @@ void Player::UpdateFromKeyBoard(float deltaSeconds)
         localMovement = localMovement.GetNormalized();
     }
 
-    // Step 3: Transform local movement to world space using player orientation
+    // Step 4: Transform local movement to world space using player orientation
     Vec3 forward, left, up;
     m_orientation.GetAsVectors_IFwd_JLeft_KUp(forward, left, up);
 
@@ -534,4 +576,564 @@ Vec3 Player::GetEyePosition() const
 eCameraMode Player::GetCameraMode() const
 {
     return m_cameraMode;
+}
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Mining state machine - Progressive block breaking
+// Handles IDLE → MINING → BROKEN state transitions
+//----------------------------------------------------------------------------------------------------
+void Player::UpdateMining(float deltaSeconds)
+{
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return; // No world, no mining
+    }
+
+    // Get raycast from camera (6 block range)
+    Camera* camera = GetCamera();
+    Vec3 rayStart = camera->GetPosition();
+
+    // Extract forward vector from camera orientation
+    EulerAngles cameraOrientation = camera->GetOrientation();
+    Vec3 forwardIBasis, leftJBasis, upKBasis;
+    cameraOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+    Vec3 rayDirection = forwardIBasis;
+
+    float rayDistance = 6.0f; // Minecraft mining range
+
+    RaycastResult raycast = world->RaycastVoxel(rayStart, rayDirection, rayDistance);
+
+    // Check if left mouse button is pressed
+    bool isLeftMouseDown = g_input->IsKeyDown(KEYCODE_LEFT_MOUSE);
+
+    // State machine
+    switch (m_miningState)
+    {
+        case eMiningState::IDLE:
+        {
+            // IDLE → MINING: Start mining if left-click on solid block
+            if (isLeftMouseDown && raycast.m_didImpact && world->IsBlockSolid(raycast.m_impactBlockCoords))
+            {
+                m_miningState = eMiningState::MINING;
+                m_targetBlockCoords = raycast.m_impactBlockCoords;
+                m_miningProgress = 0.0f;
+                m_breakTime = CalculateBreakTime(m_targetBlockCoords);
+            }
+            break;
+        }
+
+        case eMiningState::MINING:
+        {
+            // Check cancel conditions
+            bool shouldCancel = false;
+
+            // Cancel if mouse released
+            if (!isLeftMouseDown)
+            {
+                shouldCancel = true;
+            }
+
+            // Cancel if target out of view or out of range
+            if (!raycast.m_didImpact || raycast.m_impactBlockCoords != m_targetBlockCoords)
+            {
+                shouldCancel = true;
+            }
+
+            if (shouldCancel)
+            {
+                // MINING → IDLE: Reset mining progress
+                m_miningState = eMiningState::IDLE;
+                m_miningProgress = 0.0f;
+                break;
+            }
+
+            // Increment mining progress
+            m_miningProgress += deltaSeconds / m_breakTime;
+
+            // Check if block broken
+            if (m_miningProgress >= 1.0f)
+            {
+                // MINING → BROKEN: Break the block
+                BreakBlock(m_targetBlockCoords);
+                m_miningState = eMiningState::BROKEN;
+            }
+            break;
+        }
+
+        case eMiningState::BROKEN:
+        {
+            // BROKEN → IDLE: Reset to idle next frame
+            m_miningState = eMiningState::IDLE;
+            m_miningProgress = 0.0f;
+            break;
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Block placement with right-click
+// Handles raycasting, validation, item consumption, and block placement
+//----------------------------------------------------------------------------------------------------
+void Player::UpdatePlacement()
+{
+    // a. Check if right mouse button just pressed
+    if (!g_input->WasKeyJustPressed(KEYCODE_RIGHT_MOUSE))
+    {
+        return; // Not clicking right mouse
+    }
+
+    // b. Raycast to find placement position
+    RaycastResult raycast = RaycastForPlacement(6.0f);
+
+    // c. Check if ray hit a block
+    if (!raycast.m_didImpact)
+    {
+        return; // No block hit, cannot place
+    }
+
+    // d. Calculate placement coords (adjacent to hit face)
+    IntVec3 placementCoords = raycast.m_impactBlockCoords + IntVec3(
+        static_cast<int>(raycast.m_impactNormal.x),
+        static_cast<int>(raycast.m_impactNormal.y),
+        static_cast<int>(raycast.m_impactNormal.z)
+    );
+
+    // e. Validate placement position
+    if (!CanPlaceBlock(placementCoords))
+    {
+        return; // Cannot place at this position
+    }
+
+    // f. Get selected item from inventory
+    ItemStack& selectedItem = GetSelectedItemStack();
+
+    // g. Check if item exists
+    if (selectedItem.IsEmpty())
+    {
+        return; // No item selected
+    }
+
+    // h. Get item definition and check if it's a BLOCK type
+    sItemDefinition* itemDef = ItemRegistry::GetInstance().Get(selectedItem.itemID);
+    if (itemDef == nullptr || !itemDef->IsBlock())
+    {
+        return; // Not a block item, cannot place
+    }
+
+    // i. Get block type ID from item definition (CRITICAL: Use GetBlockTypeID(), NOT itemID!)
+    uint8_t blockTypeID = static_cast<uint8_t>(itemDef->GetBlockTypeID());
+
+    // j. Place the block in the world
+    World* world = m_game->GetWorld();
+    if (world != nullptr)
+    {
+        world->SetBlockAtGlobalCoords(placementCoords, blockTypeID);
+
+        // k. Consume 1 item from inventory
+        selectedItem.Take(1);
+
+        // l. Mark chunk for mesh rebuild
+        IntVec2 chunkCoords = Chunk::GetChunkCoords(placementCoords);
+        Chunk* chunk = world->GetChunk(chunkCoords);
+        if (chunk != nullptr)
+        {
+            world->MarkChunkForMeshRebuild(chunk);
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Pickup nearby ItemEntity objects
+// Checks collision with ItemEntities within pickup radius and adds to inventory
+//----------------------------------------------------------------------------------------------------
+void Player::PickupNearbyItems()
+{
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return;
+    }
+
+    // Get player AABB for collision detection
+    AABB3 playerAABB = GetWorldAABB();
+
+    // Define pickup radius (slightly larger than collision radius for magnetic pull)
+    constexpr float PICKUP_RADIUS = 2.0f;
+
+    // Get all ItemEntities within pickup radius
+    std::vector<ItemEntity*> nearbyItems = world->GetNearbyItemEntities(m_position, PICKUP_RADIUS);
+
+    // Check each ItemEntity for collision
+    for (ItemEntity* itemEntity : nearbyItems)
+    {
+        if (itemEntity == nullptr || !itemEntity->CanBePickedUp())
+        {
+            continue; // Skip null or items still in pickup cooldown
+        }
+
+        // Get ItemEntity AABB (items use 0.25 x 0.25 x 0.25 bounds)
+        AABB3 itemAABB = itemEntity->GetWorldAABB();
+
+        // Check if player AABB overlaps with item AABB
+        if (DoAABB3sOverlap3D(playerAABB, itemAABB))
+        {
+            // Attempt pickup (TryPickup adds to inventory and returns true on success)
+            if (itemEntity->TryPickup(this))
+            {
+                // Item was successfully picked up and added to inventory
+                // TryPickup() internally marks the entity for deletion
+                // No further action needed here
+                DebuggerPrintf("[PICKUP] Player picked up item! Inventory updated.\n");
+            }
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Raycast for block placement
+// Returns RaycastResult with hit block and adjacent placement coordinates
+// Placement coords = hit block + hit normal (for placing blocks on faces)
+//----------------------------------------------------------------------------------------------------
+RaycastResult Player::RaycastForPlacement(float maxDistance) const
+{
+    // Get camera position and orientation
+    Vec3 rayStart = GetEyePosition();
+
+    // Extract forward vector from camera orientation
+    Vec3 forwardIBasis, leftJBasis, upKBasis;
+    EulerAngles cameraOrientation = m_worldCamera->GetOrientation();
+    cameraOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
+    Vec3 rayDirection = forwardIBasis;
+
+    // Perform raycast
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return RaycastResult(); // Return empty result (no impact)
+    }
+
+    RaycastResult result = world->RaycastVoxel(rayStart, rayDirection, maxDistance);
+
+    // Note: The RaycastResult already contains:
+    // - m_didImpact: true if hit a block
+    // - m_impactBlockCoords: coordinates of the hit block
+    // - m_impactNormal: face direction (used to calculate placement coords)
+    //
+    // Placement coords can be calculated by caller as:
+    // IntVec3 placementCoords = result.m_impactBlockCoords + IntVec3::FromVec3(result.m_impactNormal);
+
+    return result;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Validate block placement position
+// Checks: position not occupied, player not intersecting, within reach
+//----------------------------------------------------------------------------------------------------
+bool Player::CanPlaceBlock(IntVec3 const& blockCoords) const
+{
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return false;
+    }
+
+    // Check 1: Position not occupied by solid block
+    if (world->IsBlockSolid(blockCoords))
+    {
+        return false; // Cannot place block on occupied position
+    }
+
+    // Check 2: Player not intersecting placed block position
+    // Create AABB3 for block position (1x1x1 block at coords)
+    Vec3 blockMins = Vec3(
+        static_cast<float>(blockCoords.x),
+        static_cast<float>(blockCoords.y),
+        static_cast<float>(blockCoords.z)
+    );
+    Vec3 blockMaxs = blockMins + Vec3(1.0f, 1.0f, 1.0f);
+    AABB3 blockAABB = AABB3(blockMins, blockMaxs);
+
+    // Get player world-space AABB (physics bounds transformed by position)
+    AABB3 playerAABB = GetWorldAABB();
+
+    // Check if player would intersect the placed block
+    if (DoAABB3sOverlap3D(playerAABB, blockAABB))
+    {
+        return false; // Cannot place block inside player (prevent self-block-in)
+    }
+
+    // Check 3: Within 6-block reach (Minecraft standard)
+    Vec3 blockCenter = Vec3(
+        static_cast<float>(blockCoords.x) + 0.5f,
+        static_cast<float>(blockCoords.y) + 0.5f,
+        static_cast<float>(blockCoords.z) + 0.5f
+    );
+
+    float distanceToBlock = (blockCenter - m_position).GetLength();
+    if (distanceToBlock > 6.0f)
+    {
+        return false; // Beyond reach limit
+    }
+
+    // All checks passed - block can be placed
+    return true;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Calculate break time based on block type
+// Returns time in seconds required to break the block
+// TODO: Use block hardness property when available in BlockDefinition
+//----------------------------------------------------------------------------------------------------
+float Player::CalculateBreakTime(IntVec3 const& blockCoords) const
+{
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return 1.0f; // Default break time
+    }
+
+    // Get block type index
+    uint8_t typeIndex = world->GetBlockTypeAtGlobalCoords(blockCoords);
+    
+    if (typeIndex == 0)
+    {
+        return 0.1f; // AIR breaks instantly
+    }
+
+    sBlockDefinition const* blockDef = sBlockDefinition::GetDefinitionByIndex(typeIndex);
+    if (blockDef == nullptr)
+    {
+        return 1.0f; // Default break time
+    }
+
+    // Simple hardness system (until BlockDefinition has m_hardness property)
+    // Solid blocks take longer to break than non-solid blocks
+    float hardness = blockDef->IsSolid() ? 1.5f : 0.5f;
+
+    // Get tool effectiveness from selected item
+    // TODO: Query ItemDefinition for mining speed when ItemRegistry is available
+    float toolEffectiveness = 1.0f; // Default: hand mining speed
+
+    // Calculate break time: breakTime = hardness / toolEffectiveness
+    float breakTime = hardness / toolEffectiveness;
+
+    return breakTime;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Break block and spawn ItemEntity
+// Destroys the block and creates dropped item in world
+//----------------------------------------------------------------------------------------------------
+void Player::BreakBlock(IntVec3 const& blockCoords)
+{
+    World* world = m_game->GetWorld();
+    if (world == nullptr)
+    {
+        return;
+    }
+
+    // a. Get block type before destroying it (for item drop determination)
+    uint8_t blockTypeIndex = world->GetBlockTypeAtGlobalCoords(blockCoords);
+
+    // b. Determine drop item (handle special rules)
+    uint16_t dropItemID = 0;
+    uint8_t dropQuantity = 1;
+
+    // Special drop rules
+    if (blockTypeIndex == BLOCK_WATER)
+    {
+        // WATER drops nothing
+        dropItemID = 0;
+        dropQuantity = 0;
+    }
+    else if (blockTypeIndex == BLOCK_GRASS)
+    {
+        // GRASS drops DIRT item (not GRASS)
+        // Use ItemRegistry to map BLOCK_DIRT → "dirt_block" item ID
+        dropItemID = ItemRegistry::GetInstance().GetItemIDByBlockType(BLOCK_DIRT);
+        dropQuantity = 1;
+
+        if (dropItemID == static_cast<uint16_t>(-1))
+        {
+            // Fallback: If ItemRegistry mapping fails, drop nothing
+            DebuggerPrintf("[PLAYER] WARNING: No item found for BLOCK_DIRT, dropping nothing\n");
+            dropItemID = 0;
+            dropQuantity = 0;
+        }
+    }
+    else
+    {
+        // Default: Use ItemRegistry to map block type ID → item ID
+        dropItemID = ItemRegistry::GetInstance().GetItemIDByBlockType(blockTypeIndex);
+        dropQuantity = 1;
+
+        // If no item exists for this block type, drop nothing
+        if (dropItemID == static_cast<uint16_t>(-1))
+        {
+            DebuggerPrintf("[PLAYER] WARNING: No item found for blockType=%u, dropping nothing\n", blockTypeIndex);
+            dropItemID = 0;
+            dropQuantity = 0;
+        }
+    }
+
+    // c. Destroy the block (set to AIR)
+    world->SetBlockAtGlobalCoords(blockCoords, BLOCK_AIR);
+
+    // d. Calculate spawn position (block center + 0.5 offset)
+    Vec3 spawnPosition = Vec3(
+        static_cast<float>(blockCoords.x) + 0.5f,
+        static_cast<float>(blockCoords.y) + 0.5f,
+        static_cast<float>(blockCoords.z) + 0.5f
+    );
+
+    // e. Create ItemStack for drop (skip if dropQuantity == 0)
+    if (dropQuantity > 0)
+    {
+        ItemStack droppedItem;
+        droppedItem.itemID = dropItemID;
+        droppedItem.quantity = dropQuantity;
+        droppedItem.durability = 0;  // Non-tool items have 0 durability
+
+        // f. Spawn the ItemEntity in world
+        world->SpawnItemEntity(spawnPosition, droppedItem);
+    }
+
+    // g-h. Tool durability handling (Assignment 7 Task: Tool Durability System)
+    ItemStack& selectedItem = GetSelectedItemStack();
+    if (!selectedItem.IsEmpty())
+    {
+        // Get item definition to check if it's a tool
+        sItemDefinition* itemDef = ItemRegistry::GetInstance().Get(selectedItem.itemID);
+        if (itemDef != nullptr && itemDef->IsTool())
+        {
+            // Decrease tool durability
+            if (selectedItem.durability > 0)
+            {
+                selectedItem.durability--;
+
+                // Remove tool if durability reaches 0
+                if (selectedItem.durability == 0)
+                {
+                    selectedItem.Clear(); // Remove broken tool from inventory
+                }
+            }
+        }
+    }
+
+    // i. Mark chunk for mesh rebuild (visual update)
+    IntVec2 chunkCoords = Chunk::GetChunkCoords(blockCoords);
+    Chunk* chunk = world->GetChunk(chunkCoords);
+    if (chunk != nullptr)
+    {
+        world->MarkChunkForMeshRebuild(chunk);
+    }
+
+    // TODO: Play block break sound (FR-7: Sound effects)
+    // g_audioSystem->PlaySound(blockDef->GetBreakSound());
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Render mining crack overlay on target block
+// Displays 10-stage crack texture on all 6 faces during mining
+//----------------------------------------------------------------------------------------------------
+void Player::RenderMiningProgress() const
+{
+    // Only render if actively mining
+    if (m_miningState != eMiningState::MINING)
+    {
+        return;
+    }
+
+    // Check if crack texture loaded
+    if (m_crackTexture == nullptr)
+    {
+        return; // No texture, skip rendering
+    }
+
+    // Calculate crack stage (0-9) from mining progress (0.0-1.0)
+    int crackStage = static_cast<int>(m_miningProgress * 10.0f);
+    crackStage = GetClamped(crackStage, 0, 9); // Ensure valid range
+
+    // Calculate UV coordinates for crack stage (horizontal strip: 10 stages @ 0.1 width each)
+    float uMin = crackStage * 0.1f;
+    float uMax = uMin + 0.1f;
+    AABB2 crackUVs = AABB2(Vec2(uMin, 0.0f), Vec2(uMax, 1.0f));
+
+    // Get block world position (center of block)
+    Vec3 blockCenter = Vec3(
+        static_cast<float>(m_targetBlockCoords.x) + 0.5f,
+        static_cast<float>(m_targetBlockCoords.y) + 0.5f,
+        static_cast<float>(m_targetBlockCoords.z) + 0.5f
+    );
+
+    // Offset each face slightly outward to prevent Z-fighting with block surface
+    float const offset = 0.001f;
+
+    // Create vertex list for all 6 faces
+    VertexList_PCU verts;
+    IndexList indices;
+
+    // Define face normals and tangents for all 6 faces
+    // Face order: +X (East), -X (West), +Y (North), -Y (South), +Z (Top), -Z (Bottom)
+
+    // +X face (East)
+    Vec3 eastCenter = blockCenter + Vec3(0.5f + offset, 0.0f, 0.0f);
+    AddVertsForQuad3D(verts, indices,
+        eastCenter + Vec3(0.0f, -0.5f, -0.5f), // Bottom Left
+        eastCenter + Vec3(0.0f, +0.5f, -0.5f), // Bottom Right
+        eastCenter + Vec3(0.0f, -0.5f, +0.5f), // Top Left
+        eastCenter + Vec3(0.0f, +0.5f, +0.5f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // -X face (West)
+    Vec3 westCenter = blockCenter + Vec3(-0.5f - offset, 0.0f, 0.0f);
+    AddVertsForQuad3D(verts, indices,
+        westCenter + Vec3(0.0f, +0.5f, -0.5f), // Bottom Left
+        westCenter + Vec3(0.0f, -0.5f, -0.5f), // Bottom Right
+        westCenter + Vec3(0.0f, +0.5f, +0.5f), // Top Left
+        westCenter + Vec3(0.0f, -0.5f, +0.5f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // +Y face (North)
+    Vec3 northCenter = blockCenter + Vec3(0.0f, 0.5f + offset, 0.0f);
+    AddVertsForQuad3D(verts, indices,
+        northCenter + Vec3(+0.5f, 0.0f, -0.5f), // Bottom Left
+        northCenter + Vec3(-0.5f, 0.0f, -0.5f), // Bottom Right
+        northCenter + Vec3(+0.5f, 0.0f, +0.5f), // Top Left
+        northCenter + Vec3(-0.5f, 0.0f, +0.5f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // -Y face (South)
+    Vec3 southCenter = blockCenter + Vec3(0.0f, -0.5f - offset, 0.0f);
+    AddVertsForQuad3D(verts, indices,
+        southCenter + Vec3(-0.5f, 0.0f, -0.5f), // Bottom Left
+        southCenter + Vec3(+0.5f, 0.0f, -0.5f), // Bottom Right
+        southCenter + Vec3(-0.5f, 0.0f, +0.5f), // Top Left
+        southCenter + Vec3(+0.5f, 0.0f, +0.5f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // +Z face (Top)
+    Vec3 topCenter = blockCenter + Vec3(0.0f, 0.0f, 0.5f + offset);
+    AddVertsForQuad3D(verts, indices,
+        topCenter + Vec3(-0.5f, -0.5f, 0.0f), // Bottom Left
+        topCenter + Vec3(+0.5f, -0.5f, 0.0f), // Bottom Right
+        topCenter + Vec3(-0.5f, +0.5f, 0.0f), // Top Left
+        topCenter + Vec3(+0.5f, +0.5f, 0.0f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // -Z face (Bottom)
+    Vec3 bottomCenter = blockCenter + Vec3(0.0f, 0.0f, -0.5f - offset);
+    AddVertsForQuad3D(verts, indices,
+        bottomCenter + Vec3(-0.5f, +0.5f, 0.0f), // Bottom Left
+        bottomCenter + Vec3(+0.5f, +0.5f, 0.0f), // Bottom Right
+        bottomCenter + Vec3(-0.5f, -0.5f, 0.0f), // Top Left
+        bottomCenter + Vec3(+0.5f, -0.5f, 0.0f), // Top Right
+        Rgba8::WHITE, crackUVs);
+
+    // Render all faces with crack texture
+    // Use Default shader (not World shader) for proper transparency handling
+    g_renderer->BindShader(g_renderer->CreateOrGetShaderFromFile("Data/Shaders/Default"));
+    g_renderer->BindTexture(m_crackTexture);
+    g_renderer->SetBlendMode(eBlendMode::ALPHA); // Use alpha blending for transparency
+    g_renderer->DrawVertexArray(verts, indices); // Use indexed rendering for efficiency
 }
