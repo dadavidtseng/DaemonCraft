@@ -14,6 +14,9 @@
     <Filter Include="Definition">
       <UniqueIdentifier>{c9b7dcf2-8880-469c-a068-95df674abf22}</UniqueIdentifier>
     </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{f7a1e8b3-5d92-4c76-9e84-1a23b5c6d789}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Framework/App.cpp">
@@ -46,6 +49,18 @@
     <ClCompile Include="Definition/BlockDefinition.cpp">
       <Filter>Definition</Filter>
     </ClCompile>
+    <ClCompile Include="Definition/BlockRegistry.cpp">
+      <Filter>Definition</Filter>
+    </ClCompile>
+    <ClCompile Include="Definition/ItemRegistry.cpp">
+      <Filter>Definition</Filter>
+    </ClCompile>
+    <ClCompile Include="Definition/Recipe.cpp">
+      <Filter>Definition</Filter>
+    </ClCompile>
+    <ClCompile Include="Definition/RecipeRegistry.cpp">
+      <Filter>Definition</Filter>
+    </ClCompile>
     <ClCompile Include="Gameplay/Game.cpp">
       <Filter>Gameplay</Filter>
     </ClCompile>
@@ -55,8 +70,20 @@
     <ClCompile Include="Gameplay/Entity.cpp">
       <Filter>Gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="Gameplay/Inventory.cpp">
+      <Filter>Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Gameplay/ItemEntity.cpp">
+      <Filter>Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Gameplay/ItemStack.cpp">
+      <Filter>Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Gameplay/World.cpp">
       <Filter>Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="UI/HotbarWidget.cpp">
+      <Filter>UI</Filter>
     </ClCompile>
     <ClCompile Include="Framework/Chunk.cpp">
       <Filter>Gameplay</Filter>
@@ -72,6 +99,24 @@
     <ClInclude Include="Definition/BlockDefinition.hpp">
       <Filter>Definition</Filter>
     </ClInclude>
+    <ClInclude Include="Definition/BlockRegistry.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
+    <ClInclude Include="Definition/ItemDefinition.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
+    <ClInclude Include="Definition/ItemRegistry.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
+    <ClInclude Include="Definition/Recipe.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
+    <ClInclude Include="Definition/RecipeRegistry.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
+    <ClInclude Include="Definition/Registry.hpp">
+      <Filter>Definition</Filter>
+    </ClInclude>
     <ClInclude Include="Gameplay/Game.hpp">
       <Filter>Gameplay</Filter>
     </ClInclude>
@@ -81,11 +126,23 @@
     <ClInclude Include="Gameplay/Entity.hpp">
       <Filter>Gameplay</Filter>
     </ClInclude>
+    <ClInclude Include="Gameplay/Inventory.hpp">
+      <Filter>Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Gameplay/ItemEntity.hpp">
+      <Filter>Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Gameplay/ItemStack.hpp">
+      <Filter>Gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="Framework/BlockIterator.hpp">
       <Filter>Framework</Filter>
     </ClInclude>
     <ClInclude Include="Gameplay/World.hpp">
       <Filter>Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="UI/HotbarWidget.hpp">
+      <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="Framework/Block.hpp">
       <Filter>Gameplay</Filter>
