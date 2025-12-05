@@ -3628,8 +3628,9 @@ bool Chunk::IsFaceVisible(BlockIterator const& blockIter, IntVec3 const& faceDir
             return true;  // At vertical world boundaries, render face
         }
 
-        // Horizontal chunk boundary with unloaded neighbor - assume opaque (hide face)
-        return false;
+        // ✅ A7 FIX: Assume unloaded neighbor is AIR (transparent) - show face at chunk boundaries
+        // This prevents missing faces when neighboring chunks are unloaded
+        return true;
     }
 
     // Get the neighboring block

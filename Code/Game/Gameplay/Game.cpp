@@ -6,11 +6,14 @@
 #include "Game/Gameplay/Game.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "Game/Definition/BlockDefinition.hpp"
+#include "Game/Definition/BlockRegistry.hpp"
+#include "Game/Definition/ItemRegistry.hpp"
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Framework/WorldGenConfig.hpp"
 #include "Game/Gameplay/Player.hpp"
+#include "Game/UI/HotbarWidget.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/EngineCommon.hpp"
@@ -21,6 +24,7 @@
 #include "Engine/Renderer/DebugRenderSystem.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
+#include "Engine/Widget/WidgetSubsystem.hpp"
 //----------------------------------------------------------------------------------------------------
 #include "ThirdParty/imgui/imgui.h"
 #include <algorithm>
@@ -63,7 +67,18 @@ Game::Game()
 
     sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
 
+    // Assignment 7: Initialize registries (CRITICAL: BlockRegistry MUST load before ItemRegistry)
+    BlockRegistry::GetInstance().LoadFromJSON("Data/Definitions/BlockDefinitions.json");
+    ItemRegistry::GetInstance().LoadFromJSON("Data/Definitions/ItemDefinitions.json");
+
     m_world = new World();
+
+    // Assignment 7: Create HotbarWidget and register with WidgetSubsystem
+    m_hotbarWidget = std::make_shared<HotbarWidget>(m_player);
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->AddWidget(m_hotbarWidget, 100); // High z-order for UI overlay
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -82,6 +97,7 @@ void Game::Update()
     float const systemDeltaSeconds = static_cast<float>(Clock::GetSystemClock().GetDeltaSeconds());
 
     UpdateEntities(gameDeltaSeconds, systemDeltaSeconds);
+
     DebugAddScreenText(Stringf("Time: %.2f\nFPS: %.2f\nScale: %.1f", m_gameClock->GetTotalSeconds(), 1.f / m_gameClock->GetDeltaSeconds(), m_gameClock->GetTimeScale()), m_screenCamera->GetOrthographicTopRight() - Vec2(250.f, 60.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
 
     // CRITICAL FIX: Process input BEFORE world update to ensure dirty chunks are processed same frame
@@ -259,6 +275,12 @@ void Game::Render() const
     {
         DebugRenderScreen(*m_screenCamera);
     }
+
+    // Assignment 7: Render UI widgets (HotbarWidget, etc.)
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->Render();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -334,6 +356,9 @@ void Game::UpdateFromKeyBoard()
         // DIGGING AND PLACING SYSTEM (Assignment 5 Phase 10: Using Fast Voxel Raycast)
         // ========================================
 
+        // Assignment 7: Old instant block breaking code disabled
+        // Progressive mining system now handled in Player::UpdateMining()
+        /*
         // LMB - Dig block at crosshair (using fast voxel raycast)
         if (g_input->WasKeyJustPressed(KEYCODE_LEFT_MOUSE))
         {
@@ -383,83 +408,10 @@ void Game::UpdateFromKeyBoard()
                 }
             }
         }
+        */
 
-        // RMB - Place block at crosshair (using fast voxel raycast)
-        if (g_input->WasKeyJustPressed(KEYCODE_RIGHT_MOUSE))
-        {
-            if (m_world != nullptr && m_player != nullptr)
-            {
-                // In INDEPENDENT mode: Use player eye position and orientation (not camera)
-                // In other modes: Use camera position and orientation
-                Vec3 raycastOrigin;
-                EulerAngles raycastOrientation;
-
-                if (m_player->GetCameraMode() == eCameraMode::INDEPENDENT)
-                {
-                    // INDEPENDENT mode: Raycast from player's eye position in player's facing direction
-                    raycastOrigin = m_player->GetEyePosition();
-                    raycastOrientation = m_player->m_orientation;  // Entity::m_orientation is public
-                }
-                else
-                {
-                    // All other modes: Raycast from camera position in camera's facing direction
-                    Camera* camera = m_player->GetCamera();
-                    raycastOrigin = camera->GetPosition();
-                    raycastOrientation = camera->GetOrientation();
-                }
-
-                // Get forward vector from raycast orientation
-                Vec3 forwardIBasis, leftJBasis, upKBasis;
-                raycastOrientation.GetAsVectors_IFwd_JLeft_KUp(forwardIBasis, leftJBasis, upKBasis);
-
-                // Assignment 5 Phase 10: Use RaycastVoxel to find block at crosshair
-                RaycastResult rayResult = m_world->RaycastVoxel(raycastOrigin, forwardIBasis, 20.0f);
-
-                if (rayResult.m_didImpact)
-                {
-                    // Place block adjacent to the hit block (in the direction of the normal)
-                    IntVec3 placePos = rayResult.m_impactBlockCoords + IntVec3(
-                        static_cast<int>(rayResult.m_impactNormal.x),
-                        static_cast<int>(rayResult.m_impactNormal.y),
-                        static_cast<int>(rayResult.m_impactNormal.z)
-                    );
-
-                    bool const success = m_world->SetBlockAtGlobalCoords(placePos, m_currentBlockType);
-                    if (!success)
-                    {
-                        DebuggerPrintf("Cannot place block at (%d,%d,%d)\n", placePos.x, placePos.y, placePos.z);
-                    }
-                }
-                else
-                {
-                    DebuggerPrintf("No block to place against at crosshair\n");
-                }
-            }
-        }
-
-        // Block type cycling - Use number keys to cycle through the three block types
-        // Phase 1, Task 1.1: Updated block indices to match new Assignment 4 XML
-        if (g_input->WasKeyJustPressed(NUMCODE_1) || g_input->WasKeyJustPressed(KEYCODE_UPARROW))
-        {
-            // Cycle to next block type: Glowstone(13) -> Cobblestone(14) -> ChiseledBrick(15) -> Glowstone(13)
-            m_currentBlockType++;
-            if (m_currentBlockType > 15) // BLOCK_CHISELED_BRICK
-            {
-                m_currentBlockType = 13; // Back to BLOCK_GLOWSTONE
-            }
-            DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
-        }
-
-        if (g_input->WasKeyJustPressed(NUMCODE_2) || g_input->WasKeyJustPressed(KEYCODE_DOWNARROW))
-        {
-            // Cycle to previous block type: ChiseledBrick(15) -> Cobblestone(14) -> Glowstone(13) -> ChiseledBrick(15)
-            m_currentBlockType--;
-            if (m_currentBlockType < 13) // BLOCK_GLOWSTONE
-            {
-                m_currentBlockType = 15; // Back to BLOCK_CHISELED_BRICK
-            }
-            DebuggerPrintf("Current block type: %d\n", m_currentBlockType);
-        }
+        // Assignment 7: Block placement is now handled by Player::UpdatePlacement()
+        // (Old RMB placement code removed to prevent conflicts with new inventory system)
 
         if (g_input->WasKeyJustPressed(KEYCODE_F8))
         {
@@ -473,10 +425,6 @@ void Game::UpdateFromKeyBoard()
         if (m_showDebugInfo)
         {
             DebugAddScreenText(Stringf("Player Position: (%.2f, %.2f, %.2f)", m_player->m_position.x, m_player->m_position.y, m_player->m_position.z), Vec2(0.f, 120.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
-
-            // Add debug info for current block type and coordinates
-            // Phase 1, Task 1.1: Updated block type names and indices for Assignment 4
-            DebugAddScreenText(Stringf("Current Block Type: [%d] - Glowstone[13] Cobblestone[14] ChiseledBrick[15]", m_currentBlockType), Vec2(0.f, 140.f), 20.f, Vec2::ZERO, 0.f, Rgba8::WHITE, Rgba8::WHITE);
 
             // Calculate chunk and local coordinates for player position
             IntVec3 playerGlobalCoords = IntVec3((int)m_player->m_position.x, (int)m_player->m_position.y, (int)m_player->m_position.z);

@@ -37,6 +37,8 @@
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Gameplay/Entity.hpp"  // Assignment 6: For GetWorldAABB() in IsEntityOnGround()
 #include "Game/Gameplay/Game.hpp"
+#include "Game/Gameplay/ItemEntity.hpp"  // Assignment 7: For SpawnItemEntity()
+#include "Game/Gameplay/ItemStack.hpp"   // Assignment 7: For ItemStack in SpawnItemEntity()
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
 //----------------------------------------------------------------------------------------------------
@@ -264,6 +266,16 @@ World::~World()
     IndexBuffer::PrintLeakReport();
     DebuggerPrintf("\n");
 
+    // Assignment 7: Clean up all ItemEntities
+    for (ItemEntity* itemEntity : m_itemEntities)
+    {
+        if (itemEntity != nullptr)
+        {
+            delete itemEntity;
+        }
+    }
+    m_itemEntities.clear();
+
     // Assignment 5 Phase 8: Clean up shader resources
     // Note: Shader is owned by Renderer (CreateOrGetShaderFromFile uses a cache), don't delete it
     // Only delete the constant buffer we own
@@ -357,6 +369,35 @@ void World::Update(float const deltaSeconds)
             {
                 chunkPair.second->Update(deltaSeconds);
             }
+        }
+    }
+
+    // Assignment 7: Update all ItemEntities
+    for (size_t i = 0; i < m_itemEntities.size(); )
+    {
+        ItemEntity* itemEntity = m_itemEntities[i];
+        if (itemEntity != nullptr)
+        {
+            itemEntity->Update(deltaSeconds);
+
+            // Remove despawned entities (after 5 minutes)
+            if (itemEntity->IsDespawned())
+            {
+                delete itemEntity;
+                m_itemEntities[i] = m_itemEntities.back();
+                m_itemEntities.pop_back();
+                // Don't increment i - check the swapped entity
+            }
+            else
+            {
+                ++i;
+            }
+        }
+        else
+        {
+            // Remove null entities
+            m_itemEntities[i] = m_itemEntities.back();
+            m_itemEntities.pop_back();
         }
     }
 
@@ -609,6 +650,15 @@ void World::Render() const
         if (chunkPair.second != nullptr)
         {
             chunkPair.second->Render();
+        }
+    }
+
+    // Assignment 7: Render all ItemEntities
+    for (ItemEntity* itemEntity : m_itemEntities)
+    {
+        if (itemEntity != nullptr)
+        {
+            itemEntity->Render();
         }
     }
 }
@@ -1231,6 +1281,62 @@ void World::PushEntityOutOfBlocks(Entity* entity)
     // This can occur with very complex overlaps or entity spawning deep inside geometry
     DebuggerPrintf("WARNING: PushEntityOutOfBlocks() exceeded MAX_PUSH_ITERATIONS=%d for entity at (%.2f, %.2f, %.2f)\n",
                    MAX_PUSH_ITERATIONS, entity->m_position.x, entity->m_position.y, entity->m_position.z);
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Spawn dropped item entity in world
+// Creates ItemEntity at specified position with given ItemStack and adds to entity list
+//----------------------------------------------------------------------------------------------------
+void World::SpawnItemEntity(Vec3 const& position, ItemStack const& itemStack)
+{
+    // Don't spawn empty items
+    if (itemStack.IsEmpty())
+    {
+        return;
+    }
+
+    // Create new ItemEntity at spawn position
+    ItemEntity* itemEntity = new ItemEntity(g_game, position, itemStack);
+
+    // Add to world's item entity list
+    m_itemEntities.push_back(itemEntity);
+
+    // Debug: Log item spawn
+    DebuggerPrintf("Spawned ItemEntity: itemID=%u, quantity=%u at (%.1f, %.1f, %.1f)\n",
+                   itemStack.itemID, itemStack.quantity, position.x, position.y, position.z);
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7: Get ItemEntities within radius of position
+// Returns vector of ItemEntity pointers within specified distance (for magnetic pickup)
+//----------------------------------------------------------------------------------------------------
+std::vector<ItemEntity*> World::GetNearbyItemEntities(Vec3 const& position, float radius) const
+{
+    std::vector<ItemEntity*> nearbyItems;
+
+    // Calculate radius squared to avoid sqrt in distance checks
+    float radiusSquared = radius * radius;
+
+    // Check all item entities in the world
+    for (ItemEntity* itemEntity : m_itemEntities)
+    {
+        if (itemEntity == nullptr || itemEntity->IsDespawned())
+        {
+            continue; // Skip null or despawned items
+        }
+
+        // Calculate distance squared from position to item
+        Vec3 toItem = itemEntity->m_position - position;
+        float distanceSquared = toItem.GetLengthSquared();
+
+        // Add to results if within radius
+        if (distanceSquared <= radiusSquared)
+        {
+            nearbyItems.push_back(itemEntity);
+        }
+    }
+
+    return nearbyItems;
 }
 
 //----------------------------------------------------------------------------------------------------

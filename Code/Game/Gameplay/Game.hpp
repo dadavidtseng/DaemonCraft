@@ -8,6 +8,7 @@
 #include "Game/Gameplay/World.hpp"
 #include <unordered_map>
 #include <string>
+#include <memory>
 
 #include "imgui.h"
 
@@ -16,6 +17,7 @@ class Camera;
 class Clock;
 class Player;
 class Prop;
+class HotbarWidget;
 struct Vec3;
 
 //----------------------------------------------------------------------------------------------------
@@ -42,6 +44,8 @@ public:
 
     // Accessors for debug visualization (Phase 0, Task 0.4)
     World* GetWorld() const { return m_world; }
+    Player* GetPlayer() const { return m_player; }  // Assignment 7: For ItemEntity magnetic pickup
+
 
 private:
     // ImGui Helper Functions (Assignment 4: Phase 5B.4)
@@ -90,8 +94,8 @@ private:
     Clock*     m_gameClock    = nullptr;
     eGameState m_gameState    = eGameState::GAME;
 
-    // Block placing system
-    uint8_t m_currentBlockType = 13; // Start with BLOCK_GLOWSTONE (index 13 in Assignment 4 XML)
+    // Assignment 7: UI Widgets
+    std::shared_ptr<HotbarWidget> m_hotbarWidget = nullptr;
 
     // Debug display toggle
     bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)

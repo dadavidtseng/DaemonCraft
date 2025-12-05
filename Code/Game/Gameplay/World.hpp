@@ -161,6 +161,10 @@ public:
     bool    PlaceBlockAtCameraPosition(Vec3 const& cameraPos, uint8_t blockType); // RMB - place block above highest non-air block
     IntVec3 FindHighestNonAirBlockAtOrBelow(Vec3 const& position) const; // Helper to find the highest solid block
 
+    // Assignment 7: Entity management
+    void SpawnItemEntity(Vec3 const& position, struct ItemStack const& itemStack); // Spawn dropped item in world
+    std::vector<class ItemEntity*> GetNearbyItemEntities(Vec3 const& position, float radius) const; // Get ItemEntities within radius
+
     // Chunk management helper methods
     Vec3    GetCameraPosition() const;
     Vec3    GetPlayerVelocity() const;  // For directional preloading (Task 0.7)
@@ -264,6 +268,9 @@ private:
     Rgba8           m_skyColor              = Rgba8::WHITE;              // Sky/fog clear color with day/night + lightning
     Rgba8           m_finalIndoorColor      = Rgba8(255, 230, 204, 255); // Indoor light with glowstone flicker
     Rgba8           m_finalOutdoorColor     = Rgba8::WHITE;              // Outdoor light with day/night + lightning
+
+    // Assignment 7: Entity management
+    std::vector<class ItemEntity*> m_itemEntities;  // Dropped items in the world
 
     // Chunk management helper methods
     bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;
