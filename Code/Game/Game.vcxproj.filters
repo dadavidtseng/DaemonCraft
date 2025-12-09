@@ -85,6 +85,9 @@
     <ClCompile Include="UI/HotbarWidget.cpp">
       <Filter>UI</Filter>
     </ClCompile>
+    <ClCompile Include="UI/InventoryWidget.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
     <ClCompile Include="Framework/Chunk.cpp">
       <Filter>Gameplay</Filter>
     </ClCompile>
@@ -142,6 +145,9 @@
       <Filter>Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="UI/HotbarWidget.hpp">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI/InventoryWidget.hpp">
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="Framework/Block.hpp">
