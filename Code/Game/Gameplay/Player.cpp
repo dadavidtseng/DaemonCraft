@@ -23,6 +23,8 @@
 #include "Engine/Renderer/DebugRenderSystem.hpp"  // Assignment 6: For AABB debug wireframe rendering
 #include "Engine/Renderer/Renderer.hpp"  // Assignment 7: For rendering crack overlay
 #include "Engine/Resource/ResourceSubsystem.hpp"  // Assignment 7: For loading crack texture
+#include "Engine/Audio/AudioSystem.hpp"  // Assignment 7: For block break sound effects
+#include "Engine/Widget/WidgetSubsystem.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Player::Player(Game* owner)
@@ -81,7 +83,11 @@ void Player::Update(float const deltaSeconds)
 {
     // Step 1: Process all input and build acceleration for this frame
     // In spectator modes, this updates m_spectatorPosition/Orientation instead
-    UpdateFromInput(deltaSeconds);
+    // Assignment 7-UI: Skip world input if modal widget is active (inventory open)
+    if (g_widgetSubsystem == nullptr || !g_widgetSubsystem->HasModalWidget())
+    {
+        UpdateFromInput(deltaSeconds);
+    }
 
     // Step 2: Run Newtonian physics simulation (gravity, friction, collision)
     // This integrates m_acceleration → m_velocity → m_position
@@ -90,11 +96,15 @@ void Player::Update(float const deltaSeconds)
 
     // Step 3: Update mining state machine (Assignment 7)
     // Handles progressive block breaking with left-click
-    UpdateMining(deltaSeconds);
+    // Assignment 7-UI: Skip mining/placement if modal widget is active (inventory open)
+    if (g_widgetSubsystem == nullptr || !g_widgetSubsystem->HasModalWidget())
+    {
+        UpdateMining(deltaSeconds);
 
-    // Step 3b: Update block placement (Assignment 7)
-    // Handles right-click block placement
-    UpdatePlacement();
+        // Step 3b: Update block placement (Assignment 7)
+        // Handles right-click block placement
+        UpdatePlacement();
+    }
 
     // Step 3c: Pickup nearby ItemEntity objects (Assignment 7)
     // Handles automatic item collection
@@ -589,6 +599,18 @@ void Player::UpdateMining(float deltaSeconds)
         return; // No world, no mining
     }
 
+    // Assignment 7-UI: Don't process mining input when inventory is open
+    if (m_game->IsInventoryOpen())
+    {
+        // If currently mining, cancel mining state
+        if (m_miningState == eMiningState::MINING)
+        {
+            m_miningState = eMiningState::IDLE;
+            m_miningProgress = 0.0f;
+        }
+        return;
+    }
+
     // Get raycast from camera (6 block range)
     Camera* camera = GetCamera();
     Vec3 rayStart = camera->GetPosition();
@@ -676,6 +698,12 @@ void Player::UpdateMining(float deltaSeconds)
 //----------------------------------------------------------------------------------------------------
 void Player::UpdatePlacement()
 {
+    // Assignment 7-UI: Don't process placement input when inventory is open
+    if (m_game->IsInventoryOpen())
+    {
+        return;
+    }
+
     // a. Check if right mouse button just pressed
     if (!g_input->WasKeyJustPressed(KEYCODE_RIGHT_MOUSE))
     {
@@ -732,7 +760,18 @@ void Player::UpdatePlacement()
         // k. Consume 1 item from inventory
         selectedItem.Take(1);
 
-        // l. Mark chunk for mesh rebuild
+        // l. Play block placement sound effect (Assignment 7: Sound effects)
+        if (g_audio != nullptr)
+        {
+            // Subtle wood placement sound (wood-3.mp3 from SoundDino)
+            SoundID placeSound = g_audio->CreateOrGetSound("Data/Audio/block_place.mp3", eAudioSystemSoundDimension::Sound2D);
+            if (placeSound != MISSING_SOUND_ID)
+            {
+                g_audio->StartSound(placeSound, false, 0.4f);  // 40% volume for subtle placement sound
+            }
+        }
+
+        // m. Mark chunk for mesh rebuild
         IntVec2 chunkCoords = Chunk::GetChunkCoords(placementCoords);
         Chunk* chunk = world->GetChunk(chunkCoords);
         if (chunk != nullptr)
@@ -1028,8 +1067,16 @@ void Player::BreakBlock(IntVec3 const& blockCoords)
         world->MarkChunkForMeshRebuild(chunk);
     }
 
-    // TODO: Play block break sound (FR-7: Sound effects)
-    // g_audioSystem->PlaySound(blockDef->GetBreakSound());
+    // j. Play block break sound effect (Assignment 7: Sound effects)
+    if (g_audio != nullptr)
+    {
+        // Authentic Minecraft stone break sound (stone-6.mp3 from SoundDino)
+        SoundID breakSound = g_audio->CreateOrGetSound("Data/Audio/block_break.mp3", eAudioSystemSoundDimension::Sound2D);
+        if (breakSound != MISSING_SOUND_ID)
+        {
+            g_audio->StartSound(breakSound, false); 
+        }
+    }
 }
 
 //----------------------------------------------------------------------------------------------------

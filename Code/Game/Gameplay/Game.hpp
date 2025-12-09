@@ -18,6 +18,7 @@ class Clock;
 class Player;
 class Prop;
 class HotbarWidget;
+class InventoryWidget;  // Assignment 7-UI: Inventory screen widget
 struct Vec3;
 
 //----------------------------------------------------------------------------------------------------
@@ -38,6 +39,7 @@ public:
     void Render() const;
     bool IsAttractMode() const;
     bool RequestedNewGame() const { return m_requestNewGame; }  // Check if F8 was pressed
+    bool IsInventoryOpen() const;  // Assignment 7-UI: Check if inventory screen is visible
     Vec3 GetPlayerCameraPosition() const;
     Vec3 GetPlayerVelocity() const;  // For directional chunk preloading (Task 0.7)
     void ShowTerrainDebugWindow();
@@ -96,6 +98,7 @@ private:
 
     // Assignment 7: UI Widgets
     std::shared_ptr<HotbarWidget> m_hotbarWidget = nullptr;
+    std::shared_ptr<InventoryWidget> m_inventoryWidget = nullptr;  // Assignment 7-UI: Inventory screen
 
     // Debug display toggle
     bool m_showDebugInfo = true; // F3 toggleable debug info display (default visible)

@@ -8,12 +8,14 @@
 #include "Game/Definition/BlockDefinition.hpp"
 #include "Game/Definition/BlockRegistry.hpp"
 #include "Game/Definition/ItemRegistry.hpp"
+#include "Game/Definition/RecipeRegistry.hpp"
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
 #include "Game/Framework/WorldGenConfig.hpp"
 #include "Game/Gameplay/Player.hpp"
 #include "Game/UI/HotbarWidget.hpp"
+#include "Game/UI/InventoryWidget.hpp"  // Assignment 7-UI: Inventory screen
 //----------------------------------------------------------------------------------------------------
 #include "Engine/Core/Clock.hpp"
 #include "Engine/Core/EngineCommon.hpp"
@@ -67,9 +69,10 @@ Game::Game()
 
     sBlockDefinition::InitializeDefinitionFromFile("Data/Definitions/BlockSpriteSheet_BlockDefinitions.xml");
 
-    // Assignment 7: Initialize registries (CRITICAL: BlockRegistry MUST load before ItemRegistry)
+    // Assignment 7: Initialize registries (CRITICAL: BlockRegistry MUST load before ItemRegistry, RecipeRegistry MUST load AFTER ItemRegistry)
     BlockRegistry::GetInstance().LoadFromJSON("Data/Definitions/BlockDefinitions.json");
     ItemRegistry::GetInstance().LoadFromJSON("Data/Definitions/ItemDefinitions.json");
+    RecipeRegistry::GetInstance().LoadFromJSON("Data/Definitions/Recipes.json");
 
     m_world = new World();
 
@@ -78,6 +81,13 @@ Game::Game()
     if (g_widgetSubsystem != nullptr)
     {
         g_widgetSubsystem->AddWidget(m_hotbarWidget, 100); // High z-order for UI overlay
+    }
+
+    // Assignment 7-UI: Create InventoryWidget and register with WidgetSubsystem
+    m_inventoryWidget = std::make_shared<InventoryWidget>(m_player);
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->AddWidget(m_inventoryWidget, 200); // Higher z-order than hotbar
     }
 }
 
@@ -146,6 +156,12 @@ void Game::Update()
     }
 
     ShowTerrainDebugWindow();
+
+    // Assignment 7-UI: Update UI widgets (for mouse input handling)
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->Update();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -289,6 +305,19 @@ bool Game::IsAttractMode() const
     return m_gameState == eGameState::ATTRACT;
 }
 
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-UI: Check if inventory screen is currently visible
+//----------------------------------------------------------------------------------------------------
+bool Game::IsInventoryOpen() const
+{
+    if (m_inventoryWidget == nullptr)
+    {
+        return false;
+    }
+
+    return m_inventoryWidget->IsInventoryVisible();
+}
+
 void Game::UpdateFromInput()
 {
     UpdateFromKeyBoard();
@@ -350,6 +379,15 @@ void Game::UpdateFromKeyBoard()
         {
             m_showDebugInfo = !m_showDebugInfo;
             DebuggerPrintf("Debug Info Display: %s\n", m_showDebugInfo ? "ON" : "OFF");
+        }
+
+        // Assignment 7-UI: Toggle inventory screen with E key
+        if (g_input->WasKeyJustPressed(KEYCODE_E))
+        {
+            if (m_inventoryWidget != nullptr)
+            {
+                m_inventoryWidget->ToggleVisibility();
+            }
         }
 
         // ========================================

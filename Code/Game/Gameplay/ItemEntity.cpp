@@ -12,6 +12,7 @@
 #include "Engine/Math/AABB3.hpp"
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Renderer/VertexUtils.hpp"
+#include "Engine/Audio/AudioSystem.hpp"  // Assignment 7: For item pickup sound effect
 
 //----------------------------------------------------------------------------------------------------
 // Constructor: Initialize item entity with position and item data
@@ -125,6 +126,17 @@ bool ItemEntity::TryPickup(Player* player)
 
     if (success)
     {
+        // Play item pickup sound effect (Assignment 7: Sound effects)
+        if (g_audio != nullptr)
+        {
+            // Authentic Minecraft pickup "pop" sound (orb.mp3 from SoundDino)
+            SoundID pickupSound = g_audio->CreateOrGetSound("Data/Audio/item_pickup.mp3", eAudioSystemSoundDimension::Sound2D);
+            if (pickupSound != MISSING_SOUND_ID)
+            {
+                g_audio->StartSound(pickupSound, false, 0.5f);  // 50% volume for satisfying pickup feedback
+            }
+        }
+
         // Mark for deletion by clearing item
         m_item.Clear();
         m_despawnTimer = 0.0f; // Trigger immediate despawn

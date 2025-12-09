@@ -39,8 +39,8 @@ HotbarWidget::HotbarWidget(Player* player)
     // Load UI textures and font
     if (g_resourceSubsystem != nullptr)
     {
-        m_backgroundTexture = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/GUI/Hotbar.png");
-        m_selectionTexture = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/GUI/Selection.png");
+        m_backgroundTexture = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/GUI/hotbar_background.png");
+        m_selectionTexture = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/GUI/hotbar_selector.png");
         m_itemSpriteSheet = g_resourceSubsystem->CreateOrGetTextureFromFile("Data/Images/ItemSprites.png");
         m_font = g_resourceSubsystem->CreateOrGetBitmapFontFromFile("Data/Fonts/SquirrelFixedFont");
     }
@@ -75,9 +75,6 @@ void HotbarWidget::Draw() const
     {
         return;
     }
-
-    // DEBUG: Verify Draw() is being called
-    DebuggerPrintf("[HOTBAR] Draw() called - Position=(%.1f,%.1f)\n", m_position.x, m_position.y);
 
     RenderBackground();
     RenderSelection();
@@ -176,28 +173,11 @@ void HotbarWidget::RenderItems() const
 {
     if (m_itemSpriteSheet == nullptr || m_player == nullptr)
     {
-        DebuggerPrintf("[HOTBAR] RenderItems FAILED - spriteSheet=%p, player=%p\n", m_itemSpriteSheet, m_player);
         return;
     }
 
     // Get player inventory
     Inventory const& inventory = m_player->GetInventory();
-
-    // DEBUG: Log hotbar slot contents
-    int nonEmptySlots = 0;
-    for (int i = 0; i < 9; ++i)
-    {
-        ItemStack const& slot = inventory.GetHotbarSlot(i);
-        if (!slot.IsEmpty())
-        {
-            DebuggerPrintf("[HOTBAR] Slot %d: itemID=%u, quantity=%u\n", i, slot.itemID, slot.quantity);
-            nonEmptySlots++;
-        }
-    }
-    if (nonEmptySlots == 0)
-    {
-        DebuggerPrintf("[HOTBAR] All hotbar slots are empty!\n");
-    }
 
     // Calculate starting position for first slot (scaled padding)
     constexpr float SCALE = 3.0f;

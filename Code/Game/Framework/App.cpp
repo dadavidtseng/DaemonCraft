@@ -21,6 +21,7 @@
 #include "Engine/Renderer/Renderer.hpp"
 #include "Engine/Resource/ResourceSubsystem.hpp"
 #include "Engine/UI/ImGuiSubsystem.hpp"
+#include "Engine/Widget/WidgetSubsystem.hpp"
 
 
 //----------------------------------------------------------------------------------------------------
@@ -139,6 +140,12 @@ void App::BeginFrame() const
     g_devConsole->BeginFrame();
     g_input->BeginFrame();
     g_audio->BeginFrame();
+
+    // Assignment 7-UI: Widget subsystem frame start
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->BeginFrame();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -203,6 +210,12 @@ void App::Render() const
 //----------------------------------------------------------------------------------------------------
 void App::EndFrame() const
 {
+    // Assignment 7-UI: Widget subsystem frame end
+    if (g_widgetSubsystem != nullptr)
+    {
+        g_widgetSubsystem->EndFrame();
+    }
+
     g_eventSystem->EndFrame();
     g_window->EndFrame();
     g_renderer->EndFrame();
@@ -216,7 +229,7 @@ void App::EndFrame() const
 void App::UpdateCursorMode()
 {
     bool const doesWindowHasFocus   = GetActiveWindow() == g_window->GetWindowHandle();
-    bool const shouldUsePointerMode = !doesWindowHasFocus || g_devConsole->IsOpen() || g_game->IsAttractMode();
+    bool const shouldUsePointerMode = !doesWindowHasFocus || g_devConsole->IsOpen() || g_game->IsAttractMode() || g_game->IsInventoryOpen();
 
     if (shouldUsePointerMode == true)
     {
