@@ -9,6 +9,7 @@
 #include "Game/Definition/BlockRegistry.hpp"
 #include "Game/Definition/ItemRegistry.hpp"
 #include "Game/Definition/RecipeRegistry.hpp"
+#include "Game/Framework/AgentCommand.hpp"  // Assignment 7-AI: Command classes
 #include "Game/Framework/App.hpp"
 #include "Game/Framework/Chunk.hpp"
 #include "Game/Framework/GameCommon.hpp"
@@ -36,6 +37,8 @@
 //----------------------------------------------------------------------------------------------------
 #include <Windows.h>
 #include <shellapi.h>
+
+#include "Agent.hpp"
 
 //----------------------------------------------------------------------------------------------------
 Game::Game()
@@ -89,6 +92,9 @@ Game::Game()
     {
         g_widgetSubsystem->AddWidget(m_inventoryWidget, 200); // Higher z-order than hotbar
     }
+
+    // Assignment 7-AI: Initialize KADI WebSocket connection
+    InitializeKADI();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -1446,4 +1452,518 @@ void Game::ShowCarversTab()
 
         ImGui::Text("Lower threshold = more common rivers (0.70 recommended)");
     }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Initialize KADI WebSocket subsystem with runtime key generation
+// Task c8aa8544-f488-4745-876d-4206e3b4f036
+//----------------------------------------------------------------------------------------------------
+void Game::InitializeKADI()
+{
+    // Get KADI WebSocket subsystem from Engine
+    if (g_kadiSubsystem == nullptr)
+    {
+        DebuggerPrintf("KADI WebSocket subsystem not available\n");
+        return;
+    }
+
+    // Set tool invoke callback
+    g_kadiSubsystem->SetToolInvokeCallback([this](int requestId, std::string const& toolName, nlohmann::json const& arguments) {
+        this->OnKADIToolInvoke(requestId, toolName, arguments);
+    });
+
+    // Generate Ed25519 key pair at runtime (NOT file-based)
+    sEd25519KeyPair keyPair;
+    if (!KADIAuthenticationUtility::GenerateKeyPair(keyPair))
+    {
+        DebuggerPrintf("KADI: Failed to generate Ed25519 key pair\n");
+        return;
+    }
+
+    // Convert keys to base64 strings for broker authentication
+    std::string publicKey = keyPair.GetPublicKeyBase64();
+    std::string privateKey = keyPair.GetPrivateKeyBase64();
+
+    DebuggerPrintf("KADI: Ed25519 key pair generated successfully\n");
+
+    // Register 7 MCP tools with KADI broker (Task 561817e5-a229-431e-85b0-82c93232a8aa)
+    nlohmann::json tools = nlohmann::json::array();
+
+    // Tool 1: simpleminer_spawn_agent
+    tools.push_back({
+        {"name", "simpleminer_spawn_agent"},
+        {"description", "Spawn a new AI agent at specified position"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"name", {{"type", "string"}, {"description", "Agent name (e.g., 'MinerBot')"}}},
+                {"x", {{"type", "number"}, {"description", "X world coordinate"}}},
+                {"y", {{"type", "number"}, {"description", "Y world coordinate"}}},
+                {"z", {{"type", "number"}, {"description", "Z world coordinate"}}}
+            }},
+            {"required", nlohmann::json::array({"name", "x", "y", "z"})}
+        }}
+    });
+
+    // Tool 2: simpleminer_queue_command
+    tools.push_back({
+        {"name", "simpleminer_queue_command"},
+        {"description", "Queue a command for an agent (MOVE, MINE, PLACE, CRAFT, WAIT)"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"agent_id", {{"type", "number"}, {"description", "Agent ID"}}},
+                {"command_type", {{"type", "string"}, {"enum", nlohmann::json::array({"MOVE", "MINE", "PLACE", "CRAFT", "WAIT"})}}},
+                {"params", {{"type", "object"}, {"description", "Command-specific parameters"}}}
+            }},
+            {"required", nlohmann::json::array({"agent_id", "command_type", "params"})}
+        }}
+    });
+
+    // Tool 3: simpleminer_get_nearby_blocks
+    tools.push_back({
+        {"name", "simpleminer_get_nearby_blocks"},
+        {"description", "Query blocks near an agent"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"agent_id", {{"type", "number"}}},
+                {"radius", {{"type", "number"}, {"description", "Search radius in blocks"}}}
+            }},
+            {"required", nlohmann::json::array({"agent_id", "radius"})}
+        }}
+    });
+
+    // Tool 4: simpleminer_get_agent_inventory
+    tools.push_back({
+        {"name", "simpleminer_get_agent_inventory"},
+        {"description", "Get agent's inventory contents"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"agent_id", {{"type", "number"}}}
+            }},
+            {"required", nlohmann::json::array({"agent_id"})}
+        }}
+    });
+
+    // Tool 5: simpleminer_get_agent_status
+    tools.push_back({
+        {"name", "simpleminer_get_agent_status"},
+        {"description", "Get agent position, current command, queue size"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"agent_id", {{"type", "number"}}}
+            }},
+            {"required", nlohmann::json::array({"agent_id"})}
+        }}
+    });
+
+    // Tool 6: simpleminer_list_agents
+    tools.push_back({
+        {"name", "simpleminer_list_agents"},
+        {"description", "List all active agents in the world"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {}}
+        }}
+    });
+
+    // Tool 7: simpleminer_despawn_agent
+    tools.push_back({
+        {"name", "simpleminer_despawn_agent"},
+        {"description", "Remove an agent from the world"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"agent_id", {{"type", "number"}}}
+            }},
+            {"required", nlohmann::json::array({"agent_id"})}
+        }}
+    });
+
+    // Set display name BEFORE registering tools (fixes broker tool registry)
+    g_kadiSubsystem->SetDisplayName("SimpleMiner Agent");
+
+    // Register tools with broker (will be queued if not authenticated yet)
+    g_kadiSubsystem->RegisterTools(tools);
+    DebuggerPrintf("KADI: Registered 7 MCP tools with broker\n");
+
+    // Connect to KADI broker (path must match broker's WebSocket endpoint)
+    std::string brokerUrl = "ws://localhost:8080/kadi";  // Changed from /ws to /kadi to match ProtogameJS3D
+    g_kadiSubsystem->Connect(brokerUrl, publicKey, privateKey);
+
+    DebuggerPrintf("KADI WebSocket initialized, connecting to broker...\n");
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: KADI tool invoke callback - Dispatcher routes to handler functions
+//----------------------------------------------------------------------------------------------------
+void Game::OnKADIToolInvoke(int requestId, std::string const& toolName, nlohmann::json const& arguments)
+{
+	DebuggerPrintf("KADI Tool Invoked: %s (requestId: %d)\n", toolName.c_str(), requestId);
+
+	// Route to appropriate handler based on tool name
+	if (toolName == "simpleminer_spawn_agent")
+	{
+		HandleSpawnAgent(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_despawn_agent")
+	{
+		HandleDespawnAgent(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_list_agents")
+	{
+		HandleListAgents(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_queue_command")
+	{
+		HandleQueueCommand(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_get_nearby_blocks")
+	{
+		HandleGetNearbyBlocks(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_get_agent_inventory")
+	{
+		HandleGetAgentInventory(requestId, arguments);
+	}
+	else if (toolName == "simpleminer_get_agent_status")
+	{
+		HandleGetAgentStatus(requestId, arguments);
+	}
+	else
+	{
+		g_kadiSubsystem->SendToolError(requestId, "Unknown tool: " + toolName);
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleSpawnAgent - Create new Agent entity at specified position
+//----------------------------------------------------------------------------------------------------
+void Game::HandleSpawnAgent(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse required arguments
+		std::string name = arguments["name"];
+		float x = arguments["x"];
+		float y = arguments["y"];
+		float z = arguments["z"];
+
+		// Spawn agent via World
+		uint64_t agentID = m_world->SpawnAgent(name, Vec3(x, y, z));
+
+		// Build success response
+		nlohmann::json result = {
+			{"agent_id", agentID},
+			{"position", {{"x", x}, {"y", y}, {"z", z}}},
+			{"name", name}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Spawned agent '%s' with ID %llu at (%.1f, %.1f, %.1f)\n", name.c_str(), agentID, x, y, z);
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to spawn agent: ") + e.what());
+		DebuggerPrintf("HandleSpawnAgent error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleDespawnAgent - Remove agent from world
+//----------------------------------------------------------------------------------------------------
+void Game::HandleDespawnAgent(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse required argument
+		uint64_t agentID = arguments["agent_id"];
+
+		// Check if agent exists
+		Agent* agent = m_world->FindAgentByID(agentID);
+		if (!agent)
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Agent not found");
+			return;
+		}
+
+		// Despawn agent
+		m_world->DespawnAgent(agentID);
+
+		// Build success response
+		nlohmann::json result = {
+			{"success", true},
+			{"agent_id", agentID}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Despawned agent ID %llu\n", agentID);
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to despawn agent: ") + e.what());
+		DebuggerPrintf("HandleDespawnAgent error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleListAgents - Return all active agents with positions and queue sizes
+//----------------------------------------------------------------------------------------------------
+void Game::HandleListAgents(int requestId, nlohmann::json const& arguments)
+{
+	UNUSED(arguments);
+
+	try
+	{
+		// Get all agents from World
+		std::vector<Agent*> agents = m_world->GetAllAgents();
+
+		// Build agents JSON array
+		nlohmann::json agentsJson = nlohmann::json::array();
+		for (Agent* agent : agents)
+		{
+			Vec3 pos = agent->m_position;  // Agent inherits m_position from Entity (public member)
+			agentsJson.push_back({
+				{"agent_id", agent->GetAgentID()},
+				{"name", agent->GetName()},
+				{"position", {{"x", pos.x}, {"y", pos.y}, {"z", pos.z}}},
+				{"queue_size", agent->GetCommandQueueSize()}
+			});
+		}
+
+		// Build success response
+		nlohmann::json result = {
+			{"agents", agentsJson},
+			{"count", agents.size()}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Listed %zu active agents\n", agents.size());
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to list agents: ") + e.what());
+		DebuggerPrintf("HandleListAgents error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleQueueCommand - Create and queue command to agent
+//----------------------------------------------------------------------------------------------------
+void Game::HandleQueueCommand(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse common arguments
+		uint64_t agentID = arguments["agent_id"];
+		std::string commandType = arguments["command_type"];
+		nlohmann::json params = arguments["params"];
+
+		// Find agent
+		Agent* agent = m_world->FindAgentByID(agentID);
+		if (!agent)
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Agent not found");
+			return;
+		}
+
+		// Create command based on type
+		AgentCommand* command = nullptr;
+
+		if (commandType == "MOVE")
+		{
+			Vec3 target(params["x"].get<float>(), params["y"].get<float>(), params["z"].get<float>());
+			command = new MoveCommand(target);
+		}
+		else if (commandType == "MINE")
+		{
+			IntVec3 coords(params["x"].get<int>(), params["y"].get<int>(), params["z"].get<int>());
+			command = new MineCommand(coords);
+		}
+		else if (commandType == "PLACE")
+		{
+			IntVec3 coords(params["x"].get<int>(), params["y"].get<int>(), params["z"].get<int>());
+			uint16_t itemID = params["item_id"].get<uint16_t>();
+			command = new PlaceCommand(coords, itemID);
+		}
+		else if (commandType == "CRAFT")
+		{
+			uint16_t recipeID = params["recipe_id"].get<uint16_t>();
+			command = new CraftCommand(recipeID);
+		}
+		else if (commandType == "WAIT")
+		{
+			float duration = params["duration"].get<float>();
+			command = new WaitCommand(duration);
+		}
+		else
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Unknown command type: " + commandType);
+			return;
+		}
+
+		// Queue command
+		agent->QueueCommand(command);
+
+		// Send result
+		nlohmann::json result = {
+			{"success", true},
+			{"queue_size", agent->GetCommandQueueSize()}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Queued %s command to agent %llu (queue size: %d)\n", commandType.c_str(), agentID, agent->GetCommandQueueSize());
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to queue command: ") + e.what());
+		DebuggerPrintf("HandleQueueCommand error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleGetNearbyBlocks - Vision system for environment perception
+//----------------------------------------------------------------------------------------------------
+void Game::HandleGetNearbyBlocks(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse arguments
+		uint64_t agentID = arguments["agent_id"].get<uint64_t>();
+		float radius = arguments["radius"].get<float>();
+
+		// Find agent
+		Agent* agent = m_world->FindAgentByID(agentID);
+		if (!agent)
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Agent not found");
+			return;
+		}
+
+		// Get nearby blocks using vision system
+		std::vector<Agent::BlockInfo> blocks = agent->GetNearbyBlocks(radius);
+
+		// Convert to JSON array
+		nlohmann::json blocksJson = nlohmann::json::array();
+		for (auto const& block : blocks)
+		{
+			blocksJson.push_back({
+				{"block_coords", {{"x", block.blockCoords.x}, {"y", block.blockCoords.y}, {"z", block.blockCoords.z}}},
+				{"block_id", block.blockID},
+				{"block_name", block.blockName}
+			});
+		}
+
+		// Build success response
+		nlohmann::json result = {
+			{"blocks", blocksJson},
+			{"count", blocks.size()}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Agent %llu: Found %zu blocks within radius %.1f\n", agentID, blocks.size(), radius);
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to get nearby blocks: ") + e.what());
+		DebuggerPrintf("HandleGetNearbyBlocks error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleGetAgentInventory - Query agent inventory contents
+//----------------------------------------------------------------------------------------------------
+void Game::HandleGetAgentInventory(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse arguments
+		uint64_t agentID = arguments["agent_id"].get<uint64_t>();
+
+		// Find agent
+		Agent* agent = m_world->FindAgentByID(agentID);
+		if (!agent)
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Agent not found");
+			return;
+		}
+
+		// Get inventory
+		Inventory const& inv = agent->GetInventory();
+
+		// Serialize non-empty inventory slots
+		nlohmann::json slotsJson = nlohmann::json::array();
+		for (int i = 0; i < Inventory::TOTAL_SLOT_COUNT; i++)
+		{
+			ItemStack const& item = inv.GetSlot(i);
+			if (!item.IsEmpty())
+			{
+				slotsJson.push_back({
+					{"slot_index", i},
+					{"item_id", item.itemID},
+					{"quantity", item.quantity},
+					{"durability", item.durability}
+				});
+			}
+		}
+
+		// Build success response
+		nlohmann::json result = {
+			{"slots", slotsJson},
+			{"slot_count", Inventory::TOTAL_SLOT_COUNT}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Agent %llu: Inventory has %zu non-empty slots\n", agentID, slotsJson.size());
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to get agent inventory: ") + e.what());
+		DebuggerPrintf("HandleGetAgentInventory error: %s\n", e.what());
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: HandleGetAgentStatus - Query agent position, command state, and queue size
+//----------------------------------------------------------------------------------------------------
+void Game::HandleGetAgentStatus(int requestId, nlohmann::json const& arguments)
+{
+	try
+	{
+		// Parse arguments
+		uint64_t agentID = arguments["agent_id"].get<uint64_t>();
+
+		// Find agent
+		Agent* agent = m_world->FindAgentByID(agentID);
+		if (!agent)
+		{
+			g_kadiSubsystem->SendToolError(requestId, "Agent not found");
+			return;
+		}
+
+		// Get agent state
+		Vec3 pos = agent->m_position;  // Agent inherits m_position from Entity (public member)
+
+		// Build success response
+		nlohmann::json result = {
+			{"agent_id", agentID},
+			{"name", agent->GetName()},
+			{"position", {{"x", pos.x}, {"y", pos.y}, {"z", pos.z}}},
+			{"queue_size", agent->GetCommandQueueSize()},
+			{"is_executing", agent->IsExecutingCommand()},
+			{"current_command", agent->GetCurrentCommandType()}
+		};
+
+		g_kadiSubsystem->SendToolResult(requestId, result);
+		DebuggerPrintf("Agent %llu: Status retrieved (pos: %.1f, %.1f, %.1f, queue: %d, cmd: %s)\n",
+			agentID, pos.x, pos.y, pos.z, agent->GetCommandQueueSize(), agent->GetCurrentCommandType().c_str());
+	}
+	catch (std::exception const& e)
+	{
+		g_kadiSubsystem->SendToolError(requestId, std::string("Failed to get agent status: ") + e.what());
+		DebuggerPrintf("HandleGetAgentStatus error: %s\n", e.what());
+	}
 }

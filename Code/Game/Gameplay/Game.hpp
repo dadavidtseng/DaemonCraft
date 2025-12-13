@@ -12,6 +12,11 @@
 
 #include "imgui.h"
 
+// Assignment 7-AI: KADI WebSocket integration
+#include "Engine/Network/KADIWebSocketSubsystem.hpp"
+#include "Engine/Network/KADIAuthenticationUtility.hpp"
+#include "ThirdParty/json/json.hpp"
+
 //-Forward-Declaration--------------------------------------------------------------------------------
 class Camera;
 class Clock;
@@ -50,6 +55,19 @@ public:
 
 
 private:
+    // Assignment 7-AI: KADI initialization and callbacks
+    void InitializeKADI();
+    void OnKADIToolInvoke(int requestId, std::string const& toolName, nlohmann::json const& arguments);
+
+    // Assignment 7-AI: KADI tool handlers
+    void HandleSpawnAgent(int requestId, nlohmann::json const& arguments);
+    void HandleDespawnAgent(int requestId, nlohmann::json const& arguments);
+    void HandleListAgents(int requestId, nlohmann::json const& arguments);
+    void HandleQueueCommand(int requestId, nlohmann::json const& arguments);
+    void HandleGetNearbyBlocks(int requestId, nlohmann::json const& arguments);
+    void HandleGetAgentInventory(int requestId, nlohmann::json const& arguments);
+    void HandleGetAgentStatus(int requestId, nlohmann::json const& arguments);
+
     // ImGui Helper Functions (Assignment 4: Phase 5B.4)
     void ShowCurvesTab();
     void ShowBiomeNoiseTab();
