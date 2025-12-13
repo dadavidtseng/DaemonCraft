@@ -39,6 +39,7 @@
 #include "Game/Gameplay/Game.hpp"
 #include "Game/Gameplay/ItemEntity.hpp"  // Assignment 7: For SpawnItemEntity()
 #include "Game/Gameplay/ItemStack.hpp"   // Assignment 7: For ItemStack in SpawnItemEntity()
+#include "Game/Gameplay/Agent.hpp"       // Assignment 7-AI: For Agent management
 #include "ThirdParty/Noise/SmoothNoise.hpp"
 
 //----------------------------------------------------------------------------------------------------
@@ -275,6 +276,16 @@ World::~World()
         }
     }
     m_itemEntities.clear();
+
+    // Assignment 7-AI: Clean up all agents
+    for (auto const& pair : m_agents)
+    {
+        if (pair.second != nullptr)
+        {
+            delete pair.second;
+        }
+    }
+    m_agents.clear();
 
     // Assignment 5 Phase 8: Clean up shader resources
     // Note: Shader is owned by Renderer (CreateOrGetShaderFromFile uses a cache), don't delete it
@@ -586,6 +597,9 @@ void World::Update(float const deltaSeconds)
     {
         DeactivateChunk(farthestChunk);
     }
+
+    // Assignment 7-AI: Update all agents
+    UpdateAgents(deltaSeconds);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -661,6 +675,9 @@ void World::Render() const
             itemEntity->Render();
         }
     }
+
+    // Assignment 7-AI: Render all agents
+    RenderAgents();
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -1337,6 +1354,114 @@ std::vector<ItemEntity*> World::GetNearbyItemEntities(Vec3 const& position, floa
     }
 
     return nearbyItems;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Spawn AI agent at position, returns unique ID
+// Task a4cea8fc-2ca6-47f5-8ddb-6c07cc3278cc
+//----------------------------------------------------------------------------------------------------
+uint64_t World::SpawnAgent(std::string const& name, Vec3 const& position)
+{
+    // Generate unique ID
+    uint64_t agentID = m_nextAgentID++;
+
+    // Create Agent entity
+    Agent* agent = new Agent(g_game, name, agentID, position);
+
+    // Add to agent map for O(1) lookup by ID
+    m_agents[agentID] = agent;
+
+    DebuggerPrintf("World: Spawned Agent '%s' with ID %llu at (%.1f, %.1f, %.1f)\n",
+                   name.c_str(), agentID, position.x, position.y, position.z);
+
+    return agentID;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Find agent by ID (for KADI tool handlers)
+// Returns nullptr if agent not found
+//----------------------------------------------------------------------------------------------------
+Agent* World::FindAgentByID(uint64_t agentID)
+{
+    auto it = m_agents.find(agentID);
+    if (it != m_agents.end())
+    {
+        return it->second;
+    }
+    return nullptr;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Remove agent from world and delete
+//----------------------------------------------------------------------------------------------------
+void World::DespawnAgent(uint64_t agentID)
+{
+    auto it = m_agents.find(agentID);
+    if (it != m_agents.end())
+    {
+        Agent* agent = it->second;
+        std::string agentName = agent->GetName();
+
+        // Delete agent entity
+        delete agent;
+
+        // Remove from map
+        m_agents.erase(it);
+
+        DebuggerPrintf("World: Despawned Agent '%s' (ID: %llu)\n", agentName.c_str(), agentID);
+    }
+    else
+    {
+        ERROR_RECOVERABLE(Stringf("World::DespawnAgent: Agent ID %llu not found", agentID));
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Get all active agents
+//----------------------------------------------------------------------------------------------------
+std::vector<Agent*> World::GetAllAgents() const
+{
+    std::vector<Agent*> agents;
+    agents.reserve(m_agents.size());
+
+    for (auto const& pair : m_agents)
+    {
+        agents.push_back(pair.second);
+    }
+
+    return agents;
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Update all agents (called by World::Update)
+//----------------------------------------------------------------------------------------------------
+void World::UpdateAgents(float deltaSeconds)
+{
+    // Update all agents
+    for (auto const& pair : m_agents)
+    {
+        Agent* agent = pair.second;
+        if (agent != nullptr)
+        {
+            agent->Update(deltaSeconds);
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------
+// Assignment 7-AI: Render all agents (called by World::Render)
+//----------------------------------------------------------------------------------------------------
+void World::RenderAgents() const
+{
+    // Render all agents
+    for (auto const& pair : m_agents)
+    {
+        Agent* agent = pair.second;
+        if (agent != nullptr)
+        {
+            agent->Render();
+        }
+    }
 }
 
 //----------------------------------------------------------------------------------------------------

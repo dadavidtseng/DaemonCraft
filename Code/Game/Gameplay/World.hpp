@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+#include <map>
 #include <deque>
 #include <mutex>
 
@@ -165,6 +166,14 @@ public:
     void SpawnItemEntity(Vec3 const& position, struct ItemStack const& itemStack); // Spawn dropped item in world
     std::vector<class ItemEntity*> GetNearbyItemEntities(Vec3 const& position, float radius) const; // Get ItemEntities within radius
 
+    // Assignment 7-AI: Agent management
+    uint64_t SpawnAgent(std::string const& name, Vec3 const& position); // Spawn AI agent at position, returns unique ID
+    class Agent* FindAgentByID(uint64_t agentID); // Find agent by ID (for KADI tool handlers)
+    void DespawnAgent(uint64_t agentID); // Remove agent from world and delete
+    std::vector<class Agent*> GetAllAgents() const; // Get all active agents
+    void UpdateAgents(float deltaSeconds); // Update all agents (called by World::Update)
+    void RenderAgents() const; // Render all agents (called by World::Render)
+
     // Chunk management helper methods
     Vec3    GetCameraPosition() const;
     Vec3    GetPlayerVelocity() const;  // For directional preloading (Task 0.7)
@@ -271,6 +280,10 @@ private:
 
     // Assignment 7: Entity management
     std::vector<class ItemEntity*> m_itemEntities;  // Dropped items in the world
+
+    // Assignment 7-AI: Agent management
+    std::map<uint64_t, class Agent*> m_agents;  // agentID → Agent* (O(1) lookup for KADI tools)
+    uint64_t m_nextAgentID = 1;  // Incrementing ID generator (starts at 1, 0 = invalid)
 
     // Chunk management helper methods
     bool ChunkExistsOnDisk(IntVec2 const& chunkCoords) const;
