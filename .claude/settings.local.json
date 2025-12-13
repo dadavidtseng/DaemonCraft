@@ -28,7 +28,12 @@
       "mcp__spec-workflow-SimpleMiner__spec-status",
       "mcp__spec-workflow-SimpleMiner__spec-workflow-guide",
       "mcp__github__create_issue",
-      "mcp__spec-workflow-SimpleMiner__approvals"
+      "mcp__spec-workflow-SimpleMiner__approvals",
+      "mcp__shrimp-SimpleMiner__process_thought",
+      "mcp__kadi-local__list_tools",
+      "mcp__kadi-local__kadi_discover",
+      "mcp__kadi-remote__kadi_discover",
+      "mcp__jetbrains__list_directory_tree"
     ],
     "deny": [],
     "ask": []

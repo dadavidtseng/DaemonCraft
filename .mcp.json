@@ -1,5 +1,15 @@
 {
   "mcpServers": {
+    "kadi-local": {
+      "command": "cmd",
+      "args": [
+        "/C",
+        "npx",
+        "tsx",
+        "C:\\p4\\Personal\\SD\\kadi\\kadi-broker\\src\\utils\\ws-stdio-bridge.ts",
+        "ws://localhost:8080/mcp"
+      ]
+    },
     "shrimp-SimpleMiner": {
       "command": "node",
       "args": ["C:\\GitHub\\mcp-shrimp-task-manager\\dist\\index.js"],
