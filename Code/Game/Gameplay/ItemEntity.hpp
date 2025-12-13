@@ -23,6 +23,7 @@ public:
 
     void Update(float deltaSeconds) override;
     void Render() const override;
+    EntityType GetEntityType() const override { return EntityType::ITEM; }
 
     // Magnetic pickup mechanics
     void ApplyMagneticPull(Vec3 const& playerPosition, float deltaSeconds);

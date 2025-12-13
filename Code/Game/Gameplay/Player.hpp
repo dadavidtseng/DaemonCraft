@@ -44,6 +44,7 @@ public:
 
     void Update(float deltaSeconds) override;
     void Render() const override;
+    EntityType GetEntityType() const override { return EntityType::PLAYER; }
     void UpdateFromInput(float deltaSeconds);
     void UpdateFromKeyBoard(float deltaSeconds);
     void UpdateFromController(float deltaSeconds);

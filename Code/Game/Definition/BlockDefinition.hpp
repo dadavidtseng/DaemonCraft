@@ -37,6 +37,7 @@ struct sBlockDefinition
     bool IsVisible() const { return m_isVisible; }
     bool IsSolid() const { return m_isSolid; }
     bool IsOpaque() const { return m_isOpaque; }
+    String GetName() const { return m_name; }
 
     // Assignment 5 Phase 3: Emissive lighting support
     bool    IsEmissive() const { return m_indoorLighting > 0.f; }

@@ -24,6 +24,16 @@ enum class ePhysicsMode : uint8_t
 };
 
 //----------------------------------------------------------------------------------------------------
+// Entity type identification (Assignment 7-AI)
+enum class EntityType : uint8_t
+{
+    PLAYER,  // Player-controlled entity
+    AGENT,   // AI-controlled entity
+    PROP,    // Static/dynamic world object
+    ITEM     // Dropped item entity
+};
+
+//----------------------------------------------------------------------------------------------------
 class Entity
 {
 public:
@@ -33,6 +43,7 @@ public:
     virtual void  Update(float deltaSeconds);  // Assignment 6: Core physics integration loop (can be overridden)
     virtual void  Render() const = 0;
     virtual Mat44 GetModelToWorldTransform() const;
+    virtual EntityType GetEntityType() const = 0;  // Assignment 7-AI: Entity type identification
 
     // Assignment 6: Physics simulation
     void   UpdatePhysics(float deltaSeconds);  // Newtonian integration: gravity, friction, velocity
