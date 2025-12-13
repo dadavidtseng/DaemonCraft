@@ -3225,13 +3225,8 @@ void Chunk::UpdateVertexBuffer()
 {
     if (m_vertices.empty())
     {
-        DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) has no vertices, skipping\n",
-                      m_chunkCoords.x, m_chunkCoords.y);
         return;
     }
-
-    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) creating new buffers (vertices=%d, indices=%d)...\n",
-                  m_chunkCoords.x, m_chunkCoords.y, (int)m_vertices.size(), (int)m_indices.size());
 
     // CRITICAL FIX: Use atomic buffer swapping to prevent rendering race condition
     // Create new buffers FIRST, then swap atomically to prevent flashing during buffer updates
@@ -3267,16 +3262,14 @@ void Chunk::UpdateVertexBuffer()
                                  newDebugVertexBuffer);
     }
 
-    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) new buffers created: VB=%p, IB=%p, DebugVB=%p\n",
-                  m_chunkCoords.x, m_chunkCoords.y, newVertexBuffer, newIndexBuffer, newDebugVertexBuffer);
+
 
     // Store old buffers for deletion
     VertexBuffer* oldVertexBuffer = m_vertexBuffer;
     IndexBuffer*  oldIndexBuffer  = m_indexBuffer;
     VertexBuffer* oldDebugBuffer  = m_debugVertexBuffer;
 
-    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) old buffers: VB=%p, IB=%p, DebugVB=%p\n",
-                  m_chunkCoords.x, m_chunkCoords.y, oldVertexBuffer, oldIndexBuffer, oldDebugBuffer);
+
 
     // ATOMIC SWAP: Replace all buffer pointers simultaneously
     // This prevents Render() from seeing inconsistent buffer state
@@ -3284,8 +3277,7 @@ void Chunk::UpdateVertexBuffer()
     m_indexBuffer       = newIndexBuffer;
     m_debugVertexBuffer = newDebugVertexBuffer;
 
-    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) swapped pointers, deleting old buffers...\n",
-                  m_chunkCoords.x, m_chunkCoords.y);
+
 
     // Delete old buffers AFTER the swap
     // Render() now uses new buffers, safe to delete old ones
@@ -3293,8 +3285,7 @@ void Chunk::UpdateVertexBuffer()
     GAME_SAFE_RELEASE(oldIndexBuffer);
     GAME_SAFE_RELEASE(oldDebugBuffer);
 
-    DebuggerPrintf("[UPDATE_VB] Chunk(%d,%d) update complete\n",
-                  m_chunkCoords.x, m_chunkCoords.y);
+
 }
 
 void Chunk::SetMeshClean()
@@ -3581,22 +3572,6 @@ void Chunk::AddBlockFacesWithHiddenSurfaceRemoval(BlockIterator const& blockIter
             uint8_t g = (uint8_t)(indoorNormalized * 255.0f);
             uint8_t b = (uint8_t)(directionalShading[faceIndex] * 255.0f);
             Rgba8 vertexColor = Rgba8(r, g, b, 255);
-
-            // DEBUG: Log first 3 surface blocks per chunk (showing BOTH outdoor and indoor)
-            static std::unordered_map<IntVec2, int> chunkFaceCount;  // Track faces per chunk
-            int& faceCount = chunkFaceCount[m_chunkCoords];
-            if (faceCount < 3 && blockCoords.z >= 80)  // Only log surface blocks
-            {
-                // If indoor > 0, mark it clearly for debugging "bright green" chunks
-                const char* indoorNote = (indoorLight > 0) ? " ← INDOOR LIGHT!" : "";
-                // CRITICAL BUG HUNT: Also log if outdoor is LESS than 15 (shouldn't happen for surface blocks!)
-                const char* outdoorNote = (outdoorLight < 15) ? " ← LOW OUTDOOR!" : "";
-                DebuggerPrintf("[MESH VERTEX] Chunk(%d,%d) Block(%d,%d,%d) Face#%d: outdoor=%d indoor=%d → RGB=(%d,%d,%d)%s%s\n",
-                              m_chunkCoords.x, m_chunkCoords.y,
-                              blockCoords.x, blockCoords.y, blockCoords.z,
-                              faceIndex, outdoorLight, indoorLight, r, g, b, indoorNote, outdoorNote);
-                faceCount++;
-            }
 
             AddBlockFace(blockCenter, faceNormals[faceIndex], uvs, vertexColor);
         }

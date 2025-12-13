@@ -15,6 +15,7 @@
 #include "Engine/Core/Engine.hpp"
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Input/InputSystem.hpp"
+#include "Engine/Network/KADIWebSocketSubsystem.hpp"
 #include "Engine/Platform/Window.hpp"
 #include "Engine/Renderer/BitmapFont.hpp"
 #include "Engine/Renderer/DebugRenderSystem.hpp"
@@ -63,6 +64,14 @@ void App::Startup()
 //
 void App::Shutdown()
 {
+    // Stage 0: Disconnect KADI WebSocket cleanly BEFORE any other cleanup
+    // This sends a proper CLOSE frame (RFC 6455) so the broker knows we disconnected gracefully
+    // Must happen while network stack is still alive
+    if (g_kadiSubsystem != nullptr)
+    {
+        g_kadiSubsystem->Shutdown();
+    }
+
     // CRITICAL FIX: Three-stage shutdown to handle both threading AND DirectX cleanup
     //
     // Problem 1: Worker threads accessing deleted chunks (crash on fast shutdown)
@@ -140,6 +149,12 @@ void App::BeginFrame() const
     g_devConsole->BeginFrame();
     g_input->BeginFrame();
     g_audio->BeginFrame();
+
+    // Assignment 7-AI: KADI subsystem frame processing
+    if (g_kadiSubsystem != nullptr)
+    {
+        g_kadiSubsystem->BeginFrame();
+    }
 
     // Assignment 7-UI: Widget subsystem frame start
     if (g_widgetSubsystem != nullptr)
