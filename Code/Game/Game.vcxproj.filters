@@ -19,6 +19,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Framework/AgentCommand.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
     <ClCompile Include="Framework/App.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
@@ -68,6 +71,9 @@
       <Filter>Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Gameplay/Entity.cpp">
+      <Filter>Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Gameplay/Agent.cpp">
       <Filter>Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Gameplay/Inventory.cpp">
@@ -129,6 +135,9 @@
     <ClInclude Include="Gameplay/Entity.hpp">
       <Filter>Gameplay</Filter>
     </ClInclude>
+    <ClInclude Include="Gameplay/Agent.hpp">
+      <Filter>Gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="Gameplay/Inventory.hpp">
       <Filter>Gameplay</Filter>
     </ClInclude>
@@ -155,6 +164,9 @@
     </ClInclude>
     <ClInclude Include="Framework/Chunk.hpp">
       <Filter>Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Framework/AgentCommand.hpp">
+      <Filter>Framework</Filter>
     </ClInclude>
     <ClInclude Include="Framework/App.hpp">
       <Filter>Framework</Filter>
