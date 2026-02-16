@@ -14,6 +14,10 @@ name: Sync Config Files from dadavidtseng/ConfigCommon
 permissions:
   contents: write
 on:
+  # Triggered automatically when ConfigCommon repo pushes to main
+  repository_dispatch:
+    types: [config-common-updated]
+
   workflow_dispatch:
     inputs:
       # Option to sync .gitignore file
@@ -82,11 +86,6 @@ on:
         required: false
         default: ''
         type: string
-
-  # Automatic trigger - runs every Monday at 2:00 AM UTC
-  # Cron format: minute(0-59) hour(0-23) day(1-31) month(1-12) weekday(0-6, 0=Sunday)
-  schedule:
-    - cron: '0 2 * * 1'
 
 #-----------------------------------------------------------------------------------------------------
 jobs:
