@@ -17,11 +17,12 @@
 //
 
 // #define ENGINE_DISABLE_AUDIO	   // Disables AudioSystem code and removes FMOD linkage
-#define ENGINE_DISABLE_SCRIPT	   // Disables ScriptSubsystem code (NOTE: V8 linking controlled in Engine.vcxproj)
+// #define ENGINE_DISABLE_SCRIPT	   // Disables ScriptSubsystem code (NOTE: V8 linking controlled in Engine.vcxproj)
 
 // Enable Debug Rendering System
 #define ENGINE_DEBUG_RENDER
 #define CONSOLE_HANDLER
+// #define ENGINE_SCRIPTING_ENABLED
 //
 // V8 JavaScript Engine Configuration:
 // V8 linking is controlled by <EnableV8ScriptEngine> in Engine/Code/Engine/Engine.vcxproj (line 87)

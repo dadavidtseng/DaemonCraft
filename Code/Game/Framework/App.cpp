@@ -15,7 +15,10 @@
 #include "Engine/Core/Engine.hpp"
 #include "Engine/Core/EngineCommon.hpp"
 #include "Engine/Input/InputSystem.hpp"
+#include "Game/EngineBuildPreferences.hpp"
+#ifdef ENGINE_SCRIPTING_ENABLED
 #include "Engine/Network/KADIWebSocketSubsystem.hpp"
+#endif // ENGINE_SCRIPTING_ENABLED
 #include "Engine/Platform/Window.hpp"
 #include "Engine/Renderer/BitmapFont.hpp"
 #include "Engine/Renderer/DebugRenderSystem.hpp"
@@ -64,6 +67,7 @@ void App::Startup()
 //
 void App::Shutdown()
 {
+#ifdef ENGINE_SCRIPTING_ENABLED
     // Stage 0: Disconnect KADI WebSocket cleanly BEFORE any other cleanup
     // This sends a proper CLOSE frame (RFC 6455) so the broker knows we disconnected gracefully
     // Must happen while network stack is still alive
@@ -71,6 +75,7 @@ void App::Shutdown()
     {
         g_kadiSubsystem->Shutdown();
     }
+#endif // ENGINE_SCRIPTING_ENABLED
 
     // CRITICAL FIX: Three-stage shutdown to handle both threading AND DirectX cleanup
     //
@@ -150,11 +155,13 @@ void App::BeginFrame() const
     g_input->BeginFrame();
     g_audio->BeginFrame();
 
+#ifdef ENGINE_SCRIPTING_ENABLED
     // Assignment 7-AI: KADI subsystem frame processing
     if (g_kadiSubsystem != nullptr)
     {
         g_kadiSubsystem->BeginFrame();
     }
+#endif // ENGINE_SCRIPTING_ENABLED
 
     // Assignment 7-UI: Widget subsystem frame start
     if (g_widgetSubsystem != nullptr)

@@ -12,10 +12,13 @@
 
 #include "imgui.h"
 
+#include "Game/EngineBuildPreferences.hpp"
+#ifdef ENGINE_SCRIPTING_ENABLED
 // Assignment 7-AI: KADI WebSocket integration
 #include "Engine/Network/KADIWebSocketSubsystem.hpp"
 #include "Engine/Network/KADIAuthenticationUtility.hpp"
 #include "ThirdParty/json/json.hpp"
+#endif // ENGINE_SCRIPTING_ENABLED
 
 //-Forward-Declaration--------------------------------------------------------------------------------
 class Camera;
@@ -55,6 +58,7 @@ public:
 
 
 private:
+#ifdef ENGINE_SCRIPTING_ENABLED
     // Assignment 7-AI: KADI initialization and callbacks
     void InitializeKADI();
     void OnKADIToolInvoke(int requestId, std::string const& toolName, nlohmann::json const& arguments);
@@ -67,6 +71,7 @@ private:
     void HandleGetNearbyBlocks(int requestId, nlohmann::json const& arguments);
     void HandleGetAgentInventory(int requestId, nlohmann::json const& arguments);
     void HandleGetAgentStatus(int requestId, nlohmann::json const& arguments);
+#endif // ENGINE_SCRIPTING_ENABLED
 
     // ImGui Helper Functions (Assignment 4: Phase 5B.4)
     void ShowCurvesTab();

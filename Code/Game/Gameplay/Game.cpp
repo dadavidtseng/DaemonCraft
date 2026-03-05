@@ -94,7 +94,9 @@ Game::Game()
     }
 
     // Assignment 7-AI: Initialize KADI WebSocket connection
+#ifdef ENGINE_SCRIPTING_ENABLED
     InitializeKADI();
+#endif // ENGINE_SCRIPTING_ENABLED
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -1454,6 +1456,7 @@ void Game::ShowCarversTab()
     }
 }
 
+#ifdef ENGINE_SCRIPTING_ENABLED
 //----------------------------------------------------------------------------------------------------
 // Assignment 7-AI: Initialize KADI WebSocket subsystem with runtime key generation
 // Task c8aa8544-f488-4745-876d-4206e3b4f036
@@ -1967,3 +1970,4 @@ void Game::HandleGetAgentStatus(int requestId, nlohmann::json const& arguments)
 		DebuggerPrintf("HandleGetAgentStatus error: %s\n", e.what());
 	}
 }
+#endif // ENGINE_SCRIPTING_ENABLED
